@@ -1,0 +1,17 @@
+{
+  "name": "consent-mode-v2",
+  "version": "2.0.0",
+  "description": "Google Consent Mode v2 (block-before-consent) + a gated GA4 tag, with a consent banner that meets Québec Loi 25 / GDPR.",
+  "private": true,
+  "license": "GPL-2.0-or-later",
+  "author": "Tamarak (https://tamarak.dev)",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "i18n:pot": "wp i18n make-pot . languages/consent-mode-v2.pot",
+    "i18n:po": "wp i18n update-po languages/consent-mode-v2.pot languages",
+    "i18n:mo": "wp i18n make-mo languages languages",
+    "build": "npm run i18n:pot && npm run i18n:po && npm run i18n:mo"
+  }
+}

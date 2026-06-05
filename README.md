@@ -40,20 +40,25 @@ Then activate it from the Plugins screen as usual.
 
 ## Rebuilding translations
 
-UI strings live in `tools/build-translations.py` (English msgid → French msgstr).
-After changing translatable strings:
+Translations live in the `.po` files under `languages/` (the gettext source of
+truth). The build is driven by npm scripts that wrap [WP-CLI](https://wp-cli.org/)
+— no custom script. After changing translatable strings in the PHP:
 
 ```sh
-# 1) regenerate the template + .po from PHP source (requires wp-cli)
-wp i18n make-pot . languages/consent-mode-v2.pot
-
-# 2) fill the French .po files from the dictionary
-python3 tools/build-translations.py
-
-# 3) compile .mo (requires gettext's msgfmt, or `wp i18n make-mo languages`)
-msgfmt languages/consent-mode-v2-fr_CA.po -o languages/consent-mode-v2-fr_CA.mo
-msgfmt languages/consent-mode-v2-fr_FR.po -o languages/consent-mode-v2-fr_FR.mo
+npm run build
 ```
+
+That runs three steps, which you can also run individually:
+
+```sh
+npm run i18n:pot   # regenerate languages/consent-mode-v2.pot from PHP source
+npm run i18n:po    # sync the fr_CA / fr_FR .po files against the new .pot
+npm run i18n:mo    # compile the .po files to .mo
+```
+
+After `i18n:po`, fill in any new/changed `msgstr` entries directly in the French
+`.po` files, then run `npm run i18n:mo` to recompile. Requires WP-CLI on your
+`PATH` (`wp`).
 
 ## License
 
