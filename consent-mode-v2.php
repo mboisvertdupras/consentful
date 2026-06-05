@@ -39,6 +39,10 @@ define( 'CMV2_OPTION', 'cmv2_settings' );
  * Force a specific locale for this plugin's text domain when the admin pins a
  * language ("fr"/"en"); "auto" leaves it to the site locale. Registered at load
  * time so it is in place before load_plugin_textdomain() runs on init.
+ *
+ * @param string $locale The locale WordPress resolved for the text domain.
+ * @param string $domain The text domain being filtered.
+ * @return string
  */
 function cmv2_filter_locale( $locale, $domain ) {
 	if ( 'consent-mode-v2' !== $domain ) {
@@ -60,7 +64,7 @@ function cmv2_filter_locale( $locale, $domain ) {
 }
 add_filter( 'plugin_locale', 'cmv2_filter_locale', 10, 2 );
 
-function cmv2_load_textdomain() {
+function cmv2_load_textdomain(): void {
 	load_plugin_textdomain( 'consent-mode-v2', false, dirname( plugin_basename( CMV2_FILE ) ) . '/languages' );
 }
 add_action( 'init', 'cmv2_load_textdomain' );
@@ -71,6 +75,10 @@ add_action( 'init', 'cmv2_load_textdomain' );
 
 /**
  * Stored settings, merged over defaults. Constants/filters win at read time.
+ *
+ * Values are normalized on save (cmv2_sanitize_post), so the shape is stable.
+ *
+ * @return Cmv2Settings
  */
 function cmv2_settings() {
 	$defaults = array(
@@ -88,27 +96,37 @@ function cmv2_settings() {
 		'body'        => '',     // banner copy override (blank -> i18n default)
 		'lang'        => 'auto', // auto | fr | en
 	);
-	return wp_parse_args( get_option( CMV2_OPTION, array() ), $defaults );
+	$stored   = get_option( CMV2_OPTION, array() );
+
+	/** @var Cmv2Settings $settings */
+	$settings = wp_parse_args( is_array( $stored ) ? $stored : array(), $defaults );
+	return $settings;
 }
 
-function cmv2_ga4_id() {
+function cmv2_ga4_id(): string {
 	$id = cmv2_settings()['ga4_id'];
+	/**
+	 * Filter the GA4 measurement ID before it is emitted.
+	 *
+	 * @param string $id GA4 measurement ID (e.g. "G-XXXXXXXXXX").
+	 */
 	return (string) apply_filters( 'cmv2_ga4_id', $id );
 }
 
-function cmv2_ads_enabled() {
+function cmv2_ads_enabled(): bool {
 	return (bool) apply_filters( 'cmv2_ads_enabled', (bool) cmv2_settings()['ads'] );
 }
 
-function cmv2_days() {
+function cmv2_days(): int {
 	$d = (int) cmv2_settings()['days'];
 	return $d > 0 ? $d : 180;
 }
 
-function cmv2_privacy_url() {
+function cmv2_privacy_url(): string {
 	$url = cmv2_settings()['privacy_url'];
 	if ( ! $url ) {
-		$page = (int) get_option( 'wp_page_for_privacy_policy' );
+		$opt  = get_option( 'wp_page_for_privacy_policy' );
+		$page = is_scalar( $opt ) ? (int) $opt : 0;
 		if ( $page ) {
 			$url = get_permalink( $page );
 		}
@@ -121,27 +139,42 @@ function cmv2_privacy_url() {
  * not depend on CSS color-mix support).
  * ---------------------------------------------------------------------- */
 
+/**
+ * @param string $hex
+ * @return bool
+ */
 function cmv2_valid_hex( $hex ) {
 	return (bool) preg_match( '/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', (string) $hex );
 }
 
-/** Normalize #abc / #aabbcc to array( r, g, b ) of ints, or null. */
+/**
+ * Normalize #abc / #aabbcc to array( r, g, b ) of ints, or null.
+ *
+ * @param string $hex
+ * @return array{int, int, int}|null
+ */
 function cmv2_hex_rgb( $hex ) {
 	if ( ! cmv2_valid_hex( $hex ) ) {
 		return null;
 	}
-	$h = ltrim( $hex, '#' );
+	$h = ltrim( (string) $hex, '#' );
 	if ( 3 === strlen( $h ) ) {
 		$h = $h[0] . $h[0] . $h[1] . $h[1] . $h[2] . $h[2];
 	}
 	return array(
-		hexdec( substr( $h, 0, 2 ) ),
-		hexdec( substr( $h, 2, 2 ) ),
-		hexdec( substr( $h, 4, 2 ) ),
+		(int) hexdec( substr( $h, 0, 2 ) ),
+		(int) hexdec( substr( $h, 2, 2 ) ),
+		(int) hexdec( substr( $h, 4, 2 ) ),
 	);
 }
 
-/** Darken a hex color by $f (0..1). Returns #rrggbb. */
+/**
+ * Darken a hex color by $f (0..1). Returns #rrggbb.
+ *
+ * @param string $hex
+ * @param float  $f
+ * @return string
+ */
 function cmv2_darken( $hex, $f = 0.14 ) {
 	$rgb = cmv2_hex_rgb( $hex );
 	if ( ! $rgb ) {
@@ -154,7 +187,12 @@ function cmv2_darken( $hex, $f = 0.14 ) {
 	return '#' . $out;
 }
 
-/** sRGB relative luminance (WCAG) for an [ r, g, b ] 0..255 triplet. */
+/**
+ * sRGB relative luminance (WCAG) for an [ r, g, b ] 0..255 triplet.
+ *
+ * @param array{int, int, int} $rgb
+ * @return float
+ */
 function cmv2_rel_luminance( $rgb ) {
 	$lin = array();
 	foreach ( $rgb as $c ) {
@@ -166,7 +204,11 @@ function cmv2_rel_luminance( $rgb ) {
 
 /** Readable text color (#111111 or #ffffff) for a background hex, chosen by
  * actual WCAG contrast — a YIQ heuristic mis-picks saturated hues (e.g. white
- * on bright green/red), which would break the "auto contrast" promise. */
+ * on bright green/red), which would break the "auto contrast" promise.
+ *
+ * @param string $hex
+ * @return string
+ */
 function cmv2_on_color( $hex ) {
 	$rgb = cmv2_hex_rgb( $hex );
 	if ( ! $rgb ) {
@@ -185,7 +227,7 @@ function cmv2_on_color( $hex ) {
  *    A returning visitor with a valid, unexpired cookie that grants at least
  *    one purpose gets the tag loaded immediately (accurate first hit).
  * ---------------------------------------------------------------------- */
-function cmv2_head() {
+function cmv2_head(): void {
 	$id = cmv2_ga4_id();
 	if ( ! $id ) {
 		return;
@@ -210,10 +252,10 @@ gtag('consent','default',{
 	security_storage:'granted',
 	wait_for_update:500
 });
-<?php if ( $ads ) : ?>
+	<?php if ( $ads ) : ?>
 gtag('set','ads_data_redaction',true);
 gtag('set','url_passthrough',true);
-<?php endif; ?>
+	<?php endif; ?>
 window.cmv2LoadTag=function(){
 	if(window.__cmv2TagLoaded){return;}
 	window.__cmv2TagLoaded=true;
@@ -225,21 +267,21 @@ window.cmv2LoadTag=function(){
 	document.head.appendChild(s);
 };
 (function(){try{
-	var m=document.cookie.match(/(?:^|;\s*)<?php echo $cookie; ?>=([^;]+)/);
+	var m=document.cookie.match(/(?:^|;\s*)<?php echo esc_js( (string) $cookie ); ?>=([^;]+)/);
 	if(!m){return;}
 	var v=JSON.parse(decodeURIComponent(m[1]));
 	if(!v||!v.c){return;}
-	if(v.v!==<?php echo $ver; ?>){return;}
-	if(!v.t||(Date.now()-v.t)><?php echo $ttl_ms; ?>){return;}
+	if(v.v!==<?php echo (int) $ver; ?>){return;}
+	if(!v.t||(Date.now()-v.t)><?php echo (int) $ttl_ms; ?>){return;}
 	var u={analytics_storage:v.c.analytics?'granted':'denied'};
-<?php if ( $ads ) : ?>
+	<?php if ( $ads ) : ?>
 	u.ad_storage=v.c.marketing?'granted':'denied';
 	u.ad_user_data=v.c.marketing?'granted':'denied';
 	u.ad_personalization=v.c.marketing?'granted':'denied';
 	u.personalization_storage=v.c.marketing?'granted':'denied';
-<?php endif; ?>
+	<?php endif; ?>
 	gtag('consent','update',u);
-	if(<?php echo $load_if; ?>){window.cmv2LoadTag();}
+	if(<?php echo $load_if; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Controlled internal JS expression built from constants, never user input. ?>){window.cmv2LoadTag();}
 }catch(e){}})();
 </script>
 <!-- /Consent Mode v2 -->
@@ -248,16 +290,66 @@ window.cmv2LoadTag=function(){
 add_action( 'wp_head', 'cmv2_head', 1 );
 
 /* -------------------------------------------------------------------------
- * 2) Front-end assets (only when a tag exists to gate).
+ * 2) Front-end assets (only when a tag exists to gate). Source lives in src/
+ *    and is built by Vite into build/ with content-hashed filenames; PHP maps
+ *    a source entry to its hashed output through build/.vite/manifest.json.
  * ---------------------------------------------------------------------- */
+
+/**
+ * Resolve a built asset from the Vite manifest.
+ *
+ * @param string $entry Manifest entry key (the source path used as a Vite input,
+ *                      e.g. 'src/consent.js').
+ * @return array{url: string, path: string}|null URL + absolute path, or null when
+ *                      the build output is missing (run `npm run build`).
+ */
+function cmv2_asset( $entry ) {
+	static $manifest = null;
+
+	if ( null === $manifest ) {
+		$manifest = array();
+		$file     = plugin_dir_path( CMV2_FILE ) . 'build/.vite/manifest.json';
+		if ( is_readable( $file ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reading a local build artifact, not a remote resource.
+			$json = file_get_contents( $file );
+			$data = json_decode( (string) $json, true );
+			if ( is_array( $data ) ) {
+				$manifest = $data;
+			}
+		}
+	}
+
+	$meta = ( is_array( $manifest ) && isset( $manifest[ $entry ] ) && is_array( $manifest[ $entry ] ) ) ? $manifest[ $entry ] : array();
+	if ( empty( $meta['file'] ) || ! is_string( $meta['file'] ) ) {
+		return null;
+	}
+
+	$relative = 'build/' . (string) $meta['file'];
+	return array(
+		'url'  => plugins_url( $relative, CMV2_FILE ),
+		'path' => plugin_dir_path( CMV2_FILE ) . $relative,
+	);
+}
+
+/**
+ * Enqueue the front-end stylesheet and banner script from the build output.
+ *
+ * @return void
+ */
 function cmv2_assets() {
 	if ( ! cmv2_ga4_id() ) {
 		return;
 	}
-	$s    = cmv2_settings();
-	$base = plugins_url( 'assets/', CMV2_FILE );
+	$css = cmv2_asset( 'src/consent.css' );
+	$js  = cmv2_asset( 'src/consent.js' );
+	if ( null === $css || null === $js ) {
+		// Build output missing — degrade quietly here and surface an admin
+		// notice (cmv2_admin_notices) rather than enqueueing 404s.
+		return;
+	}
+	$s = cmv2_settings();
 
-	wp_enqueue_style( 'cmv2-consent', $base . 'consent.css', array(), CMV2_VER );
+	wp_enqueue_style( 'cmv2-consent', $css['url'], array(), CMV2_VER );
 
 	// Server-sanitized theming variables (hex + clamped int only -> safe inline).
 	$primary = cmv2_valid_hex( $s['primary'] ) ? $s['primary'] : '#2563eb';
@@ -271,16 +363,16 @@ function cmv2_assets() {
 	);
 	wp_add_inline_style( 'cmv2-consent', $inline );
 
-	wp_enqueue_script( 'cmv2-consent', $base . 'consent.js', array(), CMV2_VER, true );
+	wp_enqueue_script( 'cmv2-consent', $js['url'], array(), CMV2_VER, true );
 	wp_localize_script(
 		'cmv2-consent',
 		'CMV2_CONSENT',
 		array(
-			'cookie'   => CMV2_COOKIE,
-			'days'     => cmv2_days(),
-			'ads'      => cmv2_ads_enabled() ? 1 : 0,
-			'v'        => (int) CMV2_SCHEMA_V,
-			'modal'    => ( 'modal' === $s['position'] ) ? 1 : 0,
+			'cookie' => CMV2_COOKIE,
+			'days'   => cmv2_days(),
+			'ads'    => cmv2_ads_enabled() ? 1 : 0,
+			'v'      => (int) CMV2_SCHEMA_V,
+			'modal'  => ( 'modal' === $s['position'] ) ? 1 : 0,
 		)
 	);
 }
@@ -289,7 +381,7 @@ add_action( 'wp_enqueue_scripts', 'cmv2_assets' );
 /* -------------------------------------------------------------------------
  * 3) Banner markup (hidden until consent.js decides). Rendered for every theme.
  * ---------------------------------------------------------------------- */
-function cmv2_banner() {
+function cmv2_banner(): void {
 	if ( ! cmv2_ga4_id() ) {
 		return;
 	}
@@ -340,9 +432,9 @@ function cmv2_banner() {
 		</div>
 	</div>
 </div>
-<?php if ( $s['show_reopen'] ) : ?>
+	<?php if ( $s['show_reopen'] ) : ?>
 <button type="button" id="cmv2-consent-open" class="cmv2-open cmv2--theme-<?php echo esc_attr( $theme ); ?>" hidden aria-haspopup="dialog" aria-controls="cmv2-consent" aria-label="<?php esc_attr_e( 'Manage cookies', 'consent-mode-v2' ); ?>"><?php esc_html_e( 'Manage cookies', 'consent-mode-v2' ); ?></button>
-<?php endif; ?>
+	<?php endif; ?>
 	<?php
 }
 add_action( 'wp_footer', 'cmv2_banner', 20 );
@@ -351,7 +443,7 @@ add_action( 'wp_footer', 'cmv2_banner', 20 );
  * 4) Admin warnings: other plugins that emit their OWN marketing tag, and a
  *    nudge to set the GA4 ID.
  * ---------------------------------------------------------------------- */
-function cmv2_admin_notices() {
+function cmv2_admin_notices(): void {
 	if ( ! current_user_can( 'activate_plugins' ) ) {
 		return;
 	}
@@ -360,10 +452,17 @@ function cmv2_admin_notices() {
 	}
 
 	if ( ! cmv2_ga4_id() && current_user_can( 'manage_options' ) ) {
-		$url = esc_url( admin_url( 'options-general.php?page=consent-mode-v2' ) );
+		$url = admin_url( 'options-general.php?page=consent-mode-v2' );
 		echo '<div class="notice notice-info"><p><strong>' . esc_html__( 'Consent Mode v2', 'consent-mode-v2' ) . ' :</strong> '
 			. esc_html__( 'Add your GA4 measurement ID to activate the consent banner and the tag.', 'consent-mode-v2' )
-			. ' <a href="' . $url . '">' . esc_html__( 'Settings', 'consent-mode-v2' ) . '</a></p></div>';
+			. ' <a href="' . esc_url( $url ) . '">' . esc_html__( 'Settings', 'consent-mode-v2' ) . '</a></p></div>';
+	}
+
+	// A configured tag with no built assets means the banner cannot render.
+	if ( cmv2_ga4_id() && current_user_can( 'manage_options' ) && null === cmv2_asset( 'src/consent.js' ) ) {
+		echo '<div class="notice notice-error"><p><strong>' . esc_html__( 'Consent Mode v2', 'consent-mode-v2' ) . ' :</strong> '
+			. esc_html__( 'The front-end assets are missing. Run "npm install && npm run build" in the plugin directory; the banner will not display until the build output exists.', 'consent-mode-v2' )
+			. '</p></div>';
 	}
 
 	$warnings = array();
@@ -382,7 +481,7 @@ add_action( 'admin_notices', 'cmv2_admin_notices' );
 /* -------------------------------------------------------------------------
  * 5) Settings screen: Settings → Consent Mode v2.
  * ---------------------------------------------------------------------- */
-function cmv2_admin_menu() {
+function cmv2_admin_menu(): void {
 	add_options_page(
 		__( 'Consent Mode v2', 'consent-mode-v2' ),
 		__( 'Consent Mode v2', 'consent-mode-v2' ),
@@ -393,15 +492,25 @@ function cmv2_admin_menu() {
 }
 add_action( 'admin_menu', 'cmv2_admin_menu' );
 
-/** "Settings" link on the Plugins list row. */
-function cmv2_action_links( $links ) {
+/**
+ * "Settings" link on the Plugins list row.
+ *
+ * @param array<string> $links Existing action links (HTML anchor strings).
+ * @return array<string> Action links with the Settings link prepended.
+ */
+function cmv2_action_links( $links ): array {
 	$url = esc_url( admin_url( 'options-general.php?page=consent-mode-v2' ) );
 	array_unshift( $links, '<a href="' . $url . '">' . esc_html__( 'Settings', 'consent-mode-v2' ) . '</a>' );
 	return $links;
 }
 add_filter( 'plugin_action_links_' . plugin_basename( CMV2_FILE ), 'cmv2_action_links' );
 
-/** Enqueue the WP color picker on our settings screen only. */
+/**
+ * Enqueue the WP color picker on our settings screen only.
+ *
+ * @param string $hook Current admin page hook suffix.
+ * @return void
+ */
 function cmv2_admin_assets( $hook ) {
 	if ( 'settings_page_consent-mode-v2' !== $hook ) {
 		return;
@@ -412,59 +521,76 @@ function cmv2_admin_assets( $hook ) {
 }
 add_action( 'admin_enqueue_scripts', 'cmv2_admin_assets' );
 
-/** Sanitize the posted settings against the current values (keeps old on bad input). */
+/**
+ * Sanitize the posted settings against the current values (keeps old on bad input).
+ *
+ * @param Cmv2Settings $current Current settings, used as the fallback for bad input.
+ * @return array{0: Cmv2Settings, 1: bool} The sanitized settings and whether the GA4 ID was rejected.
+ */
 function cmv2_sanitize_post( array $current ) {
-	$ga4 = isset( $_POST['ga4_id'] ) ? strtoupper( sanitize_text_field( wp_unslash( $_POST['ga4_id'] ) ) ) : '';
+	// The nonce is verified by the sole caller, cmv2_settings_page(), before this
+	// runs; PHPCS cannot trace that across the call boundary.
+	// phpcs:disable WordPress.Security.NonceVerification.Missing
+	$ga4       = ( isset( $_POST['ga4_id'] ) && is_string( $_POST['ga4_id'] ) ) ? strtoupper( sanitize_text_field( wp_unslash( $_POST['ga4_id'] ) ) ) : '';
 	$ga4_error = false;
 	if ( $ga4 && ! preg_match( '/^G-[A-Z0-9]{4,}$/', $ga4 ) ) {
 		$ga4       = $current['ga4_id'];
 		$ga4_error = true;
 	}
 
-	$primary = isset( $_POST['primary'] ) ? sanitize_text_field( wp_unslash( $_POST['primary'] ) ) : '';
+	$primary = ( isset( $_POST['primary'] ) && is_string( $_POST['primary'] ) ) ? sanitize_text_field( wp_unslash( $_POST['primary'] ) ) : '';
 	if ( ! cmv2_valid_hex( $primary ) ) {
 		$primary = $current['primary'];
 	}
 
-	$theme    = isset( $_POST['theme'] ) ? sanitize_key( wp_unslash( $_POST['theme'] ) ) : 'auto';
-	$position = isset( $_POST['position'] ) ? sanitize_key( wp_unslash( $_POST['position'] ) ) : 'bar';
-	$lang     = isset( $_POST['lang'] ) ? sanitize_key( wp_unslash( $_POST['lang'] ) ) : 'auto';
+	$theme    = ( isset( $_POST['theme'] ) && is_string( $_POST['theme'] ) ) ? sanitize_key( wp_unslash( $_POST['theme'] ) ) : 'auto';
+	$position = ( isset( $_POST['position'] ) && is_string( $_POST['position'] ) ) ? sanitize_key( wp_unslash( $_POST['position'] ) ) : 'bar';
+	$lang     = ( isset( $_POST['lang'] ) && is_string( $_POST['lang'] ) ) ? sanitize_key( wp_unslash( $_POST['lang'] ) ) : 'auto';
 
 	$new = array(
 		'ga4_id'      => $ga4,
-		'privacy_url' => isset( $_POST['privacy_url'] ) ? esc_url_raw( wp_unslash( $_POST['privacy_url'] ) ) : '',
+		'privacy_url' => ( isset( $_POST['privacy_url'] ) && is_string( $_POST['privacy_url'] ) ) ? esc_url_raw( wp_unslash( $_POST['privacy_url'] ) ) : '',
 		'ads'         => isset( $_POST['ads'] ) ? 1 : 0,
-		'days'        => isset( $_POST['days'] ) ? min( 390, max( 1, (int) $_POST['days'] ) ) : 180,
+		'days'        => ( isset( $_POST['days'] ) && is_scalar( $_POST['days'] ) ) ? min( 390, max( 1, (int) $_POST['days'] ) ) : 180,
 		'primary'     => $primary,
 		'theme'       => in_array( $theme, array( 'light', 'dark', 'auto' ), true ) ? $theme : 'auto',
 		'position'    => in_array( $position, array( 'bar', 'corner', 'modal' ), true ) ? $position : 'bar',
-		'radius'      => isset( $_POST['radius'] ) ? min( 40, max( 0, (int) $_POST['radius'] ) ) : 8,
+		'radius'      => ( isset( $_POST['radius'] ) && is_scalar( $_POST['radius'] ) ) ? min( 40, max( 0, (int) $_POST['radius'] ) ) : 8,
 		'show_reopen' => isset( $_POST['show_reopen'] ) ? 1 : 0,
-		'title'       => isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '',
-		'body'        => isset( $_POST['body'] ) ? sanitize_textarea_field( wp_unslash( $_POST['body'] ) ) : '',
+		'title'       => ( isset( $_POST['title'] ) && is_string( $_POST['title'] ) ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '',
+		'body'        => ( isset( $_POST['body'] ) && is_string( $_POST['body'] ) ) ? sanitize_textarea_field( wp_unslash( $_POST['body'] ) ) : '',
 		'lang'        => in_array( $lang, array( 'auto', 'fr', 'en' ), true ) ? $lang : 'auto',
 	);
+	// phpcs:enable WordPress.Security.NonceVerification.Missing
 
 	return array( $new, $ga4_error );
 }
 
-function cmv2_settings_page() {
+function cmv2_settings_page(): void {
 	if ( ! current_user_can( 'manage_options' ) ) {
 		return;
 	}
 	$s = cmv2_settings();
 
-	if ( isset( $_POST['cmv2_nonce'] ) && wp_verify_nonce( sanitize_key( wp_unslash( $_POST['cmv2_nonce'] ) ), 'cmv2_save' ) ) {
+	if ( isset( $_POST['cmv2_nonce'] ) && is_string( $_POST['cmv2_nonce'] ) && wp_verify_nonce( sanitize_key( wp_unslash( $_POST['cmv2_nonce'] ) ), 'cmv2_save' ) ) {
 		list( $new, $ga4_error ) = cmv2_sanitize_post( $s );
 		if ( $ga4_error ) {
 			echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Invalid measurement ID (expected format: G-XXXXXXXXXX). Previous value kept.', 'consent-mode-v2' ) . '</p></div>';
 		}
 		update_option( CMV2_OPTION, $new );
-		// Purge full-page + object caches so the head block reflects new settings.
-		do_action( 'rt_nginx_helper_purge_all' );
+
+		// The cached <head> block is now stale: flush the object cache and let
+		// any page-cache layer purge via the cmv2_settings_saved action below.
 		if ( function_exists( 'wp_cache_flush' ) ) {
 			wp_cache_flush();
 		}
+
+		/**
+		 * Fires after the plugin's settings have been saved.
+		 *
+		 * @param array $settings The settings that were just persisted.
+		 */
+		do_action( 'cmv2_settings_saved', $new );
 		$s = $new;
 		echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Settings saved.', 'consent-mode-v2' ) . '</p></div>';
 	}
@@ -474,12 +600,12 @@ function cmv2_settings_page() {
 		'light' => __( 'Light', 'consent-mode-v2' ),
 		'dark'  => __( 'Dark', 'consent-mode-v2' ),
 	);
-	$pos_opts = array(
+	$pos_opts   = array(
 		'bar'    => __( 'Bottom bar (full width)', 'consent-mode-v2' ),
 		'corner' => __( 'Floating card (bottom corner)', 'consent-mode-v2' ),
 		'modal'  => __( 'Centered modal', 'consent-mode-v2' ),
 	);
-	$lang_opts = array(
+	$lang_opts  = array(
 		'auto' => __( 'Auto (site language)', 'consent-mode-v2' ),
 		'fr'   => __( 'French', 'consent-mode-v2' ),
 		'en'   => __( 'English', 'consent-mode-v2' ),
@@ -508,7 +634,7 @@ function cmv2_settings_page() {
 				</tr>
 				<tr>
 					<th scope="row"><label for="days"><?php esc_html_e( 'Re-ask after (days)', 'consent-mode-v2' ); ?></label></th>
-					<td><input name="days" id="days" type="number" min="1" max="390" value="<?php echo esc_attr( $s['days'] ); ?>" class="small-text">
+					<td><input name="days" id="days" type="number" min="1" max="390" value="<?php echo esc_attr( (string) $s['days'] ); ?>" class="small-text">
 					<p class="description"><?php esc_html_e( 'Maximum 390 days (~13 months). Consent expires and the banner reappears.', 'consent-mode-v2' ); ?></p></td>
 				</tr>
 				<tr>
@@ -535,7 +661,7 @@ function cmv2_settings_page() {
 				</tr>
 				<tr>
 					<th scope="row"><label for="radius"><?php esc_html_e( 'Button corner radius', 'consent-mode-v2' ); ?></label></th>
-					<td><input name="radius" id="radius" type="number" min="0" max="40" value="<?php echo esc_attr( $s['radius'] ); ?>" class="small-text"> px
+					<td><input name="radius" id="radius" type="number" min="0" max="40" value="<?php echo esc_attr( (string) $s['radius'] ); ?>" class="small-text"> px
 					<p class="description"><?php esc_html_e( '0 = square, 40 = pill.', 'consent-mode-v2' ); ?></p></td>
 				</tr>
 				<tr>
@@ -564,8 +690,14 @@ function cmv2_settings_page() {
 	<?php
 }
 
-/** Render <option> tags for a select. */
-function cmv2_options( array $opts, $selected ) {
+/**
+ * Render <option> tags for a select.
+ *
+ * @param array<string, string> $opts     Map of option value => visible label.
+ * @param string                $selected The currently selected option value.
+ * @return void
+ */
+function cmv2_options( array $opts, string $selected ): void {
 	foreach ( $opts as $value => $label ) {
 		printf(
 			'<option value="%1$s"%2$s>%3$s</option>',

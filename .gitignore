@@ -8,3 +8,14 @@
 
 # Logs
 *.log
+
+# Dependencies
+/node_modules/
+/vendor/
+
+# Build output (run `npm run build` to generate; produced at release time)
+/build/
+
+# Local tool overrides
+/phpstan.neon
+/.phpcs.xml
