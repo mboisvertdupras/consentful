@@ -1,0 +1,271 @@
+# Copyright (C) 2026 Tamarak
+# This file is distributed under the GPL-2.0-or-later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Consent Mode v2 — Loi 25 & RGPD 2.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/consent-mode-v2\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-06-05T19:34:24+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: consent-mode-v2\n"
+
+#. Plugin Name of the plugin
+#: consent-mode-v2.php
+msgid "Consent Mode v2 — Loi 25 & RGPD"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: consent-mode-v2.php
+msgid "https://github.com/"
+msgstr ""
+
+#. Description of the plugin
+#: consent-mode-v2.php
+msgid "Google Consent Mode v2 (block-before-consent) + a gated GA4 tag, with a consent banner that meets Québec Loi 25 / GDPR. The Google tag loads ONLY after the visitor makes a choice. Theme-independent and fully customizable (color, light/dark, position, copy)."
+msgstr ""
+
+#. Author of the plugin
+#: consent-mode-v2.php
+msgid "Tamarak"
+msgstr ""
+
+#. Author URI of the plugin
+#: consent-mode-v2.php
+msgid "https://tamarak.dev"
+msgstr ""
+
+#: consent-mode-v2.php:303
+#: consent-mode-v2.php:552
+msgid "Your privacy"
+msgstr ""
+
+#: consent-mode-v2.php:304
+#: consent-mode-v2.php:556
+msgid "We use cookies to measure traffic and improve your experience. No non-essential cookie is set without your consent. You can change your choices at any time."
+msgstr ""
+
+#: consent-mode-v2.php:314
+msgid "Learn more"
+msgstr ""
+
+#: consent-mode-v2.php:318
+msgid "Cookie preferences by category"
+msgstr ""
+
+#: consent-mode-v2.php:321
+msgid "Necessary cookies"
+msgstr ""
+
+#: consent-mode-v2.php:321
+msgid "always on, essential to the operation of the site."
+msgstr ""
+
+#: consent-mode-v2.php:325
+msgid "Analytics"
+msgstr ""
+
+#: consent-mode-v2.php:325
+msgid "Google Analytics, to understand how the site is used."
+msgstr ""
+
+#: consent-mode-v2.php:330
+msgid "Marketing & personalization"
+msgstr ""
+
+#: consent-mode-v2.php:330
+msgid "advertising, remarketing (Google Ads) and content personalization."
+msgstr ""
+
+#: consent-mode-v2.php:336
+msgid "Accept all"
+msgstr ""
+
+#: consent-mode-v2.php:337
+msgid "Reject all"
+msgstr ""
+
+#: consent-mode-v2.php:338
+msgid "Customize"
+msgstr ""
+
+#: consent-mode-v2.php:339
+msgid "Save my choices"
+msgstr ""
+
+#: consent-mode-v2.php:344
+msgid "Manage cookies"
+msgstr ""
+
+#: consent-mode-v2.php:364
+#: consent-mode-v2.php:377
+#: consent-mode-v2.php:387
+#: consent-mode-v2.php:388
+#: consent-mode-v2.php:489
+msgid "Consent Mode v2"
+msgstr ""
+
+#: consent-mode-v2.php:365
+msgid "Add your GA4 measurement ID to activate the consent banner and the tag."
+msgstr ""
+
+#: consent-mode-v2.php:366
+#: consent-mode-v2.php:399
+msgid "Settings"
+msgstr ""
+
+#: consent-mode-v2.php:371
+msgid "Google Listings &amp; Ads is active. If it is connected to a Google Ads conversion, it injects a second gtag.js with a default consent region limited to the EEA (Canada is not included) - a duplicate tag and advertising that is not blocked for Quebec. Keep the Ads conversion disconnected, or disable GLA tag injection."
+msgstr ""
+
+#: consent-mode-v2.php:374
+msgid "Facebook for WooCommerce is active. The Meta pixel is NOT governed by this banner (Consent Mode does not control fbq). Wire its consent to the Marketing category via the \"facebook_signals_held\" filter, otherwise the pixel fires despite \"Reject all\"."
+msgstr ""
+
+#: consent-mode-v2.php:460
+msgid "Invalid measurement ID (expected format: G-XXXXXXXXXX). Previous value kept."
+msgstr ""
+
+#: consent-mode-v2.php:469
+msgid "Settings saved."
+msgstr ""
+
+#: consent-mode-v2.php:473
+msgid "Auto (follow the visitor's system)"
+msgstr ""
+
+#: consent-mode-v2.php:474
+msgid "Light"
+msgstr ""
+
+#: consent-mode-v2.php:475
+msgid "Dark"
+msgstr ""
+
+#: consent-mode-v2.php:478
+msgid "Bottom bar (full width)"
+msgstr ""
+
+#: consent-mode-v2.php:479
+msgid "Floating card (bottom corner)"
+msgstr ""
+
+#: consent-mode-v2.php:480
+msgid "Centered modal"
+msgstr ""
+
+#: consent-mode-v2.php:483
+msgid "Auto (site language)"
+msgstr ""
+
+#: consent-mode-v2.php:484
+msgid "French"
+msgstr ""
+
+#: consent-mode-v2.php:485
+msgid "English"
+msgstr ""
+
+#: consent-mode-v2.php:490
+msgid "This plugin is the SINGLE source of the site's Google tag. Do not inject gtag.js anywhere else (Insert Headers & Footers, GLA, Site Kit, GTM). The tag loads only after the visitor makes a choice."
+msgstr ""
+
+#: consent-mode-v2.php:494
+msgid "Tag & consent"
+msgstr ""
+
+#: consent-mode-v2.php:497
+msgid "GA4 measurement ID"
+msgstr ""
+
+#: consent-mode-v2.php:501
+msgid "Privacy policy URL"
+msgstr ""
+
+#: consent-mode-v2.php:503
+msgid "Leave blank to use the privacy page configured in WordPress."
+msgstr ""
+
+#: consent-mode-v2.php:506
+msgid "Advertising signals"
+msgstr ""
+
+#: consent-mode-v2.php:507
+msgid "Manage ad_storage / ad_user_data / ad_personalization (Google Ads). Adds a Marketing category to the banner."
+msgstr ""
+
+#: consent-mode-v2.php:510
+msgid "Re-ask after (days)"
+msgstr ""
+
+#: consent-mode-v2.php:512
+msgid "Maximum 390 days (~13 months). Consent expires and the banner reappears."
+msgstr ""
+
+#: consent-mode-v2.php:515
+msgid "Banner language"
+msgstr ""
+
+#: consent-mode-v2.php:520
+msgid "Appearance"
+msgstr ""
+
+#: consent-mode-v2.php:523
+msgid "Primary color"
+msgstr ""
+
+#: consent-mode-v2.php:525
+msgid "Used for the \"Accept\" button and links. Button text color is chosen automatically for contrast."
+msgstr ""
+
+#: consent-mode-v2.php:528
+msgid "Theme"
+msgstr ""
+
+#: consent-mode-v2.php:532
+msgid "Position"
+msgstr ""
+
+#: consent-mode-v2.php:534
+msgid "The bottom bar is recommended for strict Loi 25 (it blocks no interaction). The centered modal covers the page until a choice is made, which may be treated as a cookie wall."
+msgstr ""
+
+#: consent-mode-v2.php:537
+msgid "Button corner radius"
+msgstr ""
+
+#: consent-mode-v2.php:539
+msgid "0 = square, 40 = pill."
+msgstr ""
+
+#: consent-mode-v2.php:542
+msgid "Re-open button"
+msgstr ""
+
+#: consent-mode-v2.php:543
+msgid "Show the floating \"Manage cookies\" button after a choice is made."
+msgstr ""
+
+#: consent-mode-v2.php:544
+msgid "If hidden, add a link with data-cmv2-open (e.g. in the footer menu) to let visitors re-open the manager."
+msgstr ""
+
+#: consent-mode-v2.php:548
+msgid "Banner text (optional override)"
+msgstr ""
+
+#: consent-mode-v2.php:551
+msgid "Heading"
+msgstr ""
+
+#: consent-mode-v2.php:555
+msgid "Description"
+msgstr ""
+
+#: consent-mode-v2.php:557
+msgid "Leave blank to use the translated default. Plain text only."
+msgstr ""
