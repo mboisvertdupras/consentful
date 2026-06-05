@@ -60,6 +60,18 @@ After `i18n:po`, fill in any new/changed `msgstr` entries directly in the French
 `.po` files, then run `npm run i18n:mo` to recompile. Requires WP-CLI on your
 `PATH` (`wp`).
 
+## Building a distributable zip
+
+`npm run package` builds the assets + translations and produces
+`consent-mode-v2.zip` — the installable plugin with every dev file excluded (the
+exclusion list lives in `.distignore`). Pushing a `vX.Y.Z` tag runs the
+[release workflow](.github/workflows/release.yml), which does the same and
+attaches the zip to a GitHub Release.
+
+Packaging uses [`wp dist-archive`](https://github.com/wp-cli/dist-archive-command)
+v3, which needs WP-CLI ≥ 2.13. Until that ships as stable, point local WP-CLI at
+the nightly: `wp cli update --nightly`.
+
 ## License
 
 GPL-2.0-or-later.

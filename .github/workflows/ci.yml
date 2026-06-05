@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Read-only: CI only inspects code.
+permissions:
+  contents: read
+
+# Cancel superseded runs for the same branch/PR.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    name: Lint JS/CSS + verify build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '22' # Vite 8 needs ^20.19 || >=22.12
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint:js
+      - run: npm run lint:css
+      - run: npm run build:assets # i18n (.mo) needs WP-CLI; the release job covers it
+
+      # Prove the runtime can resolve its assets, not just that Vite exited 0:
+      # PHP reads build/.vite/manifest.json and loads the hashed files it names.
+      - name: Verify Vite build output
+        run: |
+          set -euo pipefail
+          test -f build/.vite/manifest.json
+          node -e '
+            const fs = require("fs");
+            const m = JSON.parse(fs.readFileSync("build/.vite/manifest.json", "utf8"));
+            for (const k of ["src/consent.js", "src/consent.css"]) {
+              if (!m[k] || !m[k].file) throw new Error("manifest missing entry " + k);
+              if (!fs.existsSync("build/" + m[k].file)) throw new Error("missing built file build/" + m[k].file);
+            }
+            console.log("build manifest OK");
+          '
+
+  php:
+    name: Lint PHP + static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      # Run on the supported floor (Requires PHP: 7.4). phpcs (PHPCompatibilityWP
+      # testVersion 7.4-) and phpstan (phpVersion 70400) target 7.4 regardless, so
+      # one run is authoritative; no dev dependency requires newer than 7.4.
+      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2.37.1
+        with:
+          php-version: '7.4'
+          tools: composer:v2
+          coverage: none
+
+      # Installs + caches dev deps; the dealerdirect installer registers WPCS so
+      # .phpcs.xml.dist resolves. Must keep dev deps (the whole PHP CI lives there).
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+
+      - run: composer run lint:php # phpcs (WordPress-Extra + i18n + prefix + 7.4 compat)
+      - run: composer run analyze # phpstan, level max

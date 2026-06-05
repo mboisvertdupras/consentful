@@ -1,0 +1,117 @@
+name: Release
+
+# Fires only on version tags (vMAJOR.MINOR.PATCH, plus prerelease suffixes like
+# v2.1.0-rc1). Tag globs are fnmatch, not regex, so list the two shapes.
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+
+# Needed to create the Release and upload the asset.
+permissions:
+  contents: write
+
+# Never cancel a half-published release.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build & publish plugin zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      # Hosts WP-CLI (a PHP phar) and provides composer for `wp package install`.
+      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2.37.1
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+
+      # dist-archive 3.x requires WP-CLI >= 2.13, which is not tagged stable yet,
+      # so use the nightly. The same `wp` also drives the i18n build below. Switch
+      # to setup-php `tools: wp-cli` once WP-CLI >= 2.13 ships.
+      - name: Install WP-CLI (nightly)
+        run: |
+          set -euo pipefail
+          curl -sSL -o wp-cli.phar https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli-nightly.phar
+          chmod +x wp-cli.phar
+          sudo mv wp-cli.phar /usr/local/bin/wp
+          wp --version
+
+      # Fail fast before building if the tag and the four in-repo versions disagree.
+      - name: Verify tag matches plugin version
+        id: ver
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          case "$VERSION" in *-*) echo "prerelease=true" ;; *) echo "prerelease=false" ;; esac >> "$GITHUB_OUTPUT"
+          header=$(sed -nE 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*([^[:space:]]+).*/\1/p' consent-mode-v2.php)
+          const=$(sed -nE "s/.*define\([[:space:]]*'CMV2_VER'[[:space:]]*,[[:space:]]*'([^']+)'.*/\1/p" consent-mode-v2.php)
+          stable=$(sed -nE 's/^Stable tag:[[:space:]]*([^[:space:]]+).*/\1/p' readme.txt)
+          pkg=$(sed -nE 's/.*"version":[[:space:]]*"([^"]+)".*/\1/p' package.json | head -1)
+          fail=0
+          for pair in "plugin header:$header" "CMV2_VER:$const" "Stable tag:$stable" "package.json:$pkg"; do
+            name=${pair%%:*}; val=${pair#*:}
+            if [ "$val" != "$VERSION" ]; then echo "::error::$name ($val) does not match tag ($VERSION)"; fail=1; fi
+          done
+          [ "$fail" -eq 0 ] || { echo "Bump all four to $VERSION before tagging."; exit 1; }
+
+      # Use the matching readme.txt changelog block as the release body.
+      - name: Extract changelog
+        env:
+          VERSION: ${{ steps.ver.outputs.version }} # via env, never interpolated into the script
+        run: |
+          set -euo pipefail
+          awk -v v="$VERSION" '
+            $0 == "= " v " =" { f=1; next }
+            f && /^= [0-9]/ { exit }
+            f { print }
+          ' readme.txt > RELEASE_BODY.md
+          [ -s RELEASE_BODY.md ] || { echo "::error::no '= $VERSION =' changelog section in readme.txt"; exit 1; }
+
+      # Generate runtime artifacts (build/ and languages/*.mo are gitignored).
+      - run: npm ci
+      - run: npm run build
+
+      # Package with the canonical WordPress tool, excluding dev files via .distignore.
+      - name: Build distributable zip
+        run: |
+          set -euo pipefail
+          wp package install wp-cli/dist-archive-command:^3
+          wp dist-archive . ./consent-mode-v2.zip --plugin-dirname=consent-mode-v2 --force
+
+      # Guard against a broken build (missing runtime) or a packaging regression
+      # (dev files leaking in).
+      - name: Verify zip contents
+        run: |
+          set -euo pipefail
+          # List names to a file and grep the file. Piping a streaming `unzip`
+          # into `grep -q` SIGPIPEs (141) under pipefail once grep exits early,
+          # which would silently bypass the leak guard.
+          unzip -Z1 consent-mode-v2.zip > zip-list.txt
+          grep -qFx 'consent-mode-v2/build/.vite/manifest.json' zip-list.txt
+          grep -qE '^consent-mode-v2/languages/.+\.mo$' zip-list.txt
+          if grep -qE '^consent-mode-v2/(node_modules|vendor|src)/' zip-list.txt \
+            || grep -qxE 'consent-mode-v2/(composer\.(json|lock)|package(-lock)?\.json|vite\.config\.js|eslint\.config\.js|\.stylelintrc\.json|\.phpcs\.xml(\.dist)?|phpstan\.neon(\.dist)?|phpstan-baseline\.neon|\.phpactor\.json|README\.md|\.distignore)' zip-list.txt; then
+            echo "::error::dev files leaked into the zip"; exit 1
+          fi
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          name: Consent Mode v2 ${{ steps.ver.outputs.version }}
+          body_path: RELEASE_BODY.md
+          generate_release_notes: true
+          prerelease: ${{ steps.ver.outputs.prerelease }}
+          fail_on_unmatched_files: true
+          files: consent-mode-v2.zip
