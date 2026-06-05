@@ -1,0 +1,267 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Consent Mode v2 2.0.0\n"
+"Report-Msgid-Bugs-To: \n"
+"Last-Translator: Tamarak\n"
+"Language-Team: French (France)\n"
+"Language: fr_FR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#. Plugin Name of the plugin
+#: consent-mode-v2.php
+msgid "Consent Mode v2 — Loi 25 & RGPD"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: consent-mode-v2.php
+msgid "https://github.com/"
+msgstr ""
+
+#. Description of the plugin
+#: consent-mode-v2.php
+msgid "Google Consent Mode v2 (block-before-consent) + a gated GA4 tag, with a consent banner that meets Québec Loi 25 / GDPR. The Google tag loads ONLY after the visitor makes a choice. Theme-independent and fully customizable (color, light/dark, position, copy)."
+msgstr ""
+
+#. Author of the plugin
+#: consent-mode-v2.php
+msgid "Tamarak"
+msgstr ""
+
+#. Author URI of the plugin
+#: consent-mode-v2.php
+msgid "https://tamarak.dev"
+msgstr ""
+
+#: consent-mode-v2.php:303
+#: consent-mode-v2.php:552
+msgid "Your privacy"
+msgstr "Votre vie privée"
+
+#: consent-mode-v2.php:304
+#: consent-mode-v2.php:556
+msgid "We use cookies to measure traffic and improve your experience. No non-essential cookie is set without your consent. You can change your choices at any time."
+msgstr "Nous utilisons des témoins (cookies) pour mesurer l’audience et améliorer votre expérience. Aucun témoin non essentiel n’est activé sans votre consentement. Vous pouvez modifier vos choix en tout temps."
+
+#: consent-mode-v2.php:314
+msgid "Learn more"
+msgstr "En savoir plus"
+
+#: consent-mode-v2.php:318
+msgid "Cookie preferences by category"
+msgstr "Préférences de témoins par catégorie"
+
+#: consent-mode-v2.php:321
+msgid "Necessary cookies"
+msgstr "Témoins nécessaires"
+
+#: consent-mode-v2.php:321
+msgid "always on, essential to the operation of the site."
+msgstr "toujours actifs, essentiels au fonctionnement du site."
+
+#: consent-mode-v2.php:325
+msgid "Analytics"
+msgstr "Mesure d’audience"
+
+#: consent-mode-v2.php:325
+msgid "Google Analytics, to understand how the site is used."
+msgstr "Google Analytics, pour comprendre l’utilisation du site."
+
+#: consent-mode-v2.php:330
+msgid "Marketing & personalization"
+msgstr "Marketing et personnalisation"
+
+#: consent-mode-v2.php:330
+msgid "advertising, remarketing (Google Ads) and content personalization."
+msgstr "publicité, remarketing (Google Ads) et personnalisation des contenus."
+
+#: consent-mode-v2.php:336
+msgid "Accept all"
+msgstr "Tout accepter"
+
+#: consent-mode-v2.php:337
+msgid "Reject all"
+msgstr "Tout refuser"
+
+#: consent-mode-v2.php:338
+msgid "Customize"
+msgstr "Personnaliser"
+
+#: consent-mode-v2.php:339
+msgid "Save my choices"
+msgstr "Enregistrer mes choix"
+
+#: consent-mode-v2.php:344
+msgid "Manage cookies"
+msgstr "Gérer les témoins"
+
+#: consent-mode-v2.php:364
+#: consent-mode-v2.php:377
+#: consent-mode-v2.php:387
+#: consent-mode-v2.php:388
+#: consent-mode-v2.php:489
+msgid "Consent Mode v2"
+msgstr "Consentement"
+
+#: consent-mode-v2.php:365
+msgid "Add your GA4 measurement ID to activate the consent banner and the tag."
+msgstr "Ajoutez votre identifiant de mesure GA4 pour activer la bannière de consentement et la balise."
+
+#: consent-mode-v2.php:366
+#: consent-mode-v2.php:399
+msgid "Settings"
+msgstr "Réglages"
+
+#: consent-mode-v2.php:371
+msgid "Google Listings &amp; Ads is active. If it is connected to a Google Ads conversion, it injects a second gtag.js with a default consent region limited to the EEA (Canada is not included) - a duplicate tag and advertising that is not blocked for Quebec. Keep the Ads conversion disconnected, or disable GLA tag injection."
+msgstr "Google Listings &amp; Ads est actif. S’il est relié à une conversion Google Ads, il injecte une 2e balise gtag.js avec un consentement par défaut limité à l’Europe (le Canada n’y est pas) — double balise et publicité non bloquée pour le Québec. Gardez la conversion Ads déconnectée, ou désactivez l’injection de balise de GLA."
+
+#: consent-mode-v2.php:374
+msgid "Facebook for WooCommerce is active. The Meta pixel is NOT governed by this banner (Consent Mode does not control fbq). Wire its consent to the Marketing category via the \"facebook_signals_held\" filter, otherwise the pixel fires despite \"Reject all\"."
+msgstr "Facebook for WooCommerce est actif. Le pixel Meta n’est PAS géré par cette bannière (Consent Mode ne gouverne pas fbq). Reliez son consentement à la catégorie Marketing via le filtre « facebook_signals_held », sinon le pixel se déclenche malgré « Tout refuser »."
+
+#: consent-mode-v2.php:460
+msgid "Invalid measurement ID (expected format: G-XXXXXXXXXX). Previous value kept."
+msgstr "Identifiant de mesure invalide (format attendu : G-XXXXXXXXXX). Valeur précédente conservée."
+
+#: consent-mode-v2.php:469
+msgid "Settings saved."
+msgstr "Réglages enregistrés."
+
+#: consent-mode-v2.php:473
+msgid "Auto (follow the visitor's system)"
+msgstr "Auto (selon le système du visiteur)"
+
+#: consent-mode-v2.php:474
+msgid "Light"
+msgstr "Clair"
+
+#: consent-mode-v2.php:475
+msgid "Dark"
+msgstr "Sombre"
+
+#: consent-mode-v2.php:478
+msgid "Bottom bar (full width)"
+msgstr "Barre inférieure (pleine largeur)"
+
+#: consent-mode-v2.php:479
+msgid "Floating card (bottom corner)"
+msgstr "Carte flottante (coin inférieur)"
+
+#: consent-mode-v2.php:480
+msgid "Centered modal"
+msgstr "Fenêtre modale centrée"
+
+#: consent-mode-v2.php:483
+msgid "Auto (site language)"
+msgstr "Auto (langue du site)"
+
+#: consent-mode-v2.php:484
+msgid "French"
+msgstr "Français"
+
+#: consent-mode-v2.php:485
+msgid "English"
+msgstr "Anglais"
+
+#: consent-mode-v2.php:490
+msgid "This plugin is the SINGLE source of the site's Google tag. Do not inject gtag.js anywhere else (Insert Headers & Footers, GLA, Site Kit, GTM). The tag loads only after the visitor makes a choice."
+msgstr "Cette extension est la SEULE source de la balise Google du site. N’injectez pas gtag.js ailleurs (Insert Headers & Footers, GLA, Site Kit, GTM). La balise ne se charge qu’après un choix de l’internaute."
+
+#: consent-mode-v2.php:494
+msgid "Tag & consent"
+msgstr "Balise et consentement"
+
+#: consent-mode-v2.php:497
+msgid "GA4 measurement ID"
+msgstr "Identifiant de mesure GA4"
+
+#: consent-mode-v2.php:501
+msgid "Privacy policy URL"
+msgstr "URL de la politique de confidentialité"
+
+#: consent-mode-v2.php:503
+msgid "Leave blank to use the privacy page configured in WordPress."
+msgstr "Laisser vide pour utiliser la page de confidentialité configurée dans WordPress."
+
+#: consent-mode-v2.php:506
+msgid "Advertising signals"
+msgstr "Signaux publicitaires"
+
+#: consent-mode-v2.php:507
+msgid "Manage ad_storage / ad_user_data / ad_personalization (Google Ads). Adds a Marketing category to the banner."
+msgstr "Gérer ad_storage / ad_user_data / ad_personalization (Google Ads). Ajoute une catégorie Marketing à la bannière."
+
+#: consent-mode-v2.php:510
+msgid "Re-ask after (days)"
+msgstr "Re-demander après (jours)"
+
+#: consent-mode-v2.php:512
+msgid "Maximum 390 days (~13 months). Consent expires and the banner reappears."
+msgstr "Maximum 390 jours (~13 mois). Le consentement expire et la bannière réapparaît."
+
+#: consent-mode-v2.php:515
+msgid "Banner language"
+msgstr "Langue de la bannière"
+
+#: consent-mode-v2.php:520
+msgid "Appearance"
+msgstr "Apparence"
+
+#: consent-mode-v2.php:523
+msgid "Primary color"
+msgstr "Couleur principale"
+
+#: consent-mode-v2.php:525
+msgid "Used for the \"Accept\" button and links. Button text color is chosen automatically for contrast."
+msgstr "Utilisée pour le bouton « Accepter » et les liens. La couleur du texte des boutons est choisie automatiquement pour le contraste."
+
+#: consent-mode-v2.php:528
+msgid "Theme"
+msgstr "Thème"
+
+#: consent-mode-v2.php:532
+msgid "Position"
+msgstr "Position"
+
+#: consent-mode-v2.php:534
+msgid "The bottom bar is recommended for strict Loi 25 (it blocks no interaction). The centered modal covers the page until a choice is made, which may be treated as a cookie wall."
+msgstr "La barre inférieure est recommandée pour une conformité stricte à la Loi 25 (elle ne bloque aucune interaction). La fenêtre modale centrée couvre la page jusqu’à ce qu’un choix soit fait, ce qui peut être considéré comme un mur de témoins."
+
+#: consent-mode-v2.php:537
+msgid "Button corner radius"
+msgstr "Rayon des coins des boutons"
+
+#: consent-mode-v2.php:539
+msgid "0 = square, 40 = pill."
+msgstr "0 = carré, 40 = pilule."
+
+#: consent-mode-v2.php:542
+msgid "Re-open button"
+msgstr "Bouton de réouverture"
+
+#: consent-mode-v2.php:543
+msgid "Show the floating \"Manage cookies\" button after a choice is made."
+msgstr "Afficher le bouton flottant « Gérer les témoins » après un choix."
+
+#: consent-mode-v2.php:544
+msgid "If hidden, add a link with data-cmv2-open (e.g. in the footer menu) to let visitors re-open the manager."
+msgstr "Si masqué, ajoutez un lien avec data-cmv2-open (p. ex. dans le menu du pied de page) pour permettre la réouverture du gestionnaire."
+
+#: consent-mode-v2.php:548
+msgid "Banner text (optional override)"
+msgstr "Texte de la bannière (remplacement facultatif)"
+
+#: consent-mode-v2.php:551
+msgid "Heading"
+msgstr "Titre"
+
+#: consent-mode-v2.php:555
+msgid "Description"
+msgstr "Description"
+
+#: consent-mode-v2.php:557
+msgid "Leave blank to use the translated default. Plain text only."
+msgstr "Laisser vide pour utiliser le texte traduit par défaut. Texte brut seulement."
