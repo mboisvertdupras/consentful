@@ -1,0 +1,10 @@
+version: 2
+updates:
+  # Keep the SHA-pinned actions in the workflows current (Dependabot reads the
+  # trailing "# vX.Y.Z" comment on each pin and bumps both the SHA and comment).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci

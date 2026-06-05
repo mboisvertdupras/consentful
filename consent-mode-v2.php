@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:       Consent Mode v2 — Loi 25 & RGPD
- * Plugin URI:        https://github.com/
+ * Plugin URI:        https://github.com/mboisvertdupras/consent-mode-v2
  * Description:        Google Consent Mode v2 (block-before-consent) + a gated GA4 tag, with a consent banner that meets Québec Loi 25 / GDPR. The Google tag loads ONLY after the visitor makes a choice. Theme-independent and fully customizable (color, light/dark, position, copy).
  * Version:           2.0.0
  * Requires at least: 5.8

@@ -7,7 +7,7 @@
   "author": "Tamarak (https://tamarak.dev)",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
     "dev": "vite build --watch",
@@ -23,7 +23,8 @@
     "lint:css": "stylelint \"src/**/*.css\"",
     "lint:css:fix": "stylelint \"src/**/*.css\" --fix",
     "lint:php": "composer run lint:php",
-    "analyze": "composer run analyze"
+    "analyze": "composer run analyze",
+    "package": "npm run build && wp package install wp-cli/dist-archive-command:^3 && wp dist-archive . ./consent-mode-v2.zip --plugin-dirname=consent-mode-v2 --force"
   },
   "devDependencies": {
     "@wordpress/eslint-plugin": "^22.0.0",
