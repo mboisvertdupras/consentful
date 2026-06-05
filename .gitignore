@@ -4,6 +4,7 @@
 # Editor / tooling
 .idea/
 .vscode/
+.phpactor.json
 *.swp
 
 # Logs
