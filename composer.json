@@ -1,0 +1,28 @@
+{
+	"name": "tamarak/consent-mode-v2",
+	"description": "Google Consent Mode v2 (block-before-consent) + a gated GA4 tag, with a consent banner that meets Québec Loi 25 / GDPR.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"homepage": "https://tamarak.dev",
+	"require": {
+		"php": ">=7.4"
+	},
+	"require-dev": {
+		"squizlabs/php_codesniffer": "^3.10",
+		"wp-coding-standards/wpcs": "^3.1",
+		"phpcompatibility/phpcompatibility-wp": "^2.1",
+		"dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+		"phpstan/phpstan": "^2.0",
+		"szepeviktor/phpstan-wordpress": "^2.0"
+	},
+	"scripts": {
+		"lint:php": "phpcs",
+		"lint:php:fix": "phpcbf",
+		"analyze": "phpstan analyse"
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true
+		}
+	}
+}
