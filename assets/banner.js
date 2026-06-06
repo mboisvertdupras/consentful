@@ -17,21 +17,24 @@ import { coerceBannerConfig, purposeCopy } from './banner-config.js';
  * @param {object}  api               The window.consentful API.
  * @param {unknown} rawBannerConfig   The raw banner config slice (untrusted — coerced here).
  * @param {object}  env               { win, doc } — only doc is needed.
+ * @return {object} A handle { destroy } — destroy() fully tears down the banner so a
+ *                  re-init after a jurisdiction change leaves no duplicate nodes/listeners.
  */
 export function initBanner( api, rawBannerConfig, { doc } ) {
 	const cfg = coerceBannerConfig( rawBannerConfig );
 
+	const noop = { destroy() {} };
 	if ( ! cfg.enabled ) {
-		return;
+		return noop;
 	}
 	// Deferred opt-out seam: only the strict opt-in Policy renders a banner; any other
 	// policy type (US Do-Not-Sell notice) is a no-op until that variant lands.
 	if ( api.policy().type !== 'opt_in' ) {
-		return;
+		return noop;
 	}
 	// GPC is a blanket refusal honored instantly — no banner, no pill (CONTEXT.md).
 	if ( api.gpc() ) {
-		return;
+		return noop;
 	}
 
 	const isModal = cfg.position === 'modal';
@@ -326,4 +329,18 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 	} else {
 		showPanel( isModal );
 	}
+
+	// Full teardown: drop the keydown trap, restore any inert/aria-hidden we added, and
+	// remove our own nodes. Idempotent.
+	function destroy() {
+		doc.removeEventListener( 'keydown', trap );
+		backgroundInert( false );
+		[ root, pill ].forEach( ( node ) => {
+			if ( node.parentNode ) {
+				node.parentNode.removeChild( node );
+			}
+		} );
+	}
+
+	return { destroy };
 }

@@ -88,7 +88,11 @@ final class Gate {
 		}
 	}
 
-	/** Build the config from the live registries and the resolved (fallback) Jurisdiction. */
+	/**
+	 * Build the config from the live registries. Ships ALL Jurisdictions plus the geo
+	 * block (the client resolves the active one at runtime — cache-safe). The built-in
+	 * geo endpoint URL is the only per-request server surface, and it is non-cached.
+	 */
 	private function config(): ClientConfig {
 		/** @var PurposeRegistry $purposes */
 		$purposes = $this->container->get( PurposeRegistry::class );
@@ -100,15 +104,19 @@ final class Gate {
 		$jurisdictions = $this->container->get( JurisdictionRegistry::class );
 		/** @var BannerConfig $banner */
 		$banner = $this->container->get( BannerConfig::class );
+		/** @var GeoConfig $geo */
+		$geo = $this->container->get( GeoConfig::class );
 
 		return new ClientConfig(
 			$purposes,
 			$tags,
 			$adapters,
-			$jurisdictions->fallback(),
+			$jurisdictions,
 			$banner,
-			$this->schema_version,
-			$this->policy_version,
+			$geo,
+			geo_endpoint_url: rest_url( 'consentful/v1/geo' ),
+			schema_version: $this->schema_version,
+			policy_version: $this->policy_version,
 			cookie: $this->cookie,
 		);
 	}

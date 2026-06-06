@@ -9,6 +9,7 @@ use Consentful\Consent\PurposeRegistry;
 use Consentful\Container\Container;
 use Consentful\Frontend\BannerConfig;
 use Consentful\Frontend\Gate;
+use Consentful\Frontend\GeoConfig;
 use Consentful\Frontend\Manifest;
 use Consentful\Jurisdiction\JurisdictionRegistry;
 use Consentful\Tag\TagRegistry;
@@ -77,6 +78,7 @@ final class GateTest extends TestCase {
 		$container->instance( AdapterRegistry::class, $adapters );
 		$container->instance( JurisdictionRegistry::class, JurisdictionRegistry::with_defaults( 1 ) );
 		$container->instance( BannerConfig::class, BannerConfig::defaults() );
+		$container->instance( GeoConfig::class, GeoConfig::defaults() );
 		return $container;
 	}
 
@@ -162,7 +164,9 @@ final class GateTest extends TestCase {
 
 		$this->assertStringContainsString( 'window.consentfulConfig = {', $output );
 		$this->assertStringContainsString( '"cookie":"consentful"', $output );
-		$this->assertStringContainsString( '"jurisdiction":"*"', $output );
+		$this->assertStringContainsString( '"defaultJurisdiction":"*"', $output );
+		$this->assertStringContainsString( '"jurisdictions":', $output );
+		$this->assertStringContainsString( '"geo":', $output );
 		$this->assertStringContainsString( '"google":{', $output );
 		$this->assertStringContainsString( 'window.__consentfulDecider = true;', $output );
 	}

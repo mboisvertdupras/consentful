@@ -52,6 +52,10 @@ function boot( cfg = baseCfg, api = makeApi() ) {
 	return api;
 }
 
+function bootHandle( cfg = baseCfg, api = makeApi() ) {
+	return initBanner( api, cfg, { win: window, doc: document } );
+}
+
 const root = () => document.querySelector( '.cnf-banner' );
 const pill = () => document.querySelector( '.cnf-reopen' );
 
@@ -179,6 +183,38 @@ describe( 'banner', () => {
 			marketing: true,
 		} );
 		expect( root().hidden ).toBe( true );
+	} );
+
+	it( 'returns a destroy handle that removes the banner and pill', () => {
+		const handle = bootHandle();
+		expect( typeof handle.destroy ).toBe( 'function' );
+		expect( root() ).not.toBeNull();
+		expect( pill() ).not.toBeNull();
+		handle.destroy();
+		expect( root() ).toBeNull();
+		expect( pill() ).toBeNull();
+	} );
+
+	it( 'returns a no-op destroy handle on early-return paths', () => {
+		const disabled = bootHandle( { ...baseCfg, enabled: false } );
+		expect( typeof disabled.destroy ).toBe( 'function' );
+		expect( () => disabled.destroy() ).not.toThrow();
+		const gpc = bootHandle( baseCfg, makeApi( { gpc: true } ) );
+		expect( () => gpc.destroy() ).not.toThrow();
+	} );
+
+	it( 'destroy tears down the modal keydown trap and background-inert', () => {
+		const sibling = document.createElement( 'div' );
+		document.body.appendChild( sibling );
+		const api = makeApi( { decision: false } );
+		const handle = bootHandle( { ...baseCfg, position: 'modal' }, api );
+		expect( sibling.getAttribute( 'inert' ) ).toBe( '' );
+		handle.destroy();
+		expect( sibling.hasAttribute( 'inert' ) ).toBe( false );
+		expect( sibling.hasAttribute( 'aria-hidden' ) ).toBe( false );
+		// The keydown trap is gone — re-init renders exactly one banner.
+		bootHandle( { ...baseCfg, position: 'modal' }, api );
+		expect( document.querySelectorAll( '.cnf-banner' ).length ).toBe( 1 );
 	} );
 
 	it( 'the pill re-opens the panel with prefs revealed and prefilled', () => {

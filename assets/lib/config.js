@@ -27,7 +27,7 @@ const parsePurposes = ( raw ) =>
 		alwaysOn: toBool( toObject( p ).alwaysOn ),
 	} ) );
 
-const parsePolicy = ( raw ) => {
+export const parsePolicy = ( raw ) => {
 	const p = toObject( raw );
 	return {
 		type: toStr( p.type, 'opt_in' ),
@@ -36,6 +36,39 @@ const parsePolicy = ( raw ) => {
 		blocksBeforeConsent: toBool( p.blocksBeforeConsent ),
 		showsBanner: toBool( p.showsBanner ),
 		defaultGranted: toArray( p.defaultGranted ).map( ( k ) => toStr( k ) ),
+	};
+};
+
+const parseJurisdictions = ( raw ) => {
+	const obj = toObject( raw );
+	const out = {};
+	for ( const id of Object.keys( obj ) ) {
+		const entry = toObject( obj[ id ] );
+		out[ id ] = {
+			id: toStr( entry.id, id ),
+			label: toStr( entry.label ),
+			policy: parsePolicy( entry.policy ),
+		};
+	}
+	// Always leave the resolver a strictest fallback to land on.
+	if ( Object.keys( out ).length === 0 ) {
+		out[ '*' ] = { id: '*', label: '', policy: parsePolicy( {} ) };
+	}
+	return out;
+};
+
+const parseGeo = ( raw ) => {
+	const geo = toObject( raw );
+	const map = toObject( geo.map );
+	const out = {};
+	for ( const code of Object.keys( map ) ) {
+		out[ code ] = toStr( map[ code ] );
+	}
+	return {
+		cookie: toStr( geo.cookie ),
+		var: toStr( geo.var ),
+		endpoint: toStr( geo.endpoint ),
+		map: out,
 	};
 };
 
@@ -74,9 +107,10 @@ export function parseConfig( raw ) {
 		policyVersion: toInt( cfg.policyVersion, 1 ),
 		maxAgeDays,
 		maxAgeMs: maxAgeDays * 24 * 60 * 60 * 1000,
-		jurisdiction: toStr( cfg.jurisdiction, '*' ),
+		defaultJurisdiction: toStr( cfg.defaultJurisdiction, '*' ),
+		jurisdictions: parseJurisdictions( cfg.jurisdictions ),
+		geo: parseGeo( cfg.geo ),
 		purposes: parsePurposes( cfg.purposes ),
-		policy: parsePolicy( cfg.policy ),
 		tags: parseTags( cfg.tags ),
 		adapters: parseAdapters( cfg.adapters ),
 	};

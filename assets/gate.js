@@ -16,6 +16,11 @@ import {
 	serializeConsent,
 } from './lib/cookie.js';
 import { computeGrants, isTagGranted } from './lib/grants.js';
+import {
+	resolveJurisdictionSync,
+	activeJurisdiction,
+	mapRegionToJurisdiction,
+} from './lib/jurisdiction.js';
 import { google } from './adapters/google.js';
 import { script } from './adapters/script.js';
 import { gtm } from './adapters/gtm.js';
@@ -56,6 +61,13 @@ export function init( rawConfig, { win, doc } ) {
 
 	let stored = readStored();
 	let gpc = win.navigator && win.navigator.globalPrivacyControl === true;
+
+	// Sync, fail-closed jurisdiction resolution; may stay null (unresolved) for the async
+	// geo fallback below. resolved/policy are mutable so a later geo resolution adapts.
+	let resolvedId = resolveJurisdictionSync( config, { win, doc } );
+	let resolved = activeJurisdiction( config, resolvedId );
+	let policy = resolved.policy;
+
 	let grants = recompute();
 
 	function readStored() {
@@ -72,7 +84,7 @@ export function init( rawConfig, { win, doc } ) {
 	function recompute() {
 		return computeGrants( {
 			purposes: config.purposes,
-			policy: config.policy,
+			policy,
 			stored,
 			gpc,
 		} );
@@ -136,14 +148,14 @@ export function init( rawConfig, { win, doc } ) {
 			serializeConsent( {
 				schemaVersion: config.schemaVersion,
 				policyVersion: config.policyVersion,
-				jurisdiction: config.jurisdiction,
+				jurisdiction: resolved.id,
 				grants: decision,
 				timestamp,
 			} ),
 			{ maxAgeMs: config.maxAgeMs },
 			doc
 		);
-		stored = { grants: decision, jurisdiction: config.jurisdiction, timestamp };
+		stored = { grants: decision, jurisdiction: resolved.id, timestamp };
 		grants = recompute();
 	}
 
@@ -181,10 +193,10 @@ export function init( rawConfig, { win, doc } ) {
 			return config.purposes.map( ( p ) => ( { ...p } ) );
 		},
 		jurisdiction() {
-			return config.jurisdiction;
+			return resolved.id;
 		},
 		policy() {
-			return { ...config.policy };
+			return { ...policy };
 		},
 		setConsent,
 		acceptAll,
@@ -207,13 +219,64 @@ export function init( rawConfig, { win, doc } ) {
 
 	// The banner is compliance-critical but secondary to the gate; a thrown banner
 	// error must never break the consent pipeline.
+	let bannerHandle = { destroy() {} };
 	try {
-		initBanner( win.consentful, rawConfig && rawConfig.banner, { win, doc } );
+		bannerHandle = initBanner( win.consentful, rawConfig && rawConfig.banner, { win, doc } );
 	} catch {
 		// Banner failed to init — the gate still works headlessly.
 	}
 
+	// Async geo fallback (ADR 0002): the ONLY network call. Fires only for an undecided
+	// visitor the sync signal couldn't place, when an endpoint is configured. GPC still
+	// wins (recompute forces deny); geo only loosens defaults/variant pre-decision.
+	if ( resolvedId === null && stored === null && config.geo.endpoint ) {
+		try {
+			fetchGeoRegion( config.geo.endpoint, win ).then( ( region ) => {
+				const nextId = mapRegionToJurisdiction( region, config.geo.map );
+				if ( ! nextId || nextId === resolved.id || ! config.jurisdictions[ nextId ] ) {
+					return;
+				}
+				resolvedId = nextId;
+				resolved = activeJurisdiction( config, nextId );
+				policy = resolved.policy;
+				grants = recompute();
+				applyAll();
+				dispatchChange();
+				try {
+					bannerHandle.destroy();
+					bannerHandle = initBanner( win.consentful, rawConfig && rawConfig.banner, {
+						win,
+						doc,
+					} );
+				} catch {
+					// Re-render failed — the gate still works headlessly.
+				}
+			} );
+		} catch {
+			// A fetch error must never break the gate.
+		}
+	}
+
 	return win.consentful;
+}
+
+/**
+ * Fetch a region code from the non-cached geo endpoint. Resolves to null on any failure
+ * or when fetch is unavailable, so the caller stays on the strictest fallback.
+ *
+ * @param {string} endpoint Absolute endpoint URL.
+ * @param {Window} win
+ * @return {Promise<?string>} The region code, or null.
+ */
+function fetchGeoRegion( endpoint, win ) {
+	if ( ! win.fetch ) {
+		return Promise.resolve( null );
+	}
+	return win
+		.fetch( endpoint, { credentials: 'omit' } )
+		.then( ( r ) => ( r.ok ? r.json() : null ) )
+		.then( ( d ) => ( d && typeof d.region === 'string' ? d.region : null ) )
+		.catch( () => null );
 }
 
 if ( typeof window !== 'undefined' ) {

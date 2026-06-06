@@ -8,8 +8,10 @@ use Consentful\Consent\PurposeRegistry;
 use Consentful\Container\Container;
 use Consentful\Frontend\BannerConfig;
 use Consentful\Frontend\Gate;
+use Consentful\Frontend\GeoConfig;
 use Consentful\Frontend\Manifest;
 use Consentful\Jurisdiction\JurisdictionRegistry;
+use Consentful\Rest\GeoController;
 use Consentful\Tag\TagRegistry;
 
 /**
@@ -63,6 +65,9 @@ final class Plugin {
 		if ( $gate instanceof Gate ) {
 			$gate->register();
 		}
+
+		// The separate, non-cached geo endpoint (registers on rest_api_init).
+		( new GeoController() )->register();
 	}
 
 	/**
@@ -111,6 +116,14 @@ final class Plugin {
 			BannerConfig::class,
 			static function (): BannerConfig {
 				return BannerConfig::defaults();
+			}
+		);
+		// Default geo resolution (degrades to today's strictest fallback). Integrators
+		// override this binding in `consentful_register` to wire an edge signal.
+		$this->container->singleton(
+			GeoConfig::class,
+			static function (): GeoConfig {
+				return GeoConfig::defaults();
 			}
 		);
 		$this->container->singleton(

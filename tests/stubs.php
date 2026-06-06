@@ -132,3 +132,28 @@ if ( ! function_exists( 'wp_print_inline_script_tag' ) ) {
 		echo wp_get_inline_script_tag( $data, $attributes );
 	}
 }
+
+if ( ! function_exists( 'register_rest_route' ) ) {
+	function register_rest_route( $namespace, $route, $args = array() ) {
+		if ( isset( $GLOBALS['consentful_test_rest_routes'] ) && is_array( $GLOBALS['consentful_test_rest_routes'] ) ) {
+			$GLOBALS['consentful_test_rest_routes'][] = array(
+				'namespace' => $namespace,
+				'route'     => $route,
+				'args'      => $args,
+			);
+		}
+		return true;
+	}
+}
+
+if ( ! function_exists( 'rest_url' ) ) {
+	function rest_url( $path = '' ) {
+		return 'http://example.test/wp-json/' . ltrim( (string) $path, '/' );
+	}
+}
+
+if ( ! function_exists( '__return_true' ) ) {
+	function __return_true() {
+		return true;
+	}
+}

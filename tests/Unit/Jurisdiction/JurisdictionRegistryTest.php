@@ -31,6 +31,27 @@ final class JurisdictionRegistryTest extends TestCase {
 		$this->assertSame( $quebec, $registry->get( 'QC' ) );
 	}
 
+	public function test_all_returns_every_jurisdiction_in_insertion_order(): void {
+		$fallback = new Jurisdiction( '*', 'Default', Policy::opt_in( 1 ) );
+		$registry = new JurisdictionRegistry( $fallback );
+		$quebec   = new Jurisdiction( 'QC', 'Québec (Loi 25)', Policy::opt_in( 1 ) );
+		$us       = new Jurisdiction( 'US', 'United States', Policy::opt_out( 1, array() ) );
+		$registry->add( $quebec );
+		$registry->add( $us );
+
+		// The '*' fallback is added first by the ctor, so it leads.
+		$this->assertSame( array( $fallback, $quebec, $us ), $registry->all() );
+	}
+
+	public function test_with_defaults_all_lists_every_default_jurisdiction(): void {
+		$ids = array_map(
+			static fn ( Jurisdiction $jurisdiction ): string => $jurisdiction->id,
+			JurisdictionRegistry::with_defaults( 1 )->all()
+		);
+
+		$this->assertSame( array( '*', 'QC', 'EU', 'UK', 'US' ), $ids );
+	}
+
 	public function test_with_defaults_uses_opt_in_for_eu_uk_qc(): void {
 		$registry = JurisdictionRegistry::with_defaults( 1 );
 

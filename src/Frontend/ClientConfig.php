@@ -6,7 +6,7 @@ namespace Consentful\Frontend;
 use Consentful\Adapter\AdapterRegistry;
 use Consentful\Consent\Purpose;
 use Consentful\Consent\PurposeRegistry;
-use Consentful\Jurisdiction\Jurisdiction;
+use Consentful\Jurisdiction\JurisdictionRegistry;
 use Consentful\Jurisdiction\Policy;
 use Consentful\Jurisdiction\PolicyType;
 use Consentful\Tag\Delivery;
@@ -14,11 +14,12 @@ use Consentful\Tag\Tag;
 use Consentful\Tag\TagRegistry;
 
 /**
- * Serializes the registries, resolved Jurisdiction and BannerConfig into the camelCase
- * config the client gate consumes from `window.consentfulConfig`. Pure: no WordPress
- * functions (it serializes the BannerConfig it is handed, never calls gettext itself),
- * so it runs under PHPUnit without WordPress. The same value feeds the cache-safe,
- * identical-for-every-visitor head output.
+ * Serializes the registries, all Jurisdictions, the GeoConfig and BannerConfig into the
+ * camelCase config the client gate consumes from `window.consentfulConfig`. Pure: no
+ * WordPress functions (it serializes the BannerConfig it is handed, never calls gettext
+ * itself), so it runs under PHPUnit without WordPress. The same value feeds the
+ * cache-safe, identical-for-every-visitor head output — every Jurisdiction ships in the
+ * one blob and the client resolves the active one at runtime.
  */
 final class ClientConfig {
 
@@ -26,10 +27,12 @@ final class ClientConfig {
 		private readonly PurposeRegistry $purposes,
 		private readonly TagRegistry $tags,
 		private readonly AdapterRegistry $adapters,
-		private readonly Jurisdiction $resolved,
+		private readonly JurisdictionRegistry $jurisdictions,
 		private readonly BannerConfig $banner,
-		private readonly int $schema_version,
-		private readonly int $policy_version,
+		private readonly GeoConfig $geo,
+		private readonly string $geo_endpoint_url = '',
+		private readonly int $schema_version = 1,
+		private readonly int $policy_version = 1,
 		private readonly int $max_age_days = 180,
 		private readonly string $cookie = 'consentful',
 	) {}
@@ -39,17 +42,36 @@ final class ClientConfig {
 	 */
 	public function to_array(): array {
 		return array(
-			'cookie'        => $this->cookie,
-			'schemaVersion' => $this->schema_version,
-			'policyVersion' => $this->policy_version,
-			'maxAgeDays'    => $this->max_age_days,
-			'jurisdiction'  => $this->resolved->id,
-			'purposes'      => $this->purposes_array(),
-			'policy'        => $this->policy_array( $this->resolved->policy ),
-			'tags'          => $this->tags_array(),
-			'adapters'      => $this->adapters_array(),
-			'banner'        => $this->banner->to_array(),
+			'cookie'              => $this->cookie,
+			'schemaVersion'       => $this->schema_version,
+			'policyVersion'       => $this->policy_version,
+			'maxAgeDays'          => $this->max_age_days,
+			'defaultJurisdiction' => $this->jurisdictions->fallback()->id,
+			'purposes'            => $this->purposes_array(),
+			'jurisdictions'       => $this->jurisdictions_array(),
+			'geo'                 => $this->geo->to_array( $this->geo_endpoint_url ),
+			'tags'                => $this->tags_array(),
+			'adapters'            => $this->adapters_array(),
+			'banner'              => $this->banner->to_array(),
 		);
+	}
+
+	/**
+	 * Every registered Jurisdiction, keyed by id in insertion order ('*' first). The
+	 * client resolver picks the active one; an unresolved region uses the fallback.
+	 *
+	 * @return array<string, array{id: string, label: string, policy: array<string, mixed>}>
+	 */
+	private function jurisdictions_array(): array {
+		$out = array();
+		foreach ( $this->jurisdictions->all() as $jurisdiction ) {
+			$out[ $jurisdiction->id ] = array(
+				'id'     => $jurisdiction->id,
+				'label'  => $jurisdiction->label,
+				'policy' => $this->policy_array( $jurisdiction->policy ),
+			);
+		}
+		return $out;
 	}
 
 	/**

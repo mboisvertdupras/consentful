@@ -78,4 +78,25 @@ describe( 'decider', () => {
 		expect( typeof window.gtag ).toBe( 'function' );
 		expect( Array.isArray( window.dataLayer ) ).toBe( true );
 	} );
+
+	it( 'resolves a US opt-out jurisdiction from the geo cookie (defaults grant)', () => {
+		document.cookie = 'cnf_geo=US; path=/';
+		const cfg = makeConfig();
+		cfg.geo.cookie = 'cnf_geo';
+		const result = init( cfg, { win: window, doc: document } );
+		expect( result.jurisdiction ).toBe( 'US' );
+		expect( result.grants.analytics ).toBe( true );
+		expect( result.grants.marketing ).toBe( true );
+		expect( defaultCall()[ 2 ].analytics_storage ).toBe( 'granted' );
+	} );
+
+	it( 'falls back to the strictest deny default when geo is unresolved', () => {
+		document.cookie = 'cnf_geo=JP; path=/';
+		const cfg = makeConfig();
+		cfg.geo.cookie = 'cnf_geo';
+		const result = init( cfg, { win: window, doc: document } );
+		expect( result.jurisdiction ).toBe( '*' );
+		expect( result.grants.analytics ).toBe( false );
+		expect( defaultCall()[ 2 ].analytics_storage ).toBe( 'denied' );
+	} );
 } );

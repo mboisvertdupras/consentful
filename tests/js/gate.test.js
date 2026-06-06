@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { init } from '../../assets/gate.js';
 import { reset as resetGoogle } from '../../assets/adapters/google.js';
 import { reset as resetScript } from '../../assets/adapters/script.js';
@@ -161,5 +161,119 @@ describe( 'gate', () => {
 		} );
 		bootGate( cfg );
 		expect( applied ).toEqual( [ 'snip' ] );
+	} );
+
+	it( 'resolves the jurisdiction/policy from the geo cookie synchronously', () => {
+		document.cookie = 'cnf_geo=US; path=/';
+		const cfg = makeConfig();
+		cfg.geo.cookie = 'cnf_geo';
+		const api = bootGate( cfg );
+		expect( api.jurisdiction() ).toBe( 'US' );
+		expect( api.policy().type ).toBe( 'opt_out' );
+		expect( api.get().analytics ).toBe( true );
+	} );
+} );
+
+/** Pull consent-update calls out of the dataLayer. */
+function consentUpdates() {
+	return ( window.dataLayer || [] )
+		.map( ( a ) => Array.from( a ) )
+		.filter( ( a ) => a[ 0 ] === 'consent' && a[ 1 ] === 'update' );
+}
+
+/** Resolve after the chained fetch microtasks settle. */
+function flush() {
+	return Promise.resolve().then( () => Promise.resolve() ).then( () => Promise.resolve() );
+}
+
+function geoConfig() {
+	const cfg = makeConfig();
+	cfg.geo.endpoint = 'https://example.test/wp-json/consentful/v1/geo';
+	return cfg;
+}
+
+describe( 'gate async geo fallback', () => {
+	beforeEach( () => {
+		document.body.innerHTML = '';
+		resetGlobals();
+		resetGoogle();
+		resetScript();
+		resetGtm();
+	} );
+
+	afterEach( () => {
+		delete window.fetch;
+	} );
+
+	it( 'adapts grants/policy + fires a consent update on geo resolution', async () => {
+		window.fetch = vi.fn( () =>
+			Promise.resolve( { ok: true, json: () => Promise.resolve( { region: 'US' } ) } )
+		);
+		const api = bootGate( geoConfig() );
+		expect( api.jurisdiction() ).toBe( '*' );
+		expect( api.get().analytics ).toBe( false );
+
+		await flush();
+
+		expect( window.fetch ).toHaveBeenCalledTimes( 1 );
+		expect( api.jurisdiction() ).toBe( 'US' );
+		expect( api.policy().type ).toBe( 'opt_out' );
+		expect( api.get().analytics ).toBe( true );
+		// google.apply diffs the state JSON, so the post-geo apply re-emits an update.
+		expect( consentUpdates().length ).toBeGreaterThanOrEqual( 1 );
+		// US is opt_out (Increment B), so its banner re-render is a no-op — and the prior
+		// opt-in `*` banner is torn down, leaving none.
+		expect( document.querySelectorAll( '.cnf-banner' ).length ).toBe( 0 );
+	} );
+
+	it( 're-renders the banner without duplicating it on an opt-in geo change', async () => {
+		window.fetch = vi.fn( () =>
+			Promise.resolve( { ok: true, json: () => Promise.resolve( { region: 'CA-QC' } ) } )
+		);
+		const api = bootGate( geoConfig() );
+		expect( api.jurisdiction() ).toBe( '*' );
+		expect( document.querySelectorAll( '.cnf-banner' ).length ).toBe( 1 );
+
+		await flush();
+
+		expect( api.jurisdiction() ).toBe( 'QC' );
+		expect( api.policy().type ).toBe( 'opt_in' );
+		// Exactly one banner — the old node was destroyed before the re-render.
+		expect( document.querySelectorAll( '.cnf-banner' ).length ).toBe( 1 );
+		expect( document.querySelectorAll( '.cnf-reopen' ).length ).toBe( 1 );
+	} );
+
+	it( 'does not fetch when a stored decision already exists', async () => {
+		seedCookie( { v: 1, p: 1, j: '*', g: { analytics: 1 }, t: Date.now() } );
+		window.fetch = vi.fn();
+		bootGate( geoConfig() );
+		await flush();
+		expect( window.fetch ).not.toHaveBeenCalled();
+	} );
+
+	it( 'does not fetch when the sync resolution already placed the visitor', async () => {
+		document.cookie = 'cnf_geo=US; path=/';
+		const cfg = geoConfig();
+		cfg.geo.cookie = 'cnf_geo';
+		window.fetch = vi.fn();
+		const api = bootGate( cfg );
+		expect( api.jurisdiction() ).toBe( 'US' );
+		await flush();
+		expect( window.fetch ).not.toHaveBeenCalled();
+	} );
+
+	it( 'does not fetch when no endpoint is configured', async () => {
+		window.fetch = vi.fn();
+		bootGate( makeConfig() );
+		await flush();
+		expect( window.fetch ).not.toHaveBeenCalled();
+	} );
+
+	it( 'stays on the fallback when fetch rejects', async () => {
+		window.fetch = vi.fn( () => Promise.reject( new Error( 'network' ) ) );
+		const api = bootGate( geoConfig() );
+		await flush();
+		expect( api.jurisdiction() ).toBe( '*' );
+		expect( api.get().analytics ).toBe( false );
 	} );
 } );

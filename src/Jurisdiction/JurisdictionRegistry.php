@@ -33,6 +33,16 @@ final class JurisdictionRegistry {
 	}
 
 	/**
+	 * Every registered Jurisdiction in insertion order ('*' fallback first, since the
+	 * ctor adds it first). The client config ships all of them; the resolver picks one.
+	 *
+	 * @return list<Jurisdiction>
+	 */
+	public function all(): array {
+		return array_values( $this->jurisdictions );
+	}
+
+	/**
 	 * Seed the default jurisdictions. The '*' fallback is the strictest (opt-in);
 	 * US grants every non-essential Purpose by default (opt-out).
 	 */

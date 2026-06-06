@@ -3,13 +3,31 @@
  * suite drives the entries/handlers against a clean jsdom.
  */
 
+const optInPolicy = () => ( {
+	type: 'opt_in',
+	version: 1,
+	denyByDefault: true,
+	blocksBeforeConsent: true,
+	showsBanner: true,
+	defaultGranted: [],
+} );
+
+const optOutPolicy = () => ( {
+	type: 'opt_out',
+	version: 1,
+	denyByDefault: false,
+	blocksBeforeConsent: false,
+	showsBanner: false,
+	defaultGranted: [ 'functional', 'analytics', 'marketing', 'personalization' ],
+} );
+
 export function makeConfig( overrides = {} ) {
 	return {
 		cookie: 'consentful',
 		schemaVersion: 1,
 		policyVersion: 1,
 		maxAgeDays: 180,
-		jurisdiction: '*',
+		defaultJurisdiction: '*',
 		purposes: [
 			{ key: 'necessary', alwaysOn: true },
 			{ key: 'functional', alwaysOn: false },
@@ -17,13 +35,16 @@ export function makeConfig( overrides = {} ) {
 			{ key: 'marketing', alwaysOn: false },
 			{ key: 'personalization', alwaysOn: false },
 		],
-		policy: {
-			type: 'opt_in',
-			version: 1,
-			denyByDefault: true,
-			blocksBeforeConsent: true,
-			showsBanner: true,
-			defaultGranted: [],
+		jurisdictions: {
+			'*': { id: '*', label: 'Default (strictest)', policy: optInPolicy() },
+			QC: { id: 'QC', label: 'Québec (Loi 25)', policy: optInPolicy() },
+			US: { id: 'US', label: 'United States (state opt-out)', policy: optOutPolicy() },
+		},
+		geo: {
+			cookie: '',
+			var: '',
+			endpoint: '',
+			map: { US: 'US', GB: 'UK', FR: 'EU', 'CA-QC': 'QC' },
 		},
 		tags: [
 			{ id: 'ga4', purposes: [ 'analytics' ], delivery: 'direct', adapter: 'google' },

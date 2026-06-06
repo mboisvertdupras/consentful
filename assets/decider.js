@@ -11,6 +11,7 @@
 import { parseConfig } from './lib/config.js';
 import { readCookie, parseConsent, validateConsent } from './lib/cookie.js';
 import { computeGrants } from './lib/grants.js';
+import { resolveJurisdictionSync, activeJurisdiction } from './lib/jurisdiction.js';
 import { signalState, anyAdSignalDenied } from './adapters/google-signals.js';
 
 /**
@@ -43,9 +44,13 @@ export function init( rawConfig, { win, doc } ) {
 
 	const gpc = win.navigator && win.navigator.globalPrivacyControl === true;
 
+	// Sync, fail-closed jurisdiction resolution (no fetch — the decider stays inline/fast).
+	const jid = resolveJurisdictionSync( config, { win, doc } );
+	const resolved = activeJurisdiction( config, jid );
+
 	const grants = computeGrants( {
 		purposes: config.purposes,
-		policy: config.policy,
+		policy: resolved.policy,
 		stored,
 		gpc,
 	} );
@@ -88,7 +93,7 @@ export function init( rawConfig, { win, doc } ) {
 		grants,
 		hasDecision: stored !== null,
 		gpc,
-		jurisdiction: config.jurisdiction,
+		jurisdiction: resolved.id,
 	};
 	// Optimization only — the gate MUST be able to recompute without this.
 	surface._init = result;
