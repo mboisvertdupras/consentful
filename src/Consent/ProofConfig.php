@@ -4,17 +4,24 @@ declare( strict_types = 1 );
 namespace Consentful\Consent;
 
 /**
- * The proof-of-consent client config: whether the gate posts a Consent record on each
- * decision. A pure value object — no consent logic, no WordPress. ClientConfig
- * serializes it into the camelCase `proof` block the JS gate reads; the endpoint URL
- * and banner version are supplied by the caller (the Gate) so this stays pure.
+ * The proof-of-consent config: whether the gate posts a Consent record on each decision,
+ * and how long records are retained. A pure value object — no consent logic, no WordPress.
+ * ClientConfig serializes only the client-facing fields into the camelCase `proof` block;
+ * `retention_days` is SERVER-ONLY (the cron purge reads it, the client never sees it).
  *
- * An Integrator overrides the binding in `consentful_register` to disable proof.
+ * An Integrator overrides the binding in `consentful_register` to disable proof or change
+ * the retention window.
  */
 final class ProofConfig {
 
+	/**
+	 * @param int $retention_days Days a Consent record is kept before the scheduled purge
+	 *                            deletes it (ADR 0002 retention limit). `<= 0` keeps records
+	 *                            indefinitely (the Integrator manages retention themselves).
+	 */
 	public function __construct(
 		public readonly bool $enabled,
+		public readonly int $retention_days = 730,
 	) {}
 
 	/**

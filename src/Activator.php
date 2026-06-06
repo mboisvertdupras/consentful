@@ -18,8 +18,9 @@ final class Activator {
 
 	public const SALT_OPTION    = 'consentful_record_salt';
 	public const VERSION_OPTION = 'consentful_db_version';
+	public const PURGE_HOOK     = 'consentful_purge_consent_log';
 
-	/** Create the table, ensure the salt, and stamp the DB version. */
+	/** Create the table, ensure the salt, schedule the retention purge, and stamp the DB version. */
 	public static function activate(): void {
 		global $wpdb;
 		/** @var \wpdb $wpdb */
@@ -29,6 +30,12 @@ final class Activator {
 		$salt = get_option( self::SALT_OPTION );
 		if ( ! is_string( $salt ) || '' === $salt ) {
 			add_option( self::SALT_OPTION, wp_generate_password( 64, true, true ) );
+		}
+
+		// Daily Consent-log retention purge (ADR 0002). Guarded so re-activation / the
+		// boot-time upgrade check never double-schedule it.
+		if ( false === wp_next_scheduled( self::PURGE_HOOK ) ) {
+			wp_schedule_event( time(), 'daily', self::PURGE_HOOK );
 		}
 
 		update_option( self::VERSION_OPTION, CONSENTFUL_DB_VERSION );

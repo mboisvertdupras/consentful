@@ -34,6 +34,8 @@ Consent Mode is the first integration, not the boundary.
 - **Proof of consent.** Each decision is recorded (consent id, timestamp, purposes,
   jurisdiction, policy/schema/banner version) to a built-in consent log, exportable
   for an auditor; a Sink interface lets integrators redirect records to their store.
+  Records are pseudonymous (server-side salted IP/UA hashes) and retention-limited — a
+  daily cron purges entries past the configured window.
 - **Translation-ready.** English source + bundled French (fr_CA / fr_FR); `.pot`
   template included. Language (locale) is a separate axis from jurisdiction (geo).
 

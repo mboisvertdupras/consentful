@@ -27,6 +27,10 @@ function consentful_uninstall_site(): void {
 	delete_option( 'consentful_record_salt' );
 	delete_option( 'consentful_db_version' );
 
+	// Clear the scheduled retention purge (literal matches Activator::PURGE_HOOK — this file
+	// runs standalone, without the autoloaded classes).
+	wp_clear_scheduled_hook( 'consentful_purge_consent_log' );
+
 	// The table name is built from the site's own prefix (a safe wpdb property), never user
 	// input, so the DROP needs no escaping — mirrors ConsentLogSchema::drop().
 	$wpdb->query( 'DROP TABLE IF EXISTS ' . $wpdb->prefix . 'consentful_consent_log' );

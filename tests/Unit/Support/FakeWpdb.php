@@ -29,6 +29,9 @@ final class FakeWpdb extends \wpdb {
 	/** @var list<array<string, mixed>> The rows get_results returns. */
 	public array $results = array();
 
+	/** @var int The affected-row count query() returns (e.g. a purge delete count). */
+	public int $query_result = 0;
+
 	/** Build without invoking the real (connecting) wpdb constructor. */
 	public static function create( string $prefix = 'wp_' ): self {
 		$db         = ( new \ReflectionClass( self::class ) )->newInstanceWithoutConstructor();
@@ -90,11 +93,11 @@ final class FakeWpdb extends \wpdb {
 
 	/**
 	 * @param string $query
-	 * @return int The fake reports zero affected rows.
+	 * @return int The seeded affected-row count (default 0).
 	 */
 	public function query( $query ) {
 		$this->recorded_queries[] = $query;
-		return 0;
+		return $this->query_result;
 	}
 
 	public function get_charset_collate() {

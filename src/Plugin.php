@@ -7,6 +7,7 @@ use Consentful\Adapter\AdapterRegistry;
 use Consentful\Admin\Admin;
 use Consentful\Admin\ConsentLogReader;
 use Consentful\Admin\Settings;
+use Consentful\Consent\ConsentLogPurger;
 use Consentful\Consent\DatabaseSink;
 use Consentful\Consent\ProofConfig;
 use Consentful\Consent\PurposeRegistry;
@@ -83,6 +84,24 @@ final class Plugin {
 		// The separate, non-cached endpoints (register on rest_api_init).
 		( new GeoController() )->register();
 		$this->consent_controller()->register();
+
+		// The daily Consent-log retention purge (scheduled by the Activator).
+		add_action( Activator::PURGE_HOOK, array( $this, 'purge_consent_log' ) );
+	}
+
+	/**
+	 * The scheduled Consent-log retention purge (ADR 0002). Deletes records past the
+	 * integrator-configured ProofConfig::retention_days window; a non-positive window keeps
+	 * records indefinitely. Public so the cron event can invoke it.
+	 */
+	public function purge_consent_log(): void {
+		global $wpdb;
+		/** @var \wpdb $wpdb */
+		/** @var ProofConfig $proof */
+		$proof = $this->container->get( ProofConfig::class );
+
+		$purger = new ConsentLogPurger( $wpdb, DatabaseSink::table_name( $wpdb ) );
+		$purger->purge( $proof->retention_days, time() );
 	}
 
 	/**

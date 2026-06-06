@@ -41,10 +41,14 @@ if ( ! is_readable( $consentful_autoload ) ) {
 }
 require $consentful_autoload;
 
-// Create the Consent log table and ensure the record salt on activation. The boot-time
-// upgrade check covers must-use / symlinked dev installs where this hook never fires.
+// Create the Consent log table, ensure the record salt, and schedule the retention purge
+// on activation. The boot-time upgrade check covers must-use / symlinked dev installs
+// where this hook never fires. Deactivation clears the scheduled purge.
 if ( class_exists( \Consentful\Activator::class ) ) {
 	register_activation_hook( CONSENTFUL_FILE, array( '\\Consentful\\Activator', 'activate' ) );
+}
+if ( class_exists( \Consentful\Deactivator::class ) ) {
+	register_deactivation_hook( CONSENTFUL_FILE, array( '\\Consentful\\Deactivator', 'deactivate' ) );
 }
 
 // Defer boot to plugins_loaded so integrator listeners on consentful_register

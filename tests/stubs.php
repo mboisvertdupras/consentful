@@ -449,6 +449,50 @@ if ( ! function_exists( 'register_activation_hook' ) ) {
 	}
 }
 
+if ( ! function_exists( 'register_deactivation_hook' ) ) {
+	function register_deactivation_hook( $file, $callback ) {
+		if ( isset( $GLOBALS['consentful_test_deactivation_hooks'] ) && is_array( $GLOBALS['consentful_test_deactivation_hooks'] ) ) {
+			$GLOBALS['consentful_test_deactivation_hooks'][] = array(
+				'file'     => $file,
+				'callback' => $callback,
+			);
+		}
+		return true;
+	}
+}
+
+// Minimal cron registry so the retention-purge scheduling is exercisable. A test seeds
+// $GLOBALS['consentful_test_cron'] = array() to record scheduled hooks and clears.
+if ( ! function_exists( 'wp_next_scheduled' ) ) {
+	function wp_next_scheduled( $hook, $args = array() ) {
+		$cron = $GLOBALS['consentful_test_cron'] ?? array();
+		return ( is_array( $cron ) && in_array( $hook, $cron, true ) ) ? 2000000000 : false;
+	}
+}
+if ( ! function_exists( 'wp_schedule_event' ) ) {
+	function wp_schedule_event( $timestamp, $recurrence, $hook, $args = array() ) {
+		if ( isset( $GLOBALS['consentful_test_cron'] ) && is_array( $GLOBALS['consentful_test_cron'] ) ) {
+			$GLOBALS['consentful_test_cron'][] = $hook;
+		}
+		return true;
+	}
+}
+if ( ! function_exists( 'wp_clear_scheduled_hook' ) ) {
+	function wp_clear_scheduled_hook( $hook, $args = array() ) {
+		if ( isset( $GLOBALS['consentful_test_cron'] ) && is_array( $GLOBALS['consentful_test_cron'] ) ) {
+			$GLOBALS['consentful_test_cron'] = array_values(
+				array_filter(
+					$GLOBALS['consentful_test_cron'],
+					static function ( $scheduled ) use ( $hook ) {
+						return $scheduled !== $hook;
+					}
+				)
+			);
+		}
+		return 0;
+	}
+}
+
 // Records dbDelta calls when a test seeds $GLOBALS['consentful_test_dbdelta']; the
 // table-creation path is exercised by ActivatorTest with a fake wpdb + this recorder.
 if ( ! function_exists( 'dbDelta' ) ) {
