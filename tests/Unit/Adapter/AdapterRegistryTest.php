@@ -1,0 +1,101 @@
+<?php
+declare( strict_types = 1 );
+
+namespace Consentful\Tests\Unit\Adapter;
+
+use Consentful\Adapter\Adapter;
+use Consentful\Adapter\AdapterRegistry;
+use Consentful\Consent\DefaultPurpose;
+use Consentful\Tag\Delivery;
+use Consentful\Tag\Tag;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * A hand-written Adapter (no mock framework), exercised by the registry tests.
+ */
+final class FakeAdapter implements Adapter {
+
+	public function __construct(
+		private readonly string $id
+	) {}
+
+	public function id(): string {
+		return $this->id;
+	}
+
+	public function handles( Tag $tag ): bool {
+		return $this->id === $tag->adapter_id;
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public function client_config(): array {
+		return array( 'id' => $this->id );
+	}
+}
+
+/**
+ * Covers AdapterRegistry: add/get/has/all against a hand-written fake Adapter.
+ */
+final class AdapterRegistryTest extends TestCase {
+
+	public function test_add_then_get_returns_the_same_adapter(): void {
+		$registry = new AdapterRegistry();
+		$adapter  = new FakeAdapter( 'google' );
+		$registry->add( $adapter );
+
+		$this->assertSame( $adapter, $registry->get( 'google' ) );
+	}
+
+	public function test_get_returns_null_for_an_unknown_id(): void {
+		$registry = new AdapterRegistry();
+
+		$this->assertNull( $registry->get( 'missing' ) );
+	}
+
+	public function test_has_reports_known_and_unknown_ids(): void {
+		$registry = new AdapterRegistry();
+		$registry->add( new FakeAdapter( 'google' ) );
+
+		$this->assertTrue( $registry->has( 'google' ) );
+		$this->assertFalse( $registry->has( 'missing' ) );
+	}
+
+	public function test_add_is_keyed_by_id_and_dedupes(): void {
+		$registry = new AdapterRegistry();
+		$first    = new FakeAdapter( 'google' );
+		$second   = new FakeAdapter( 'google' );
+
+		$registry->add( $first );
+		$registry->add( $second );
+
+		$this->assertCount( 1, $registry->all() );
+		$this->assertSame( $second, $registry->get( 'google' ) );
+	}
+
+	public function test_all_returns_adapters_in_insertion_order(): void {
+		$registry = new AdapterRegistry();
+		$google   = new FakeAdapter( 'google' );
+		$meta     = new FakeAdapter( 'meta' );
+		$registry->add( $google );
+		$registry->add( $meta );
+
+		$this->assertSame( array( $google, $meta ), $registry->all() );
+	}
+
+	public function test_handles_matches_a_tag_by_adapter_id(): void {
+		$adapter = new FakeAdapter( 'google' );
+		$mine    = new Tag( 'ga4', 'GA4', array( DefaultPurpose::Analytics ), Delivery::Direct, 'google' );
+		$other   = new Tag( 'pixel', 'Pixel', array( DefaultPurpose::Marketing ), Delivery::Direct, 'meta' );
+
+		$this->assertTrue( $adapter->handles( $mine ) );
+		$this->assertFalse( $adapter->handles( $other ) );
+	}
+
+	public function test_client_config_returns_the_expected_array(): void {
+		$adapter = new FakeAdapter( 'google' );
+
+		$this->assertSame( array( 'id' => 'google' ), $adapter->client_config() );
+	}
+}

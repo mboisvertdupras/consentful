@@ -1,9 +1,11 @@
 <?php
 /**
- * Cleanup on uninstall. Note: this removes the Google tag from the site — if you
- * uninstall, re-add the Google tag somewhere else (and keep it consent-gated).
+ * Cleanup on uninstall: drop the plugin's stored settings.
  */
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
-delete_option( 'cmv2_settings' );
+delete_option( 'consentful_settings' );

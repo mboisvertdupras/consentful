@@ -17,8 +17,8 @@ export default defineConfig( {
 		// No index.html entry — list the source files explicitly.
 		rollupOptions: {
 			input: {
-				consent: 'src/consent.js',
-				'consent-style': 'src/consent.css',
+				consent: 'assets/consent.js',
+				'consent-style': 'assets/consent.css',
 			},
 			output: {
 				entryFileNames: 'assets/[name].[hash].js',

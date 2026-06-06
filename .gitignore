@@ -17,6 +17,9 @@
 # Build output (run `npm run build` to generate; produced at release time)
 /build/
 
+# Test cache
+/.phpunit.cache/
+
 # Local tool overrides
 /phpstan.neon
 /.phpcs.xml

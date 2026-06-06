@@ -1,52 +1,50 @@
-=== Consent Mode v2 — Loi 25 & RGPD ===
+=== Consentful ===
 Contributors: tamarak
-Tags: consent mode, gdpr, loi 25, ga4, cookie banner, google analytics, consent
-Requires at least: 5.8
+Tags: consent, gdpr, loi 25, cookie banner, consent mode
+Requires at least: 6.5
 Tested up to: 6.7
-Requires PHP: 7.4
-Stable tag: 2.0.0
+Requires PHP: 8.1
+Stable tag: 1.0.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Google Consent Mode v2 with a block-before-consent GA4 tag and a customizable banner that meets Québec Loi 25 / GDPR.
+A white-label WordPress universal consent layer that gates non-essential third-party tags behind visitor consent and adapts to the visitor's jurisdiction (Loi 25 / GDPR / US opt-out).
 
 == Description ==
 
-A single, theme-independent plugin that owns the site's Google tag and only loads it AFTER the visitor makes a choice — what makes "prior consent" true under Loi 25 and GDPR.
+Consentful is a white-label, open-source universal consent layer. It gates ALL non-essential third-party tags behind visitor consent, adapts to the visitor's jurisdiction, and keeps demonstrable proof of consent — so the SITE (not merely one vendor's tag) meets Québec Loi 25, the GDPR, and US opt-out laws. Google Consent Mode is the first integration, not the boundary.
 
-* **Block before consent (basic Consent Mode v2).** No `gtag.js`, no `config`, and no cookieless ping fire until the visitor consents. A returning visitor with a valid, unexpired consent gets the tag on the first hit.
-* **Consent Mode v2 signals.** Sets all four required signals (`ad_storage`, `ad_user_data`, `ad_personalization`, `analytics_storage`) plus `functionality_storage`, `personalization_storage`, `security_storage`.
-* **Loi 25 friendly banner.** "Reject all" is as easy as "Accept all" — same screen, one click, identical size and weight — plus granular per-category preferences, easy withdrawal, no pre-ticked boxes, and a re-consent window.
-* **Fully customizable.** Primary color, light / dark / auto theme, position (bottom bar, floating corner card, centered modal), button corner radius, custom heading & copy, optional floating re-open button.
-* **Translation-ready.** Ships English (source) and French (Loi 25) strings; `.pot` template included. Banner language follows the site locale or can be pinned to FR/EN.
-* **Accessible.** Keyboard-operable, focus management, focus trap in modal mode, 44px touch targets, respects `prefers-reduced-motion`.
+* **Gate every non-essential tag.** Each tag is assigned to one or more purposes and fires only when all are granted — either Direct (a Consentful adapter injects it) or Delegated (an external tag manager fires it, gated via a consent push to the dataLayer).
+* **Geo-adaptive, multi-jurisdiction.** A Policy is Opt-in (deny by default, banner, block-before-consent — Loi 25/GDPR), Opt-out (allow by default, notice + Do Not Sell/Share + honor GPC — US), or Notice/None. Until the region is known, the strictest policy applies (fail-closed); GPC is honored instantly.
+* **Cache-safe by design.** Every visitor receives identical HTML; an inline `<head>` decider plus per-adapter JS reads the consent cookie at runtime and injects only granted tags — correct behind full-page caches / CDNs.
+* **Google Consent Mode v2.** Google is just a rich adapter that additionally emits Consent Mode v2 signals (default-deny, `wait_for_update`, cookieless pings, `ads_data_redaction`, `url_passthrough`) to preserve conversion modeling.
+* **Proof of consent.** Each decision is recorded (consent id, timestamp, purposes, jurisdiction, policy/schema/banner version) to a built-in consent log, exportable for an auditor; a Sink interface lets integrators redirect records to their own store.
+* **Translation-ready.** Ships English (source) and French (fr_CA / fr_FR) strings; `.pot` template included. Language (locale) is a separate axis from jurisdiction (geo).
 
-== Important: one tag only ==
+== Foundation release ==
 
-This plugin is the SINGLE source of the site's Google tag. Do NOT also inject `gtag.js` via Insert Headers & Footers, Site Kit, GTM, Google Listings & Ads, etc. — that would double-count and bypass consent. Admin warnings appear if a conflicting tag-emitting plugin is active.
+This 1.0.0 is the first increment of a ground-up rewrite: it stands up the PSR-4 OOP domain core (container, Purpose model, Signal, Consent, Tag, Adapter, Jurisdiction/Policy registries) and the rebranded build/packaging surface. The front-end gate, the Google adapter, jurisdiction geo-resolution, the consent log, and the admin UI land in later increments.
 
 == Installation ==
 
-1. Upload the `consent-mode-v2` folder to `/wp-content/plugins/`.
+1. Upload the `consentful` folder to `/wp-content/plugins/`.
 2. Activate the plugin.
-3. Go to **Settings → Consent Mode v2** and enter your GA4 measurement ID (`G-XXXXXXXXXX`).
-4. (Optional) Enable advertising signals if the site runs Google Ads.
-5. Customize color, theme, position, and copy.
+3. Integrators declare adapters, tags, purpose mappings, and jurisdiction policy in code/config — the source of truth.
 
 == Frequently Asked Questions ==
 
-= Does the tag load before consent? =
-No. In basic mode the tag is not added to the page until the visitor grants at least one purpose.
+= Is this only for Google tags? =
+No. Consentful is a universal consent layer that gates any non-essential third-party tag. Google Consent Mode is the first adapter, not the boundary.
 
-= Can I re-open the consent manager from a menu? =
-Yes. Either keep the floating re-open button, or add any link/button with the `data-cmv2-open` attribute (e.g. in the footer menu). `window.cmv2Consent.open()` also works.
+= Does it work behind a full-page cache or CDN? =
+Yes. Every visitor receives identical HTML; the client-side decider reads the consent cookie at runtime and injects only granted tags, so caching stays intact.
 
-= Does it handle the Meta pixel or other non-Google tags? =
-No. Consent Mode v2 governs Google tags only. Wire other tags (e.g. the Meta pixel) to your consent signals separately.
+= Who is the audience? =
+Integrators (agencies and developers). Adapters, tags, purpose mappings, and jurisdiction policy are declared in code/config, and any setting can be locked; the site owner gets a deliberately constrained admin UI.
 
 == Changelog ==
 
-= 2.0.0 =
-* Generalized from a single-site plugin into a reusable, white-label plugin.
-* Added theming: primary color, light/dark/auto, position, button radius, custom copy, optional re-open button.
-* Added translation-ready i18n with bundled FR + EN.
+= 1.0.0 =
+* Foundation release of the Consentful rewrite.
+* PSR-4 OOP domain core: container, Purpose model, Signal, Consent value object, Tag/Adapter/Jurisdiction/Policy and their registries, and the Plugin bootstrap.
+* Rebranded the build, packaging, and tooling surface to the `consentful` slug.

@@ -41,7 +41,7 @@ jobs:
           node -e '
             const fs = require("fs");
             const m = JSON.parse(fs.readFileSync("build/.vite/manifest.json", "utf8"));
-            for (const k of ["src/consent.js", "src/consent.css"]) {
+            for (const k of ["assets/consent.js", "assets/consent.css"]) {
               if (!m[k] || !m[k].file) throw new Error("manifest missing entry " + k);
               if (!fs.existsSync("build/" + m[k].file)) throw new Error("missing built file build/" + m[k].file);
             }
@@ -54,12 +54,12 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
-      # Run on the supported floor (Requires PHP: 7.4). phpcs (PHPCompatibilityWP
-      # testVersion 7.4-) and phpstan (phpVersion 70400) target 7.4 regardless, so
-      # one run is authoritative; no dev dependency requires newer than 7.4.
+      # PHPUnit 11 needs PHP >= 8.2, so run on 8.3. phpcs (PHPCompatibilityWP
+      # testVersion 8.1-) and phpstan (phpVersion 80100) still target the 8.1 floor
+      # via their own config, so this one run is authoritative.
       - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2.37.1
         with:
-          php-version: '7.4'
+          php-version: '8.3'
           tools: composer:v2
           coverage: none
 
@@ -67,5 +67,6 @@ jobs:
       # .phpcs.xml.dist resolves. Must keep dev deps (the whole PHP CI lives there).
       - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
 
-      - run: composer run lint:php # phpcs (WordPress-Extra + i18n + prefix + 7.4 compat)
+      - run: composer run lint:php # phpcs (WordPress-Extra + i18n + prefix + 8.1 compat)
       - run: composer run analyze # phpstan, level max
+      - run: composer test # phpunit

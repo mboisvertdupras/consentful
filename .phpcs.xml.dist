@@ -1,9 +1,11 @@
 <?xml version="1.0"?>
-<ruleset name="Consent Mode v2">
-	<description>WordPress Coding Standards for the Consent Mode v2 plugin.</description>
+<ruleset name="Consentful">
+	<description>WordPress Coding Standards for the Consentful plugin.</description>
 
-	<!-- Scan the plugin root. -->
-	<file>.</file>
+	<!-- Scan the main file, the uninstaller, and the PSR-4 domain core. -->
+	<file>consentful.php</file>
+	<file>uninstall.php</file>
+	<file>src</file>
 
 	<!-- Only check PHP files; show progress and the sniff code for each finding. -->
 	<arg name="extensions" value="php"/>
@@ -16,22 +18,26 @@
 	<exclude-pattern>/vendor/*</exclude-pattern>
 	<exclude-pattern>/node_modules/*</exclude-pattern>
 	<exclude-pattern>/build/*</exclude-pattern>
-	<exclude-pattern>/src/*</exclude-pattern>
+	<exclude-pattern>/assets/*</exclude-pattern>
 	<exclude-pattern>/languages/*</exclude-pattern>
 
 	<!-- WordPress Coding Standards: correctness, security, and style. We omit
 	     WordPress-Docs (strict formal-docblock mandates) because this plugin
-	     documents with intentional prose comments rather than @param blocks. -->
-	<rule ref="WordPress-Extra"/>
+	     documents with intentional prose comments rather than @param blocks.
+	     WordPress.Files.FileName is excluded because PSR-4 names class files
+	     ClassName.php, not class-foo.php. -->
+	<rule ref="WordPress-Extra">
+		<exclude name="WordPress.Files.FileName"/>
+	</rule>
 
 	<!-- Plugin support floor (matches the plugin header "Requires at least"). -->
-	<config name="minimum_wp_version" value="5.8"/>
+	<config name="minimum_wp_version" value="6.5"/>
 
 	<!-- Enforce the text domain on all i18n calls. -->
 	<rule ref="WordPress.WP.I18n">
 		<properties>
 			<property name="text_domain" type="array">
-				<element value="consent-mode-v2"/>
+				<element value="consentful"/>
 			</property>
 		</properties>
 	</rule>
@@ -40,13 +46,32 @@
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
 		<properties>
 			<property name="prefixes" type="array">
-				<element value="cmv2"/>
-				<element value="CMV2"/>
+				<element value="consentful"/>
+				<element value="Consentful"/>
+				<element value="CONSENTFUL"/>
 			</property>
 		</properties>
 	</rule>
 
-	<!-- Flag PHP syntax/functions newer than the declared minimum (Requires PHP: 7.4). -->
-	<config name="testVersion" value="7.4-"/>
+	<!-- Flag PHP syntax/functions newer than the declared minimum (Requires PHP: 8.1). -->
+	<config name="testVersion" value="8.1-"/>
 	<rule ref="PHPCompatibilityWP"/>
+
+	<!-- Scoped false-positive exclusions (tooling limits, not code defects). -->
+
+	<!-- PHPCompatibility 9.x predates PHP 8.1 enums: its ForbiddenThisUseContexts
+	     sniff omits T_ENUM from its OO-scope tokens, so $this inside an enum method
+	     is misread as "outside object context". Limited to our one enum that uses
+	     $this; the code is valid PHP 8.1. -->
+	<rule ref="PHPCompatibility.Variables.ForbiddenThisUseContexts">
+		<exclude-pattern>*/Consent/DefaultPurpose.php</exclude-pattern>
+	</rule>
+
+	<!-- The container ships unscoped and WP-agnostic (it runs under PHPUnit without
+	     WordPress loaded, so esc_html() is undefined). Its sole throw is a
+	     developer-facing DI diagnostic for an unknown binding — never browser
+	     output — so EscapeOutput does not apply. -->
+	<rule ref="WordPress.Security.EscapeOutput.ExceptionNotEscaped">
+		<exclude-pattern>*/Container/Container.php</exclude-pattern>
+	</rule>
 </ruleset>

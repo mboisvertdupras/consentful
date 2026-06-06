@@ -22,16 +22,16 @@ export default [
 	// before any framework loads. Lint it against the WordPress ES5 standard.
 	...compat.extends( 'plugin:@wordpress/eslint-plugin/es5' ).map( ( config ) => ( {
 		...config,
-		files: [ 'src/**/*.js' ],
+		files: [ 'assets/**/*.js' ],
 	} ) ),
 	{
-		files: [ 'src/**/*.js' ],
+		files: [ 'assets/**/*.js' ],
 		languageOptions: {
 			ecmaVersion: 5,
 			sourceType: 'script',
 			globals: {
 				...globals.browser,
-				// Injected by wp_localize_script() in PHP.
+				// Legacy banner global, pending the gate rewrite.
 				CMV2_CONSENT: 'readonly',
 			},
 		},

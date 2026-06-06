@@ -1,11 +1,11 @@
 {
-	"name": "tamarak/consent-mode-v2",
-	"description": "Google Consent Mode v2 (block-before-consent) + a gated GA4 tag, with a consent banner that meets Québec Loi 25 / GDPR.",
+	"name": "tamarak/consentful",
+	"description": "A white-label, open-source WordPress universal consent layer that gates all non-essential third-party tags behind visitor consent.",
 	"type": "wordpress-plugin",
 	"license": "GPL-2.0-or-later",
 	"homepage": "https://tamarak.dev",
 	"require": {
-		"php": ">=7.4"
+		"php": ">=8.1"
 	},
 	"require-dev": {
 		"squizlabs/php_codesniffer": "^3.10",
@@ -13,16 +13,29 @@
 		"phpcompatibility/phpcompatibility-wp": "^2.1",
 		"dealerdirect/phpcodesniffer-composer-installer": "^1.0",
 		"phpstan/phpstan": "^2.0",
-		"szepeviktor/phpstan-wordpress": "^2.0"
+		"szepeviktor/phpstan-wordpress": "^2.0",
+		"phpunit/phpunit": "^11.0"
+	},
+	"autoload": {
+		"psr-4": {
+			"Consentful\\": "src/"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"Consentful\\Tests\\": "tests/"
+		}
 	},
 	"scripts": {
 		"lint:php": "phpcs",
 		"lint:php:fix": "phpcbf",
-		"analyze": "phpstan analyse"
+		"analyze": "phpstan analyse",
+		"test": "phpunit"
 	},
 	"config": {
 		"allow-plugins": {
 			"dealerdirect/phpcodesniffer-composer-installer": true
-		}
+		},
+		"sort-packages": true
 	}
 }

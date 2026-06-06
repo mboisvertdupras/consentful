@@ -1,39 +1,53 @@
-# Consent Mode v2 — Loi 25 & RGPD
+# Consentful — universal consent layer
 
-A white-label WordPress plugin that owns the site's Google tag and only loads it
-**after** the visitor consents — what makes "prior consent" true under Québec
-Loi 25 and the GDPR. Reusable across client sites: no brand-specific code,
-prefix `cmv2_`, fully themeable.
+A white-label, open-source WordPress **universal consent layer**. It gates **all**
+non-essential third-party tags behind visitor consent, adapts to the visitor's
+jurisdiction, and keeps demonstrable proof of consent — so the **site** (not merely
+one vendor's tag) meets Québec Loi 25 / GDPR / US opt-out laws. Reusable across
+client sites: no brand-specific code, prefix `consentful_`, fully themeable. Google
+Consent Mode is the first integration, not the boundary.
+
+> **Foundation release.** This `1.0.0` is the first increment of a ground-up rewrite:
+> the PSR-4 OOP domain core (container, Purpose model, Signal, Consent, Tag, Adapter,
+> Jurisdiction/Policy registries) and the rebranded build/packaging surface. The
+> front-end gate, the Google adapter, jurisdiction geo-resolution, the consent log,
+> and the admin UI land in later increments.
 
 ## What it does
 
-- **Block before consent (basic Consent Mode v2).** No `gtag.js`, no `config`,
-  no cookieless ping until the visitor chooses. A returning visitor with valid,
-  unexpired consent gets the tag on the first hit.
-- **All four CMv2 signals** (`ad_storage`, `ad_user_data`, `ad_personalization`,
-  `analytics_storage`) plus `functionality_/personalization_/security_storage`.
-- **Loi 25 friendly banner.** Reject all is as easy as Accept all — same screen,
-  one click, identical size — granular per-category, easy withdrawal, no
-  pre-ticked boxes, re-consent window.
-- **Fully customizable.** Primary color, light/dark/auto theme, position
-  (bottom bar / floating corner / centered modal), button radius, custom copy,
-  optional floating re-open button.
-- **Translation-ready.** English source + bundled French (fr_CA / fr_FR);
-  `.pot` template included.
-- **Accessible.** Keyboard-operable, focus management, modal focus-trap +
-  background `inert`, 44px touch targets.
+- **Gate every non-essential tag.** Each tag is assigned to one or more **purposes**
+  and fires only when all are granted — either **Direct** (a Consentful adapter
+  injects it) or **Delegated** (an external tag manager fires it, gated via a consent
+  push to the dataLayer).
+- **Geo-adaptive, multi-jurisdiction.** A **Policy** is Opt-in (deny by default,
+  banner, block-before-consent — Loi 25/GDPR), Opt-out (allow by default, notice +
+  Do Not Sell/Share + honor GPC — US), or Notice/None. Until the region is known, the
+  strictest policy applies (fail-closed); GPC is honored instantly.
+- **Cache-safe by design.** Every visitor receives identical HTML; an inline `<head>`
+  decider plus per-adapter JS reads the consent cookie at runtime and injects only
+  granted tags — correct behind full-page caches / CDNs.
+- **Google Consent Mode v2.** Google is just a rich **adapter** that additionally
+  emits Consent Mode v2 signals (default-deny, `wait_for_update`, cookieless pings,
+  `ads_data_redaction`, `url_passthrough`) to preserve conversion modeling.
+- **Proof of consent.** Each decision is recorded (consent id, timestamp, purposes,
+  jurisdiction, policy/schema/banner version) to a built-in consent log, exportable
+  for an auditor; a Sink interface lets integrators redirect records to their store.
+- **Translation-ready.** English source + bundled French (fr_CA / fr_FR); `.pot`
+  template included. Language (locale) is a separate axis from jurisdiction (geo).
 
-Configure under **Settings → Consent Mode v2** after entering a GA4 measurement
-ID. See `readme.txt` for the full WordPress.org-format plugin readme.
+The audience is **integrators** (agencies/devs): adapters, tags, purpose mappings,
+jurisdiction policy and banner defaults are declared in code/config — the source of
+truth — and any setting can be locked. The site owner gets a deliberately constrained
+admin UI. See `readme.txt` for the WordPress.org-format user readme.
 
 ## Local development (symlink into a WP install)
 
-The canonical copy lives in this repo. Symlink it into any local WordPress so
-edits stay in sync — WordPress resolves symlinked plugins via
-`wp_register_plugin_realpath()`, so asset URLs and `plugin_basename()` work:
+The canonical copy lives in this repo. Symlink it into any local WordPress so edits
+stay in sync — WordPress resolves symlinked plugins via `wp_register_plugin_realpath()`,
+so asset URLs and `plugin_basename()` work:
 
 ```sh
-ln -s "$(pwd)" /path/to/wp-content/plugins/consent-mode-v2
+ln -s "$(pwd)" /path/to/wp-content/plugins/consentful
 ```
 
 Then activate it from the Plugins screen as usual.
@@ -51,7 +65,7 @@ npm run build
 That runs three steps, which you can also run individually:
 
 ```sh
-npm run i18n:pot   # regenerate languages/consent-mode-v2.pot from PHP source
+npm run i18n:pot   # regenerate languages/consentful.pot from PHP source
 npm run i18n:po    # sync the fr_CA / fr_FR .po files against the new .pot
 npm run i18n:mo    # compile the .po files to .mo
 ```
@@ -62,11 +76,11 @@ After `i18n:po`, fill in any new/changed `msgstr` entries directly in the French
 
 ## Building a distributable zip
 
-`npm run package` builds the assets + translations and produces
-`consent-mode-v2.zip` — the installable plugin with every dev file excluded (the
-exclusion list lives in `.distignore`). Pushing a `vX.Y.Z` tag runs the
-[release workflow](.github/workflows/release.yml), which does the same and
-attaches the zip to a GitHub Release.
+`npm run package` builds the assets + translations and produces `consentful.zip` —
+the installable plugin with every dev file excluded (the exclusion list lives in
+`.distignore`). Pushing a `vX.Y.Z` tag runs the
+[release workflow](.github/workflows/release.yml), which does the same and attaches
+the zip to a GitHub Release.
 
 Packaging uses [`wp dist-archive`](https://github.com/wp-cli/dist-archive-command)
 v3, which needs WP-CLI ≥ 2.13. Until that ships as stable, point local WP-CLI at
