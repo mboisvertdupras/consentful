@@ -111,6 +111,24 @@ final class ManifestTest extends TestCase {
 		$this->assertNull( $manifest->path_for( 'assets/gate.js' ) );
 	}
 
+	public function test_resolves_the_aggregated_stylesheet_by_its_style_key(): void {
+		$path = $this->write_fixture(
+			(string) wp_json_encode(
+				array(
+					'assets/gate.js' => array( 'file' => 'assets/gate.abc123.js' ),
+					'style.css'      => array(
+						'file' => 'assets/style.def456.css',
+						'src'  => 'style.css',
+					),
+				)
+			)
+		);
+
+		$manifest = new Manifest( $path );
+
+		$this->assertSame( 'assets/style.def456.css', $manifest->path_for( 'style.css' ) );
+	}
+
 	public function test_decode_is_memoized_across_calls(): void {
 		$path = $this->write_fixture(
 			(string) wp_json_encode(

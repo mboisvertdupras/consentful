@@ -6,6 +6,7 @@ namespace Consentful;
 use Consentful\Adapter\AdapterRegistry;
 use Consentful\Consent\PurposeRegistry;
 use Consentful\Container\Container;
+use Consentful\Frontend\BannerConfig;
 use Consentful\Frontend\Gate;
 use Consentful\Frontend\Manifest;
 use Consentful\Jurisdiction\JurisdictionRegistry;
@@ -104,6 +105,14 @@ final class Plugin {
 		$manifest  = new Manifest( $build_dir . '/.vite/manifest.json' );
 
 		$this->container->instance( Manifest::class, $manifest );
+		// Default banner copy/appearance; Integrators override this binding in
+		// `consentful_register` (the Gate resolves it after that fires).
+		$this->container->singleton(
+			BannerConfig::class,
+			static function (): BannerConfig {
+				return BannerConfig::defaults();
+			}
+		);
 		$this->container->singleton(
 			Gate::class,
 			static function ( Container $container ) use ( $manifest, $build_dir, $build_url ): Gate {

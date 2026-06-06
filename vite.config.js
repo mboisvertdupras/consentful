@@ -12,6 +12,11 @@ export default defineConfig( {
 		outDir: 'build',
 		emptyOutDir: true,
 		manifest: true,
+		// A single-entry IIFE can't code-split, so Vite would otherwise inline the
+		// banner CSS into the JS and inject a runtime <style> (needs CSP
+		// 'unsafe-inline'). Extract one real stylesheet instead — CSP-clean and
+		// separately cacheable. Vite keys the aggregate as `style.css` in the manifest.
+		cssCodeSplit: false,
 		// Framework-free output that still runs in the browsers we support (no IE11).
 		target: 'es2015',
 		rollupOptions: {

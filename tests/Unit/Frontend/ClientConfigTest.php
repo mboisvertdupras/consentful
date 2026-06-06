@@ -7,6 +7,7 @@ use Consentful\Adapter\AdapterRegistry;
 use Consentful\Adapter\GoogleAdapter;
 use Consentful\Consent\DefaultPurpose;
 use Consentful\Consent\PurposeRegistry;
+use Consentful\Frontend\BannerConfig;
 use Consentful\Frontend\ClientConfig;
 use Consentful\Jurisdiction\Jurisdiction;
 use Consentful\Jurisdiction\Policy;
@@ -27,13 +28,15 @@ final class ClientConfigTest extends TestCase {
 	private function build(
 		?TagRegistry $tags = null,
 		?AdapterRegistry $adapters = null,
-		?Jurisdiction $resolved = null
+		?Jurisdiction $resolved = null,
+		?BannerConfig $banner = null
 	): array {
 		$config = new ClientConfig(
 			PurposeRegistry::with_defaults(),
 			$tags ?? new TagRegistry(),
 			$adapters ?? new AdapterRegistry(),
 			$resolved ?? new Jurisdiction( '*', 'Default', Policy::opt_in( 1 ) ),
+			$banner ?? BannerConfig::defaults(),
 			1,
 			1,
 		);
@@ -170,12 +173,21 @@ final class ClientConfigTest extends TestCase {
 		$this->assertSame( $google->client_config(), $config['google'] );
 	}
 
+	public function test_banner_block_serializes_the_banner_config_verbatim(): void {
+		$banner = BannerConfig::defaults();
+
+		$out = $this->build( null, null, null, $banner );
+
+		$this->assertSame( $banner->to_array(), $out['banner'] );
+	}
+
 	public function test_custom_cookie_and_max_age_are_honored(): void {
 		$config = new ClientConfig(
 			PurposeRegistry::with_defaults(),
 			new TagRegistry(),
 			new AdapterRegistry(),
 			new Jurisdiction( '*', 'Default', Policy::opt_in( 1 ) ),
+			BannerConfig::defaults(),
 			2,
 			3,
 			90,

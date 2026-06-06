@@ -5,6 +5,8 @@
  * decider's _init), so it stays correct even if loaded independently.
  */
 
+import './banner.css';
+import { initBanner } from './banner.js';
 import { parseConfig } from './lib/config.js';
 import {
 	readCookie,
@@ -202,6 +204,14 @@ export function init( rawConfig, { win, doc } ) {
 
 	// Initial pass so already-granted tags fire on load.
 	applyAll();
+
+	// The banner is compliance-critical but secondary to the gate; a thrown banner
+	// error must never break the consent pipeline.
+	try {
+		initBanner( win.consentful, rawConfig && rawConfig.banner, { win, doc } );
+	} catch {
+		// Banner failed to init — the gate still works headlessly.
+	}
 
 	return win.consentful;
 }

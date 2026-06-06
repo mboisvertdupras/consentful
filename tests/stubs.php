@@ -37,6 +37,12 @@ if ( ! function_exists( 'apply_filters' ) ) {
 	}
 }
 
+if ( ! function_exists( '__' ) ) {
+	function __( $text, $domain = 'default' ) {
+		return $text;
+	}
+}
+
 if ( ! function_exists( 'wp_json_encode' ) ) {
 	function wp_json_encode( $data, $options = 0, $depth = 512 ) {
 		return json_encode( $data, $options, $depth );
@@ -77,6 +83,15 @@ if ( ! function_exists( 'wp_enqueue_script' ) ) {
 	function wp_enqueue_script( ...$args ) {
 		if ( isset( $GLOBALS['consentful_test_enqueues'] ) && is_array( $GLOBALS['consentful_test_enqueues'] ) ) {
 			$GLOBALS['consentful_test_enqueues'][] = $args;
+		}
+		return true;
+	}
+}
+
+if ( ! function_exists( 'wp_enqueue_style' ) ) {
+	function wp_enqueue_style( ...$args ) {
+		if ( isset( $GLOBALS['consentful_test_styles'] ) && is_array( $GLOBALS['consentful_test_styles'] ) ) {
+			$GLOBALS['consentful_test_styles'][] = $args;
 		}
 		return true;
 	}

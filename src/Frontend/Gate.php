@@ -19,7 +19,9 @@ use Consentful\Tag\TagRegistry;
 final class Gate {
 
 	private const HANDLE       = 'consentful-gate';
+	private const STYLE_HANDLE = 'consentful-banner';
 	private const GATE_ENTRY   = 'assets/gate.js';
+	private const STYLE_ENTRY  = 'style.css';
 	private const DECIDER_FILE = 'decider.js';
 
 	public function __construct(
@@ -57,20 +59,33 @@ final class Gate {
 		}
 	}
 
-	/** Enqueue the hashed gate bundle in the footer (no localize — config is in head). */
+	/**
+	 * Enqueue the hashed gate bundle in the footer and the banner stylesheet Vite
+	 * extracted from it (no localize — config is in head). Each is independent: a
+	 * missing manifest entry enqueues nothing (never fatal). Identical output for
+	 * every Visitor.
+	 */
 	public function enqueue(): void {
 		$path = $this->manifest->path_for( self::GATE_ENTRY );
-		if ( null === $path ) {
-			return;
+		if ( null !== $path ) {
+			wp_enqueue_script(
+				self::HANDLE,
+				rtrim( $this->build_url, '/' ) . '/' . ltrim( $path, '/' ),
+				array(),
+				CONSENTFUL_VERSION,
+				array( 'in_footer' => true )
+			);
 		}
 
-		wp_enqueue_script(
-			self::HANDLE,
-			rtrim( $this->build_url, '/' ) . '/' . ltrim( $path, '/' ),
-			array(),
-			CONSENTFUL_VERSION,
-			array( 'in_footer' => true )
-		);
+		$css = $this->manifest->path_for( self::STYLE_ENTRY );
+		if ( null !== $css ) {
+			wp_enqueue_style(
+				self::STYLE_HANDLE,
+				rtrim( $this->build_url, '/' ) . '/' . ltrim( $css, '/' ),
+				array(),
+				CONSENTFUL_VERSION
+			);
+		}
 	}
 
 	/** Build the config from the live registries and the resolved (fallback) Jurisdiction. */
@@ -83,12 +98,15 @@ final class Gate {
 		$adapters = $this->container->get( AdapterRegistry::class );
 		/** @var JurisdictionRegistry $jurisdictions */
 		$jurisdictions = $this->container->get( JurisdictionRegistry::class );
+		/** @var BannerConfig $banner */
+		$banner = $this->container->get( BannerConfig::class );
 
 		return new ClientConfig(
 			$purposes,
 			$tags,
 			$adapters,
 			$jurisdictions->fallback(),
+			$banner,
 			$this->schema_version,
 			$this->policy_version,
 			cookie: $this->cookie,

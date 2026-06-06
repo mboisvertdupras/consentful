@@ -14,8 +14,9 @@ use Consentful\Tag\Tag;
 use Consentful\Tag\TagRegistry;
 
 /**
- * Serializes the registries + resolved Jurisdiction into the camelCase config the
- * client gate consumes from `window.consentfulConfig`. Pure: no WordPress functions,
+ * Serializes the registries, resolved Jurisdiction and BannerConfig into the camelCase
+ * config the client gate consumes from `window.consentfulConfig`. Pure: no WordPress
+ * functions (it serializes the BannerConfig it is handed, never calls gettext itself),
  * so it runs under PHPUnit without WordPress. The same value feeds the cache-safe,
  * identical-for-every-visitor head output.
  */
@@ -26,6 +27,7 @@ final class ClientConfig {
 		private readonly TagRegistry $tags,
 		private readonly AdapterRegistry $adapters,
 		private readonly Jurisdiction $resolved,
+		private readonly BannerConfig $banner,
 		private readonly int $schema_version,
 		private readonly int $policy_version,
 		private readonly int $max_age_days = 180,
@@ -46,6 +48,7 @@ final class ClientConfig {
 			'policy'        => $this->policy_array( $this->resolved->policy ),
 			'tags'          => $this->tags_array(),
 			'adapters'      => $this->adapters_array(),
+			'banner'        => $this->banner->to_array(),
 		);
 	}
 

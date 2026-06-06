@@ -1,0 +1,301 @@
+/* Consentful — consent banner. Theme-agnostic, accessible, customizable.
+ * --cnf-primary / --cnf-radius are injected inline on the root by the JS (from
+ * banner.primaryColor / banner.radius). Palette vars below are switched by the
+ * --theme-* modifier class. Ported from the legacy consent.css. */
+
+/* ---- Theme palettes -------------------------------------------------- */
+.cnf-banner--theme-light,
+.cnf-reopen.cnf-banner--theme-light {
+	--cnf-bg: #fff;
+	--cnf-fg: #1d1d1f;
+	--cnf-muted: #54545a;
+	--cnf-surface: rgba(0, 0, 0, 0.045);
+	--cnf-border: rgba(0, 0, 0, 0.14);
+	--cnf-shadow: rgba(0, 0, 0, 0.18);
+}
+
+.cnf-banner--theme-dark,
+.cnf-reopen.cnf-banner--theme-dark {
+	--cnf-bg: #1d1d1b;
+	--cnf-fg: #f5f1ea;
+	--cnf-muted: #d6d0c6;
+	--cnf-surface: rgba(255, 255, 255, 0.06);
+	--cnf-border: rgba(255, 255, 255, 0.18);
+	--cnf-shadow: rgba(0, 0, 0, 0.45);
+}
+
+/* Auto: light by default, dark when the visitor's system prefers dark. */
+.cnf-banner--theme-auto,
+.cnf-reopen.cnf-banner--theme-auto {
+	--cnf-bg: #fff;
+	--cnf-fg: #1d1d1f;
+	--cnf-muted: #54545a;
+	--cnf-surface: rgba(0, 0, 0, 0.045);
+	--cnf-border: rgba(0, 0, 0, 0.14);
+	--cnf-shadow: rgba(0, 0, 0, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+
+	.cnf-banner--theme-auto,
+	.cnf-reopen.cnf-banner--theme-auto {
+		--cnf-bg: #1d1d1b;
+		--cnf-fg: #f5f1ea;
+		--cnf-muted: #d6d0c6;
+		--cnf-surface: rgba(255, 255, 255, 0.06);
+		--cnf-border: rgba(255, 255, 255, 0.18);
+		--cnf-shadow: rgba(0, 0, 0, 0.45);
+	}
+}
+
+/* ---- Base ------------------------------------------------------------ */
+.consentful {
+	z-index: 2147483600; /* above Elementor popups / sticky headers */
+	font-size: 15px;
+	line-height: 1.5;
+	box-sizing: border-box;
+}
+
+.consentful *,
+.consentful *::before,
+.consentful *::after {
+	box-sizing: border-box;
+}
+
+.consentful[hidden] {
+	display: none !important;
+}
+
+.cnf-banner__title {
+	margin: 0 0 6px;
+	font-size: 18px;
+	font-weight: 700;
+	color: var(--cnf-fg);
+}
+
+.cnf-banner__desc {
+	margin: 0 0 14px;
+	max-width: 80ch;
+	color: var(--cnf-muted);
+}
+
+.cnf-banner__link {
+	display: inline-block;
+	margin: 0 0 14px;
+	color: var(--cnf-primary, #2563eb);
+	text-decoration: underline;
+}
+
+.cnf-banner__link:hover {
+	filter: brightness(1.12);
+}
+
+.cnf-prefs {
+	margin: 0 0 16px;
+	display: grid;
+	gap: 10px;
+	padding: 14px 16px;
+	background: var(--cnf-surface);
+	border-radius: 10px;
+}
+
+.cnf-prefs[hidden] {
+	display: none;
+}
+
+.cnf-prefs__title {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--cnf-fg);
+}
+
+.cnf-purpose {
+	display: flex;
+	gap: 10px;
+	align-items: flex-start;
+	cursor: pointer;
+	color: var(--cnf-fg);
+}
+
+.cnf-purpose__input {
+	margin-top: 3px;
+	width: 18px;
+	height: 18px;
+	flex: 0 0 auto;
+	accent-color: var(--cnf-primary, #2563eb);
+}
+
+.cnf-purpose__input:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.cnf-purpose__label {
+	display: block;
+	font-weight: 600;
+}
+
+.cnf-purpose__desc {
+	display: block;
+	color: var(--cnf-muted);
+	font-size: 14px;
+}
+
+.cnf-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	align-items: center;
+}
+
+.cnf-btn {
+	appearance: none;
+	border: 0;
+	border-radius: var(--cnf-radius, 8px);
+	padding: 11px 18px;
+	font-size: 15px;
+	font-weight: 600;
+	cursor: pointer;
+	min-height: 44px; /* touch target */
+	line-height: 1.2;
+}
+
+.cnf-btn[hidden] {
+	display: none;
+}
+
+/* "Reject all" is as easy AND as prominent as "Accept all" (Loi 25 / CNIL equal
+ * prominence): same screen, one click, identical size/weight AND identical fill —
+ * only position distinguishes them, never colour saturation. */
+.cnf-btn--primary,
+.cnf-btn--save,
+.cnf-btn--reject {
+	background: var(--cnf-primary, #2563eb);
+	color: #fff;
+}
+
+.cnf-btn--primary:hover,
+.cnf-btn--save:hover,
+.cnf-btn--reject:hover {
+	filter: brightness(1.08);
+}
+
+.cnf-btn--ghost {
+	background: transparent;
+	color: var(--cnf-fg);
+	border: 1px solid var(--cnf-border);
+}
+
+.cnf-btn--ghost:hover {
+	border-color: var(--cnf-fg);
+}
+
+/* Focus ring uses the panel foreground so it always contrasts with BOTH the
+ * panel and the primary/save buttons (which are filled with --cnf-primary). */
+.cnf-btn:focus-visible,
+.cnf-banner__link:focus-visible,
+.cnf-reopen:focus-visible {
+	outline: 3px solid var(--cnf-fg, #1d1d1f);
+	outline-offset: 2px;
+}
+
+/* ---- Position: bottom bar (full width) ------------------------------- */
+.cnf-banner--bar {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: var(--cnf-bg);
+	color: var(--cnf-fg);
+	box-shadow: 0 -6px 24px var(--cnf-shadow);
+}
+
+.cnf-banner--bar .cnf-banner__inner {
+	max-width: 1100px;
+	margin: 0 auto;
+	padding: 20px clamp(16px, 4vw, 28px);
+}
+
+/* ---- Position: floating corner card ---------------------------------- */
+.cnf-banner--corner {
+	position: fixed;
+	right: 20px;
+	bottom: 20px;
+	left: auto;
+	max-width: min(420px, calc(100vw - 40px));
+	color: var(--cnf-fg);
+}
+
+.cnf-banner--corner .cnf-banner__inner {
+	background: var(--cnf-bg);
+	border: 1px solid var(--cnf-border);
+	border-radius: 14px;
+	box-shadow: 0 8px 30px var(--cnf-shadow);
+	padding: 20px;
+}
+
+/* ---- Position: centered modal ---------------------------------------- */
+.cnf-banner--modal {
+	position: fixed;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	padding: 20px;
+	background: rgba(0, 0, 0, 0.5);
+	overflow: auto;
+	color: var(--cnf-fg);
+}
+
+.cnf-banner--modal .cnf-banner__inner {
+	background: var(--cnf-bg);
+	border-radius: 16px;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+	padding: 24px clamp(20px, 4vw, 32px);
+	width: 100%;
+	max-width: 540px;
+	max-height: calc(100vh - 40px);
+	overflow: auto;
+}
+
+/* ---- Re-open / withdraw pill ----------------------------------------- */
+.cnf-reopen {
+	position: fixed;
+	left: 14px;
+	bottom: 14px;
+	z-index: 2147483600;
+	background: var(--cnf-bg);
+	color: var(--cnf-fg);
+	border: 1px solid var(--cnf-border);
+	border-radius: 999px;
+	padding: 10px 18px;
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	box-shadow: 0 2px 10px var(--cnf-shadow);
+	min-height: 44px;
+}
+
+.cnf-reopen:hover {
+	filter: brightness(1.06);
+}
+
+/* ---- Responsive ------------------------------------------------------ */
+@media (max-width: 600px) {
+
+	.cnf-banner--corner {
+		right: 12px;
+		left: 12px;
+		bottom: 12px;
+		max-width: none;
+	}
+
+	.cnf-actions {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.cnf-btn {
+		width: 100%;
+	}
+}

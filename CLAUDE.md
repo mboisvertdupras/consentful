@@ -65,6 +65,15 @@ enqueued classic script. ESLint lints `assets/` as modern ESM; Vitest unit-tests
 `lib/` helpers directly. Config injected via the inline blob / `wp_localize_script` may
 arrive as strings — coerce explicitly.
 
+**Exactly two front-end bundles, by necessity — don't add more.** A self-contained
+classic IIFE can't be code-split, so a single Vite build can't emit two of them; the
+only reason there are two builds is the unavoidable *critical-inline* (head decider)
+vs *cacheable-external* (footer gate) split. **Every other front-end feature rides in
+the gate bundle** — the banner UI and its CSS are `import`ed by `assets/gate.js`, Vite
+extracts the CSS into the gate's manifest entry, and the gate enqueues it. Toggle such
+features with config flags (e.g. `banner.enabled`), not a separate build/enqueue. Do
+**not** spawn a per-feature Vite config.
+
 ### Jurisdiction & consent (see ADR 0002)
 
 - **Geo-adaptive, multi-jurisdiction from day one.** A **Policy** is Opt-in (deny by

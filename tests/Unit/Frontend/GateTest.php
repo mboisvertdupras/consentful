@@ -7,6 +7,7 @@ use Consentful\Adapter\AdapterRegistry;
 use Consentful\Adapter\GoogleAdapter;
 use Consentful\Consent\PurposeRegistry;
 use Consentful\Container\Container;
+use Consentful\Frontend\BannerConfig;
 use Consentful\Frontend\Gate;
 use Consentful\Frontend\Manifest;
 use Consentful\Jurisdiction\JurisdictionRegistry;
@@ -46,7 +47,7 @@ final class GateTest extends TestCase {
 			}
 		}
 		$this->temp_paths = array();
-		unset( $GLOBALS['consentful_test_actions'], $GLOBALS['consentful_test_enqueues'] );
+		unset( $GLOBALS['consentful_test_actions'], $GLOBALS['consentful_test_enqueues'], $GLOBALS['consentful_test_styles'] );
 		parent::tearDown();
 	}
 
@@ -75,6 +76,7 @@ final class GateTest extends TestCase {
 		$adapters->add( new GoogleAdapter( array( 'G-XXXXXXX' ) ) );
 		$container->instance( AdapterRegistry::class, $adapters );
 		$container->instance( JurisdictionRegistry::class, JurisdictionRegistry::with_defaults( 1 ) );
+		$container->instance( BannerConfig::class, BannerConfig::defaults() );
 		return $container;
 	}
 
@@ -101,6 +103,23 @@ final class GateTest extends TestCase {
 		$out = array();
 		foreach ( $enqueues as $enqueue ) {
 			$out[] = is_array( $enqueue ) ? array_values( $enqueue ) : array();
+		}
+		return $out;
+	}
+
+	/**
+	 * The styles recorded by the wp_enqueue_style stub for this test.
+	 *
+	 * @return list<array<int, mixed>>
+	 */
+	private function recorded_styles(): array {
+		$styles = $GLOBALS['consentful_test_styles'] ?? array();
+		if ( ! is_array( $styles ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( $styles as $style ) {
+			$out[] = is_array( $style ) ? array_values( $style ) : array();
 		}
 		return $out;
 	}
@@ -209,5 +228,48 @@ final class GateTest extends TestCase {
 		$this->gate( $dir, $dir . '/.vite/manifest.json' )->enqueue();
 
 		$this->assertSame( array(), $this->recorded_enqueues() );
+	}
+
+	public function test_enqueue_registers_the_aggregated_banner_stylesheet(): void {
+		$GLOBALS['consentful_test_styles'] = array();
+		$dir = $this->build_dir();
+		$manifest_path = $this->write_manifest(
+			$dir,
+			(string) wp_json_encode(
+				array(
+					'assets/gate.js' => array( 'file' => 'assets/gate.abc123.js' ),
+					'style.css'      => array(
+						'file' => 'assets/style.def456.css',
+						'src'  => 'style.css',
+					),
+				)
+			)
+		);
+
+		$this->gate( $dir, $manifest_path )->enqueue();
+
+		$styles = $this->recorded_styles();
+		$this->assertCount( 1, $styles );
+		$style = $styles[0];
+		$this->assertSame( 'consentful-banner', $style[0] );
+		$this->assertSame(
+			'http://example.test/wp-content/plugins/consentful/build/assets/style.def456.css',
+			$style[1]
+		);
+	}
+
+	public function test_enqueue_emits_no_style_when_the_stylesheet_is_absent(): void {
+		$GLOBALS['consentful_test_styles'] = array();
+		$dir = $this->build_dir();
+		$manifest_path = $this->write_manifest(
+			$dir,
+			(string) wp_json_encode(
+				array( 'assets/gate.js' => array( 'file' => 'assets/gate.abc123.js' ) )
+			)
+		);
+
+		$this->gate( $dir, $manifest_path )->enqueue();
+
+		$this->assertSame( array(), $this->recorded_styles() );
 	}
 }
