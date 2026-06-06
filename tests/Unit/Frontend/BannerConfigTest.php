@@ -29,11 +29,23 @@ final class BannerConfigTest extends TestCase {
 		$copy = BannerConfig::defaults()->to_array()['copy'];
 
 		$this->assertIsArray( $copy );
-		$keys = array( 'title', 'description', 'privacyLabel', 'prefsTitle', 'acceptAll', 'rejectAll', 'customize', 'save', 'reopen' );
+		$keys = array( 'title', 'description', 'privacyLabel', 'prefsTitle', 'acceptAll', 'rejectAll', 'customize', 'save', 'reopen', 'noticeTitle', 'noticeDescription', 'doNotSell', 'close' );
 		foreach ( $keys as $key ) {
 			$this->assertArrayHasKey( $key, $copy );
 			$this->assertNotSame( '', $copy[ $key ] );
 		}
+	}
+
+	public function test_defaults_carry_the_opt_out_notice_copy_with_english_source(): void {
+		$copy = BannerConfig::defaults()->copy;
+
+		$this->assertSame( 'Your privacy choices', $copy['noticeTitle'] );
+		$this->assertSame(
+			'We and our partners process personal data for advertising, analytics and personalization. You can opt out at any time.',
+			$copy['noticeDescription']
+		);
+		$this->assertSame( 'Do Not Sell or Share My Personal Information', $copy['doNotSell'] );
+		$this->assertSame( 'Close', $copy['close'] );
 	}
 
 	public function test_defaults_carry_copy_for_all_five_default_purposes(): void {

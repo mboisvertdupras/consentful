@@ -170,14 +170,16 @@
  * only position distinguishes them, never colour saturation. */
 .cnf-btn--primary,
 .cnf-btn--save,
-.cnf-btn--reject {
+.cnf-btn--reject,
+.cnf-btn--optout {
 	background: var(--cnf-primary, #2563eb);
 	color: #fff;
 }
 
 .cnf-btn--primary:hover,
 .cnf-btn--save:hover,
-.cnf-btn--reject:hover {
+.cnf-btn--reject:hover,
+.cnf-btn--optout:hover {
 	filter: brightness(1.08);
 }
 

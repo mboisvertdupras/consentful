@@ -5,8 +5,9 @@
  * every decision back through api.setConsent/acceptAll/rejectAll. It never touches gtag
  * or the cookie directly.
  *
- * Ported behavior from the legacy banner (focus trap, inert background, Esc/implied-
- * consent semantics, reveal-prefs, decide flow), rewired to window.consentful.
+ * One banner area, three Policy-driven shapes (ADR 0002): the blocking opt-in gate
+ * (renderOptIn — Loi 25/GDPR), the non-blocking US "Do Not Sell/Share" notice
+ * (renderOptOut), and notice_only which renders nothing.
  */
 
 import { coerceBannerConfig, purposeCopy } from './banner-config.js';
@@ -27,21 +28,20 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 	if ( ! cfg.enabled ) {
 		return noop;
 	}
-	// Deferred opt-out seam: only the strict opt-in Policy renders a banner; any other
-	// policy type (US Do-Not-Sell notice) is a no-op until that variant lands.
-	if ( api.policy().type !== 'opt_in' ) {
+	const policy = api.policy();
+	// notice_only: the site's privacy-policy link is the notice — no banner, no pill.
+	if ( ! policy.showsBanner ) {
 		return noop;
 	}
-	// GPC is a blanket refusal honored instantly — no banner, no pill (CONTEXT.md).
+	// GPC is honored instantly for every variant — a blanket refusal / DNS already
+	// exercised, so neither the opt-in gate nor the opt-out notice is shown (CONTEXT.md).
 	if ( api.gpc() ) {
 		return noop;
 	}
 
-	const isModal = cfg.position === 'modal';
+	// Shared builders for both variants. `purposes` and the prefs block are identical;
+	// the variants differ only in their actions/flow and (for opt-in) the modal trap.
 	const purposes = api.purposes();
-
-	let lastFocus = null; // element that opened the manager, to restore on close
-	let wasOpened = false; // true only after a real show (not the passive initial render)
 
 	const el = ( tag, className, textContent ) => {
 		const node = doc.createElement( tag );
@@ -59,221 +59,42 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		return b;
 	};
 
-	const root = doc.createElement( 'div' );
-	root.className =
-		'consentful cnf-banner cnf-banner--' + cfg.position + ' cnf-banner--theme-' + cfg.theme;
-	root.style.setProperty( '--cnf-primary', cfg.primaryColor );
-	root.style.setProperty( '--cnf-radius', cfg.radius + 'px' );
-	root.hidden = true;
+	// Build the per-purpose preferences block once; returns the prefs node + its inputs so
+	// the variant can prefill, read toggles, and reveal it.
+	function buildPrefs() {
+		const prefs = el( 'div', 'cnf-prefs' );
+		prefs.id = 'cnf-prefs';
+		prefs.hidden = true;
+		prefs.appendChild( el( 'h3', 'cnf-prefs__title', cfg.copy.prefsTitle ) );
 
-	const titleId = 'cnf-banner-title';
-	const descId = 'cnf-banner-desc';
-	if ( isModal ) {
-		root.setAttribute( 'role', 'dialog' );
-		root.setAttribute( 'aria-modal', 'true' );
-		root.setAttribute( 'aria-labelledby', titleId );
-		root.setAttribute( 'aria-describedby', descId );
-	} else {
-		root.setAttribute( 'role', 'region' );
-		root.setAttribute( 'aria-label', cfg.copy.title );
-	}
-
-	const inner = el( 'div', 'cnf-banner__inner' );
-	root.appendChild( inner );
-
-	const title = el( 'h2', 'cnf-banner__title', cfg.copy.title );
-	title.id = titleId;
-	inner.appendChild( title );
-
-	const desc = el( 'p', 'cnf-banner__desc', cfg.copy.description );
-	desc.id = descId;
-	inner.appendChild( desc );
-
-	if ( cfg.privacyUrl ) {
-		const link = el( 'a', 'cnf-banner__link', cfg.copy.privacyLabel );
-		link.href = cfg.privacyUrl;
-		inner.appendChild( link );
-	}
-
-	// Preferences — per-purpose rows, revealed by Customize or shown on re-open.
-	const prefs = el( 'div', 'cnf-prefs' );
-	prefs.id = 'cnf-prefs';
-	prefs.hidden = true;
-	const prefsTitle = el( 'h3', 'cnf-prefs__title', cfg.copy.prefsTitle );
-	prefs.appendChild( prefsTitle );
-
-	const inputs = {}; // purpose key => checkbox
-	for ( const purpose of purposes ) {
-		const copy = purposeCopy( cfg, purpose.key );
-		const row = el( 'label', 'cnf-purpose' );
-		const input = doc.createElement( 'input' );
-		input.type = 'checkbox';
-		input.className = 'cnf-purpose__input';
-		input.value = purpose.key;
-		if ( purpose.alwaysOn ) {
-			input.checked = true;
-			input.disabled = true;
-		}
-		inputs[ purpose.key ] = input;
-
-		const text = el( 'span', 'cnf-purpose__text' );
-		text.appendChild( el( 'span', 'cnf-purpose__label', copy.label ) );
-		text.appendChild( el( 'span', 'cnf-purpose__desc', copy.description ) );
-
-		row.appendChild( input );
-		row.appendChild( text );
-		prefs.appendChild( row );
-	}
-	inner.appendChild( prefs );
-
-	// Actions — equal-prominence Reject/Accept enforced in CSS.
-	const actions = el( 'div', 'cnf-actions' );
-	const rejectBtn = button( 'cnf-btn cnf-btn--reject', cfg.copy.rejectAll );
-	const customizeBtn = button( 'cnf-btn cnf-btn--ghost', cfg.copy.customize );
-	customizeBtn.setAttribute( 'aria-expanded', 'false' );
-	customizeBtn.setAttribute( 'aria-controls', prefs.id );
-	const saveBtn = button( 'cnf-btn cnf-btn--save', cfg.copy.save );
-	saveBtn.hidden = true;
-	const acceptBtn = button( 'cnf-btn cnf-btn--primary', cfg.copy.acceptAll );
-	actions.appendChild( rejectBtn );
-	actions.appendChild( customizeBtn );
-	actions.appendChild( saveBtn );
-	actions.appendChild( acceptBtn );
-	inner.appendChild( actions );
-
-	// Re-open / withdraw pill, lives outside the panel so it survives panel hide.
-	const pill = button( 'consentful cnf-reopen cnf-banner--theme-' + cfg.theme, cfg.copy.reopen );
-	pill.style.setProperty( '--cnf-primary', cfg.primaryColor );
-	pill.style.setProperty( '--cnf-radius', cfg.radius + 'px' );
-	pill.hidden = true;
-
-	const body = doc.body || doc.documentElement;
-	body.appendChild( root );
-	body.appendChild( pill );
-
-	// Only currently-visible, focusable controls — a static querySelectorAll would
-	// include the [hidden] preference inputs and break the modal trap boundary.
-	function focusables() {
-		const sel = 'button, a[href], input, select, textarea, [tabindex]';
-		return Array.prototype.filter.call( root.querySelectorAll( sel ), ( node ) => {
-			return ! node.disabled && node.tabIndex !== -1 && node.getClientRects().length;
-		} );
-	}
-
-	function trap( e ) {
-		// Esc closes only once a decision exists; the first-visit gate is not Esc-
-		// dismissable (no implied consent).
-		if ( e.key === 'Escape' && api.hasDecision() ) {
-			e.preventDefault();
-			hidePanel();
-			return;
-		}
-		if ( e.key !== 'Tab' ) {
-			return;
-		}
-		const f = focusables();
-		if ( ! f.length ) {
-			return;
-		}
-		const first = f[ 0 ];
-		const last = f[ f.length - 1 ];
-		if ( e.shiftKey && doc.activeElement === first ) {
-			e.preventDefault();
-			last.focus();
-		} else if ( ! e.shiftKey && doc.activeElement === last ) {
-			e.preventDefault();
-			first.focus();
-		}
-	}
-
-	// Make the rest of the page inert so AT/keyboard cannot reach it behind the modal.
-	// Only touch attributes we add ourselves: if the site already hid/inerted an element
-	// we leave it alone on open and on close, so we never re-expose content it hid.
-	let inerted = []; // elements we set `inert` on
-	let ariaHidden = []; // elements we set `aria-hidden` on
-	function backgroundInert( on ) {
-		if ( ! isModal || ! doc.body ) {
-			return;
-		}
-		if ( ! on ) {
-			inerted.forEach( ( node ) => node.removeAttribute( 'inert' ) );
-			ariaHidden.forEach( ( node ) => node.removeAttribute( 'aria-hidden' ) );
-			inerted = [];
-			ariaHidden = [];
-			return;
-		}
-		const kids = doc.body.children;
-		for ( let i = 0; i < kids.length; i++ ) {
-			const node = kids[ i ];
-			if ( node === root || node === pill ) {
-				continue;
+		const inputs = {}; // purpose key => checkbox
+		for ( const purpose of purposes ) {
+			const copy = purposeCopy( cfg, purpose.key );
+			const row = el( 'label', 'cnf-purpose' );
+			const input = doc.createElement( 'input' );
+			input.type = 'checkbox';
+			input.className = 'cnf-purpose__input';
+			input.value = purpose.key;
+			if ( purpose.alwaysOn ) {
+				input.checked = true;
+				input.disabled = true;
 			}
-			if ( ! node.hasAttribute( 'inert' ) ) {
-				node.setAttribute( 'inert', '' );
-				inerted.push( node );
-			}
-			if ( ! node.hasAttribute( 'aria-hidden' ) ) {
-				node.setAttribute( 'aria-hidden', 'true' );
-				ariaHidden.push( node );
-			}
+			inputs[ purpose.key ] = input;
+
+			const text = el( 'span', 'cnf-purpose__text' );
+			text.appendChild( el( 'span', 'cnf-purpose__label', copy.label ) );
+			text.appendChild( el( 'span', 'cnf-purpose__desc', copy.description ) );
+
+			row.appendChild( input );
+			row.appendChild( text );
+			prefs.appendChild( row );
 		}
+		return { prefs, inputs };
 	}
 
-	function showPanel( moveFocus ) {
-		pill.hidden = true;
-		root.hidden = false;
-		wasOpened = true;
-		if ( isModal ) {
-			backgroundInert( true );
-			doc.addEventListener( 'keydown', trap );
-		}
-		// Steal focus only when explicitly opened or modal — never on a passive
-		// bar/corner first render.
-		if ( moveFocus || isModal ) {
-			focusFirst();
-		}
-	}
-
-	function focusFirst() {
-		const target = root.querySelector( '.cnf-btn' );
-		if ( target ) {
-			try {
-				target.focus();
-			} catch {
-				// jsdom or detached node — focus is best-effort.
-			}
-		}
-	}
-
-	function hidePanel() {
-		root.hidden = true;
-		if ( isModal ) {
-			doc.removeEventListener( 'keydown', trap );
-			backgroundInert( false );
-		}
-		pill.hidden = false;
-		// Restore focus to the opener (APG) — but never on the initial already-decided
-		// hide at load (wasOpened false), which would yank focus onto the pill.
-		if ( wasOpened ) {
-			const restore =
-				lastFocus && doc.contains( lastFocus ) && lastFocus.offsetParent !== null
-					? lastFocus
-					: pill;
-			try {
-				restore.focus();
-			} catch {
-				// Focus is best-effort.
-			}
-		}
-		wasOpened = false;
-		lastFocus = null;
-	}
-
-	function revealPrefs() {
-		prefs.hidden = false;
-		saveBtn.hidden = false;
-		customizeBtn.setAttribute( 'aria-expanded', 'true' );
-		// Prefill from the live grants so re-opening reflects the current decision.
+	// Prefill non-essential toggles from the live grants so re-opening (or revealing under
+	// opt-out's all-on default) reflects the current decision.
+	function prefillToggles( inputs ) {
 		const current = api.get();
 		for ( const purpose of purposes ) {
 			if ( purpose.alwaysOn ) {
@@ -281,17 +102,9 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			}
 			inputs[ purpose.key ].checked = Boolean( current[ purpose.key ] );
 		}
-		const firstToggle = purposes.find( ( p ) => ! p.alwaysOn );
-		if ( firstToggle ) {
-			try {
-				inputs[ firstToggle.key ].focus();
-			} catch {
-				// Focus is best-effort.
-			}
-		}
 	}
 
-	function readToggles() {
+	function readToggles( inputs ) {
 		const grants = {};
 		for ( const purpose of purposes ) {
 			grants[ purpose.key ] = Boolean( inputs[ purpose.key ].checked );
@@ -299,48 +112,442 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		return grants;
 	}
 
-	function openManager( e ) {
-		if ( e && e.preventDefault ) {
-			e.preventDefault();
+	// Re-open / withdraw pill, lives outside the panel so it survives panel hide.
+	function buildPill() {
+		const pill = button( 'consentful cnf-reopen cnf-banner--theme-' + cfg.theme, cfg.copy.reopen );
+		pill.style.setProperty( '--cnf-primary', cfg.primaryColor );
+		pill.style.setProperty( '--cnf-radius', cfg.radius + 'px' );
+		pill.hidden = true;
+		return pill;
+	}
+
+	if ( policy.type === 'opt_out' ) {
+		return renderOptOut();
+	}
+	// opt_in (and any unknown type defaults to the strict variant — fail-closed).
+	return renderOptIn();
+
+	/**
+	 * Opt-in (Loi 25/GDPR): deny-by-default, blocking, equal-prominence Reject/Accept,
+	 * modal focus trap + background-inert. UNCHANGED behavior — only relocated into a
+	 * function and wired to the shared builders above.
+	 *
+	 * @return {object} { destroy }.
+	 */
+	function renderOptIn() {
+		const isModal = cfg.position === 'modal';
+
+		let lastFocus = null; // element that opened the manager, to restore on close
+		let wasOpened = false; // true only after a real show (not the passive initial render)
+
+		const root = doc.createElement( 'div' );
+		root.className =
+			'consentful cnf-banner cnf-banner--' + cfg.position + ' cnf-banner--theme-' + cfg.theme;
+		root.style.setProperty( '--cnf-primary', cfg.primaryColor );
+		root.style.setProperty( '--cnf-radius', cfg.radius + 'px' );
+		root.hidden = true;
+
+		const titleId = 'cnf-banner-title';
+		const descId = 'cnf-banner-desc';
+		if ( isModal ) {
+			root.setAttribute( 'role', 'dialog' );
+			root.setAttribute( 'aria-modal', 'true' );
+			root.setAttribute( 'aria-labelledby', titleId );
+			root.setAttribute( 'aria-describedby', descId );
+		} else {
+			root.setAttribute( 'role', 'region' );
+			root.setAttribute( 'aria-label', cfg.copy.title );
 		}
-		lastFocus = ( e && e.target ) || doc.activeElement || null;
-		revealPrefs();
-		showPanel( true );
-	}
 
-	rejectBtn.addEventListener( 'click', () => {
-		api.rejectAll();
-		hidePanel();
-	} );
-	acceptBtn.addEventListener( 'click', () => {
-		api.acceptAll();
-		hidePanel();
-	} );
-	saveBtn.addEventListener( 'click', () => {
-		api.setConsent( readToggles() );
-		hidePanel();
-	} );
-	customizeBtn.addEventListener( 'click', revealPrefs );
-	pill.addEventListener( 'click', openManager );
+		const inner = el( 'div', 'cnf-banner__inner' );
+		root.appendChild( inner );
 
-	// Initial state: gate the panel on a prior decision; otherwise reveal the pill.
-	if ( api.hasDecision() ) {
-		hidePanel();
-	} else {
-		showPanel( isModal );
-	}
+		const title = el( 'h2', 'cnf-banner__title', cfg.copy.title );
+		title.id = titleId;
+		inner.appendChild( title );
 
-	// Full teardown: drop the keydown trap, restore any inert/aria-hidden we added, and
-	// remove our own nodes. Idempotent.
-	function destroy() {
-		doc.removeEventListener( 'keydown', trap );
-		backgroundInert( false );
-		[ root, pill ].forEach( ( node ) => {
-			if ( node.parentNode ) {
-				node.parentNode.removeChild( node );
+		const desc = el( 'p', 'cnf-banner__desc', cfg.copy.description );
+		desc.id = descId;
+		inner.appendChild( desc );
+
+		if ( cfg.privacyUrl ) {
+			const link = el( 'a', 'cnf-banner__link', cfg.copy.privacyLabel );
+			link.href = cfg.privacyUrl;
+			inner.appendChild( link );
+		}
+
+		// Preferences — per-purpose rows, revealed by Customize or shown on re-open.
+		const { prefs, inputs } = buildPrefs();
+		inner.appendChild( prefs );
+
+		// Actions — equal-prominence Reject/Accept enforced in CSS.
+		const actions = el( 'div', 'cnf-actions' );
+		const rejectBtn = button( 'cnf-btn cnf-btn--reject', cfg.copy.rejectAll );
+		const customizeBtn = button( 'cnf-btn cnf-btn--ghost', cfg.copy.customize );
+		customizeBtn.setAttribute( 'aria-expanded', 'false' );
+		customizeBtn.setAttribute( 'aria-controls', prefs.id );
+		const saveBtn = button( 'cnf-btn cnf-btn--save', cfg.copy.save );
+		saveBtn.hidden = true;
+		const acceptBtn = button( 'cnf-btn cnf-btn--primary', cfg.copy.acceptAll );
+		actions.appendChild( rejectBtn );
+		actions.appendChild( customizeBtn );
+		actions.appendChild( saveBtn );
+		actions.appendChild( acceptBtn );
+		inner.appendChild( actions );
+
+		const pill = buildPill();
+
+		const body = doc.body || doc.documentElement;
+		body.appendChild( root );
+		body.appendChild( pill );
+
+		// Only currently-visible, focusable controls — a static querySelectorAll would
+		// include the [hidden] preference inputs and break the modal trap boundary.
+		function focusables() {
+			const sel = 'button, a[href], input, select, textarea, [tabindex]';
+			return Array.prototype.filter.call( root.querySelectorAll( sel ), ( node ) => {
+				return ! node.disabled && node.tabIndex !== -1 && node.getClientRects().length;
+			} );
+		}
+
+		function trap( e ) {
+			// Esc closes only once a decision exists; the first-visit gate is not Esc-
+			// dismissable (no implied consent).
+			if ( e.key === 'Escape' && api.hasDecision() ) {
+				e.preventDefault();
+				hidePanel();
+				return;
 			}
+			if ( e.key !== 'Tab' ) {
+				return;
+			}
+			const f = focusables();
+			if ( ! f.length ) {
+				return;
+			}
+			const first = f[ 0 ];
+			const last = f[ f.length - 1 ];
+			if ( e.shiftKey && doc.activeElement === first ) {
+				e.preventDefault();
+				last.focus();
+			} else if ( ! e.shiftKey && doc.activeElement === last ) {
+				e.preventDefault();
+				first.focus();
+			}
+		}
+
+		// Make the rest of the page inert so AT/keyboard cannot reach it behind the modal.
+		// Only touch attributes we add ourselves: if the site already hid/inerted an element
+		// we leave it alone on open and on close, so we never re-expose content it hid.
+		let inerted = []; // elements we set `inert` on
+		let ariaHidden = []; // elements we set `aria-hidden` on
+		function backgroundInert( on ) {
+			if ( ! isModal || ! doc.body ) {
+				return;
+			}
+			if ( ! on ) {
+				inerted.forEach( ( node ) => node.removeAttribute( 'inert' ) );
+				ariaHidden.forEach( ( node ) => node.removeAttribute( 'aria-hidden' ) );
+				inerted = [];
+				ariaHidden = [];
+				return;
+			}
+			const kids = doc.body.children;
+			for ( let i = 0; i < kids.length; i++ ) {
+				const node = kids[ i ];
+				if ( node === root || node === pill ) {
+					continue;
+				}
+				if ( ! node.hasAttribute( 'inert' ) ) {
+					node.setAttribute( 'inert', '' );
+					inerted.push( node );
+				}
+				if ( ! node.hasAttribute( 'aria-hidden' ) ) {
+					node.setAttribute( 'aria-hidden', 'true' );
+					ariaHidden.push( node );
+				}
+			}
+		}
+
+		function showPanel( moveFocus ) {
+			pill.hidden = true;
+			root.hidden = false;
+			wasOpened = true;
+			if ( isModal ) {
+				backgroundInert( true );
+				doc.addEventListener( 'keydown', trap );
+			}
+			// Steal focus only when explicitly opened or modal — never on a passive
+			// bar/corner first render.
+			if ( moveFocus || isModal ) {
+				focusFirst();
+			}
+		}
+
+		function focusFirst() {
+			const target = root.querySelector( '.cnf-btn' );
+			if ( target ) {
+				try {
+					target.focus();
+				} catch {
+					// jsdom or detached node — focus is best-effort.
+				}
+			}
+		}
+
+		function hidePanel() {
+			root.hidden = true;
+			if ( isModal ) {
+				doc.removeEventListener( 'keydown', trap );
+				backgroundInert( false );
+			}
+			pill.hidden = false;
+			// Restore focus to the opener (APG) — but never on the initial already-decided
+			// hide at load (wasOpened false), which would yank focus onto the pill.
+			if ( wasOpened ) {
+				const restore =
+					lastFocus && doc.contains( lastFocus ) && lastFocus.offsetParent !== null
+						? lastFocus
+						: pill;
+				try {
+					restore.focus();
+				} catch {
+					// Focus is best-effort.
+				}
+			}
+			wasOpened = false;
+			lastFocus = null;
+		}
+
+		function revealPrefs() {
+			prefs.hidden = false;
+			saveBtn.hidden = false;
+			customizeBtn.setAttribute( 'aria-expanded', 'true' );
+			prefillToggles( inputs );
+			const firstToggle = purposes.find( ( p ) => ! p.alwaysOn );
+			if ( firstToggle ) {
+				try {
+					inputs[ firstToggle.key ].focus();
+				} catch {
+					// Focus is best-effort.
+				}
+			}
+		}
+
+		function openManager( e ) {
+			if ( e && e.preventDefault ) {
+				e.preventDefault();
+			}
+			lastFocus = ( e && e.target ) || doc.activeElement || null;
+			revealPrefs();
+			showPanel( true );
+		}
+
+		rejectBtn.addEventListener( 'click', () => {
+			api.rejectAll();
+			hidePanel();
 		} );
+		acceptBtn.addEventListener( 'click', () => {
+			api.acceptAll();
+			hidePanel();
+		} );
+		saveBtn.addEventListener( 'click', () => {
+			api.setConsent( readToggles( inputs ) );
+			hidePanel();
+		} );
+		customizeBtn.addEventListener( 'click', revealPrefs );
+		pill.addEventListener( 'click', openManager );
+
+		// Initial state: gate the panel on a prior decision; otherwise reveal the pill.
+		if ( api.hasDecision() ) {
+			hidePanel();
+		} else {
+			showPanel( isModal );
+		}
+
+		// Full teardown: drop the keydown trap, restore any inert/aria-hidden we added, and
+		// remove our own nodes. Idempotent.
+		function destroy() {
+			doc.removeEventListener( 'keydown', trap );
+			backgroundInert( false );
+			[ root, pill ].forEach( ( node ) => {
+				if ( node.parentNode ) {
+					node.parentNode.removeChild( node );
+				}
+			} );
+		}
+
+		return { destroy };
 	}
 
-	return { destroy };
+	/**
+	 * Opt-out (US state laws): allow-by-default, an informational notice that surfaces the
+	 * "Do Not Sell or Share" right + manage-prefs. Genuinely non-blocking — role="region"
+	 * (never dialog), no aria-modal, no focus trap, no background-inert, even at
+	 * position 'modal'. Dismissible (no prior-consent requirement). That non-blocking
+	 * property is the compliance point of the variant.
+	 *
+	 * @return {object} { destroy }.
+	 */
+	function renderOptOut() {
+		const root = doc.createElement( 'div' );
+		root.className =
+			'consentful cnf-banner cnf-banner--' +
+			cfg.position +
+			' cnf-banner--theme-' +
+			cfg.theme +
+			' cnf-banner--optout';
+		root.style.setProperty( '--cnf-primary', cfg.primaryColor );
+		root.style.setProperty( '--cnf-radius', cfg.radius + 'px' );
+		root.hidden = true;
+		root.setAttribute( 'role', 'region' );
+		root.setAttribute( 'aria-label', cfg.copy.noticeTitle );
+
+		const inner = el( 'div', 'cnf-banner__inner' );
+		root.appendChild( inner );
+
+		inner.appendChild( el( 'h2', 'cnf-banner__title', cfg.copy.noticeTitle ) );
+		inner.appendChild( el( 'p', 'cnf-banner__desc', cfg.copy.noticeDescription ) );
+
+		if ( cfg.privacyUrl ) {
+			const link = el( 'a', 'cnf-banner__link', cfg.copy.privacyLabel );
+			link.href = cfg.privacyUrl;
+			inner.appendChild( link );
+		}
+
+		// Preferences (all non-essential on by default under opt-out); revealPrefs()
+		// prefills from the live grants when "Manage preferences" is opened.
+		const { prefs, inputs } = buildPrefs();
+		inner.appendChild( prefs );
+
+		// Actions: the conspicuous DNS control, manage-prefs (reveals prefs + Save), Close.
+		const actions = el( 'div', 'cnf-actions' );
+		const dnsBtn = button( 'cnf-btn cnf-btn--optout', cfg.copy.doNotSell );
+		const customizeBtn = button( 'cnf-btn cnf-btn--ghost', cfg.copy.customize );
+		customizeBtn.setAttribute( 'aria-expanded', 'false' );
+		customizeBtn.setAttribute( 'aria-controls', prefs.id );
+		const saveBtn = button( 'cnf-btn cnf-btn--save', cfg.copy.save );
+		saveBtn.hidden = true;
+		const closeBtn = button( 'cnf-btn cnf-btn--ghost', cfg.copy.close );
+		actions.appendChild( dnsBtn );
+		actions.appendChild( customizeBtn );
+		actions.appendChild( saveBtn );
+		actions.appendChild( closeBtn );
+		inner.appendChild( actions );
+
+		const pill = buildPill();
+
+		const body = doc.body || doc.documentElement;
+		body.appendChild( root );
+		body.appendChild( pill );
+
+		function showPanel( moveFocus ) {
+			pill.hidden = true;
+			root.hidden = false;
+			doc.addEventListener( 'keydown', onKeydown );
+			if ( moveFocus ) {
+				focusFirst();
+			}
+		}
+
+		function focusFirst() {
+			const target = root.querySelector( '.cnf-btn' );
+			if ( target ) {
+				try {
+					target.focus();
+				} catch {
+					// jsdom or detached node — focus is best-effort.
+				}
+			}
+		}
+
+		// Collapse prefs so a later pill re-open starts fresh (notice + actions); restore
+		// focus to the pill on an explicit dismissal, but never on the passive load-time
+		// hide for a returning visitor (which would yank focus onto the pill).
+		function hidePanel( restoreFocus ) {
+			root.hidden = true;
+			doc.removeEventListener( 'keydown', onKeydown );
+			prefs.hidden = true;
+			saveBtn.hidden = true;
+			customizeBtn.setAttribute( 'aria-expanded', 'false' );
+			pill.hidden = false;
+			if ( restoreFocus ) {
+				try {
+					pill.focus();
+				} catch {
+					// Focus is best-effort (jsdom / detached node).
+				}
+			}
+		}
+
+		function revealPrefs() {
+			prefs.hidden = false;
+			saveBtn.hidden = false;
+			customizeBtn.setAttribute( 'aria-expanded', 'true' );
+			prefillToggles( inputs );
+			const firstToggle = purposes.find( ( p ) => ! p.alwaysOn );
+			if ( firstToggle ) {
+				try {
+					inputs[ firstToggle.key ].focus();
+				} catch {
+					// Focus is best-effort.
+				}
+			}
+		}
+
+		// Esc acknowledges the notice and hides it — dismissible, since opt-out has no
+		// prior-consent requirement (no focus trap; this is the only key we watch).
+		function onKeydown( e ) {
+			if ( e.key === 'Escape' ) {
+				e.preventDefault();
+				acknowledge();
+			}
+		}
+
+		// Persist the current allow-by-default grants so the notice doesn't re-nag. Opt-out
+		// regimes permit default-on; this is acknowledgement, not prohibited implied consent.
+		function acknowledge() {
+			api.setConsent( api.get() );
+			hidePanel( true );
+		}
+
+		dnsBtn.addEventListener( 'click', () => {
+			api.rejectAll();
+			hidePanel( true );
+		} );
+		customizeBtn.addEventListener( 'click', revealPrefs );
+		saveBtn.addEventListener( 'click', () => {
+			api.setConsent( readToggles( inputs ) );
+			hidePanel( true );
+		} );
+		closeBtn.addEventListener( 'click', acknowledge );
+		// The pill is how a visitor exercises DNS after dismissing — re-open, move focus.
+		pill.addEventListener( 'click', ( e ) => {
+			if ( e && e.preventDefault ) {
+				e.preventDefault();
+			}
+			showPanel( true );
+		} );
+
+		// Initial state: returning visitor sees the pill only; otherwise show the notice
+		// passively (no focus steal — it's a non-blocking notice).
+		if ( api.hasDecision() ) {
+			hidePanel( false );
+		} else {
+			showPanel( false );
+		}
+
+		// Teardown: drop the keydown listener and remove our own nodes. No trap/inert to
+		// undo (the opt-out notice never installs them). Idempotent.
+		function destroy() {
+			doc.removeEventListener( 'keydown', onKeydown );
+			[ root, pill ].forEach( ( node ) => {
+				if ( node.parentNode ) {
+					node.parentNode.removeChild( node );
+				}
+			} );
+		}
+
+		return { destroy };
+	}
 }

@@ -17,9 +17,21 @@ const optOutPolicy = () => ( {
 	version: 1,
 	denyByDefault: false,
 	blocksBeforeConsent: false,
+	showsBanner: true,
+	defaultGranted: [ 'functional', 'analytics', 'marketing', 'personalization' ],
+} );
+
+const noticeOnlyPolicy = () => ( {
+	type: 'notice_only',
+	version: 1,
+	denyByDefault: false,
+	blocksBeforeConsent: false,
 	showsBanner: false,
 	defaultGranted: [ 'functional', 'analytics', 'marketing', 'personalization' ],
 } );
+
+/** Policy record factories — the banner reads the resolved policy via api.policy(). */
+export { optInPolicy, optOutPolicy, noticeOnlyPolicy };
 
 export function makeConfig( overrides = {} ) {
 	return {

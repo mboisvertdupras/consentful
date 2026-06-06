@@ -221,9 +221,12 @@ describe( 'gate async geo fallback', () => {
 		expect( api.get().analytics ).toBe( true );
 		// google.apply diffs the state JSON, so the post-geo apply re-emits an update.
 		expect( consentUpdates().length ).toBeGreaterThanOrEqual( 1 );
-		// US is opt_out (Increment B), so its banner re-render is a no-op — and the prior
-		// opt-in `*` banner is torn down, leaving none.
-		expect( document.querySelectorAll( '.cnf-banner' ).length ).toBe( 0 );
+		// US is opt_out (Increment B): the prior opt-in `*` banner is torn down and replaced
+		// by exactly one non-blocking Do-Not-Sell notice (no duplicates).
+		expect( document.querySelectorAll( '.cnf-banner' ).length ).toBe( 1 );
+		expect( document.querySelector( '.cnf-banner' ).classList.contains( 'cnf-banner--optout' ) ).toBe(
+			true
+		);
 	} );
 
 	it( 're-renders the banner without duplicating it on an opt-in geo change', async () => {

@@ -36,6 +36,11 @@ const COPY_DEFAULTS = {
 	customize: 'Customize',
 	save: 'Save preferences',
 	reopen: 'Privacy settings',
+	noticeTitle: 'Your privacy choices',
+	noticeDescription:
+		'We and our partners process personal data for advertising, analytics and personalization. You can opt out at any time.',
+	doNotSell: 'Do Not Sell or Share My Personal Information',
+	close: 'Close',
 };
 
 const parseCopy = ( raw ) => {

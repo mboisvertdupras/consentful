@@ -1,9 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { initBanner } from '../../assets/banner.js';
+import { optInPolicy, optOutPolicy, noticeOnlyPolicy } from './helpers.js';
+
+const POLICIES = {
+	opt_in: optInPolicy,
+	opt_out: optOutPolicy,
+	notice_only: noticeOnlyPolicy,
+};
 
 /**
  * Builds a fake gate API with spy decision methods over a mutable grants object, so the
- * banner can be driven without the real gate. `over` patches the defaults per-test.
+ * banner can be driven without the real gate. `over` patches the defaults per-test;
+ * `policyType` selects the matching full policy record the banner reads via api.policy().
  */
 function makeApi( over = {} ) {
 	const state = {
@@ -25,7 +33,7 @@ function makeApi( over = {} ) {
 		hasDecision: vi.fn( () => state.decision ),
 		gpc: vi.fn( () => state.gpc ),
 		purposes: vi.fn( () => state.purposes.map( ( p ) => ( { ...p } ) ) ),
-		policy: vi.fn( () => ( { type: state.policyType } ) ),
+		policy: vi.fn( () => POLICIES[ state.policyType ]() ),
 		setConsent: vi.fn(),
 		acceptAll: vi.fn(),
 		rejectAll: vi.fn(),
@@ -89,9 +97,12 @@ describe( 'banner', () => {
 		expect( root() ).toBeNull();
 	} );
 
-	it( 'renders nothing when the policy is not opt_in', () => {
-		boot( baseCfg, makeApi( { policyType: 'opt_out' } ) );
+	it( 'renders nothing under notice_only (showsBanner false)', () => {
+		const handle = bootHandle( baseCfg, makeApi( { policyType: 'notice_only' } ) );
 		expect( root() ).toBeNull();
+		expect( pill() ).toBeNull();
+		expect( typeof handle.destroy ).toBe( 'function' );
+		expect( () => handle.destroy() ).not.toThrow();
 	} );
 
 	it( 'defaults enabled true when the flag is absent', () => {
@@ -307,5 +318,144 @@ describe( 'banner a11y', () => {
 		expect( root().hidden ).toBe( false );
 		document.dispatchEvent( new window.KeyboardEvent( 'keydown', { key: 'Escape' } ) );
 		expect( root().hidden ).toBe( true );
+	} );
+} );
+
+describe( 'banner opt_out (Do Not Sell/Share notice)', () => {
+	beforeEach( () => {
+		document.body.innerHTML = '';
+		document.body.removeAttribute( 'inert' );
+	} );
+
+	// Opt-out is allow-by-default: every non-essential purpose starts granted.
+	function makeOptOut( over = {} ) {
+		return makeApi( {
+			policyType: 'opt_out',
+			grants: { necessary: true, functional: true, analytics: true, marketing: true },
+			...over,
+		} );
+	}
+
+	const dnsBtn = () => root().querySelector( '.cnf-btn--optout' );
+	const closeBtn = () =>
+		Array.prototype.find.call( root().querySelectorAll( '.cnf-btn--ghost' ), ( b ) =>
+			/close/i.test( b.textContent )
+		);
+
+	it( 'renders a non-blocking region notice with the DNS control', () => {
+		boot( baseCfg, makeOptOut() );
+		const node = root();
+		expect( node ).not.toBeNull();
+		expect( node.classList.contains( 'cnf-banner--optout' ) ).toBe( true );
+		expect( node.getAttribute( 'role' ) ).toBe( 'region' );
+		expect( node.hasAttribute( 'aria-modal' ) ).toBe( false );
+		expect( node.getAttribute( 'aria-label' ) ).toBe( 'Your privacy choices' );
+		expect( dnsBtn() ).not.toBeNull();
+		expect( dnsBtn().textContent ).toBe( 'Do Not Sell or Share My Personal Information' );
+		expect( node.hidden ).toBe( false );
+		expect( pill().hidden ).toBe( true );
+	} );
+
+	it( 'shows the notice passively without stealing focus on first visit', () => {
+		boot( baseCfg, makeOptOut() );
+		expect( root().hidden ).toBe( false );
+		expect( document.activeElement ).not.toBe( dnsBtn() );
+	} );
+
+	it( 'DNS button calls api.rejectAll then hides and shows the pill', () => {
+		const api = makeOptOut();
+		boot( baseCfg, api );
+		dnsBtn().click();
+		expect( api.rejectAll ).toHaveBeenCalledTimes( 1 );
+		expect( api.setConsent ).not.toHaveBeenCalled();
+		expect( root().hidden ).toBe( true );
+		expect( pill().hidden ).toBe( false );
+	} );
+
+	it( 'Manage preferences reveals prefs prefilled from api.get (all-on), Save persists toggles', () => {
+		const api = makeOptOut();
+		boot( baseCfg, api );
+		const customize = root().querySelector( '.cnf-btn--ghost' );
+		const prefs = root().querySelector( '.cnf-prefs' );
+		expect( prefs.hidden ).toBe( true );
+		customize.click();
+		expect( prefs.hidden ).toBe( false );
+		expect( customize.getAttribute( 'aria-expanded' ) ).toBe( 'true' );
+		// Prefilled from the all-on opt-out defaults.
+		expect( root().querySelector( '.cnf-purpose__input[value="analytics"]' ).checked ).toBe( true );
+		expect( root().querySelector( '.cnf-purpose__input[value="marketing"]' ).checked ).toBe( true );
+
+		root().querySelector( '.cnf-purpose__input[value="marketing"]' ).checked = false;
+		root().querySelector( '.cnf-btn--save' ).click();
+		expect( api.setConsent ).toHaveBeenCalledTimes( 1 );
+		expect( api.setConsent.mock.calls[ 0 ][ 0 ] ).toEqual( {
+			necessary: true,
+			functional: true,
+			analytics: true,
+			marketing: false,
+		} );
+		expect( root().hidden ).toBe( true );
+	} );
+
+	it( 'Close acknowledges by persisting current grants (no rejectAll) and shows the pill', () => {
+		const api = makeOptOut();
+		boot( baseCfg, api );
+		closeBtn().click();
+		expect( api.rejectAll ).not.toHaveBeenCalled();
+		expect( api.setConsent ).toHaveBeenCalledTimes( 1 );
+		expect( api.setConsent.mock.calls[ 0 ][ 0 ] ).toEqual( {
+			necessary: true,
+			functional: true,
+			analytics: true,
+			marketing: true,
+		} );
+		expect( root().hidden ).toBe( true );
+		expect( pill().hidden ).toBe( false );
+	} );
+
+	it( 'Esc acknowledges and hides the notice (not trapped)', () => {
+		const api = makeOptOut();
+		boot( baseCfg, api );
+		expect( root().hidden ).toBe( false );
+		document.dispatchEvent( new window.KeyboardEvent( 'keydown', { key: 'Escape' } ) );
+		expect( api.setConsent ).toHaveBeenCalledTimes( 1 );
+		expect( root().hidden ).toBe( true );
+		expect( pill().hidden ).toBe( false );
+	} );
+
+	it( 'never traps focus or inerts the background, even at position modal', () => {
+		const sibling = document.createElement( 'div' );
+		document.body.appendChild( sibling );
+		boot( { ...baseCfg, position: 'modal' }, makeOptOut() );
+		const node = root();
+		expect( node.getAttribute( 'role' ) ).toBe( 'region' );
+		expect( node.hasAttribute( 'aria-modal' ) ).toBe( false );
+		expect( sibling.hasAttribute( 'inert' ) ).toBe( false );
+		expect( sibling.hasAttribute( 'aria-hidden' ) ).toBe( false );
+		// Tab is never intercepted — dispatching it changes nothing about the notice.
+		document.dispatchEvent( new window.KeyboardEvent( 'keydown', { key: 'Tab' } ) );
+		expect( node.hidden ).toBe( false );
+	} );
+
+	it( 'returning visitor sees only the pill; clicking it re-opens the notice', () => {
+		const api = makeOptOut( { decision: true } );
+		boot( baseCfg, api );
+		expect( root().hidden ).toBe( true );
+		expect( pill().hidden ).toBe( false );
+		pill().click();
+		expect( root().hidden ).toBe( false );
+		expect( pill().hidden ).toBe( true );
+	} );
+
+	it( 'destroy removes the opt-out root and pill and drops the keydown listener', () => {
+		const handle = bootHandle( baseCfg, makeOptOut() );
+		expect( root() ).not.toBeNull();
+		expect( pill() ).not.toBeNull();
+		handle.destroy();
+		expect( root() ).toBeNull();
+		expect( pill() ).toBeNull();
+		// Listener is gone — re-init renders exactly one notice.
+		bootHandle( baseCfg, makeOptOut() );
+		expect( document.querySelectorAll( '.cnf-banner' ).length ).toBe( 1 );
 	} );
 } );
