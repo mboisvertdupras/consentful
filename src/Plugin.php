@@ -4,13 +4,17 @@ declare( strict_types = 1 );
 namespace Consentful;
 
 use Consentful\Adapter\AdapterRegistry;
+use Consentful\Consent\DatabaseSink;
+use Consentful\Consent\ProofConfig;
 use Consentful\Consent\PurposeRegistry;
+use Consentful\Consent\Sink;
 use Consentful\Container\Container;
 use Consentful\Frontend\BannerConfig;
 use Consentful\Frontend\Gate;
 use Consentful\Frontend\GeoConfig;
 use Consentful\Frontend\Manifest;
 use Consentful\Jurisdiction\JurisdictionRegistry;
+use Consentful\Rest\ConsentController;
 use Consentful\Rest\GeoController;
 use Consentful\Tag\TagRegistry;
 
@@ -54,6 +58,7 @@ final class Plugin {
 		}
 		$this->booted = true;
 
+		$this->ensure_database();
 		$this->register_core_services();
 		$this->register_frontend_services();
 
@@ -66,8 +71,52 @@ final class Plugin {
 			$gate->register();
 		}
 
-		// The separate, non-cached geo endpoint (registers on rest_api_init).
+		// The separate, non-cached endpoints (register on rest_api_init).
 		( new GeoController() )->register();
+		$this->consent_controller()->register();
+	}
+
+	/**
+	 * Lightweight upgrade guard: run activation when the recorded DB version lags the
+	 * code's. Covers installs where the activation hook never fired (must-use /
+	 * symlinked dev) and schema bumps. Activator::activate() is idempotent.
+	 */
+	private function ensure_database(): void {
+		// WordPress returns scalar options as strings, so compare numerically.
+		$installed = get_option( Activator::VERSION_OPTION );
+		$installed = is_scalar( $installed ) ? (int) $installed : 0;
+		if ( CONSENTFUL_DB_VERSION !== $installed ) {
+			Activator::activate();
+		}
+	}
+
+	/**
+	 * Build the proof-of-consent endpoint with the bound Sink and the per-site record
+	 * salt. A missing/empty salt option falls back to a generated transient so hashing
+	 * always has a salt (pseudonymization must never silently no-op).
+	 */
+	private function consent_controller(): ConsentController {
+		/** @var Sink $sink */
+		$sink = $this->container->get( Sink::class );
+
+		return new ConsentController( $sink, $this->record_salt() );
+	}
+
+	/** The persisted record salt, or a generated transient when the option is empty. */
+	private function record_salt(): string {
+		$salt = get_option( Activator::SALT_OPTION );
+		if ( is_string( $salt ) && '' !== $salt ) {
+			return $salt;
+		}
+
+		$fallback = get_transient( Activator::SALT_OPTION );
+		if ( is_string( $fallback ) && '' !== $fallback ) {
+			return $fallback;
+		}
+
+		$fallback = wp_generate_password( 64, true, true );
+		set_transient( Activator::SALT_OPTION, $fallback, DAY_IN_SECONDS );
+		return $fallback;
 	}
 
 	/**
@@ -96,6 +145,23 @@ final class Plugin {
 			AdapterRegistry::class,
 			static function (): AdapterRegistry {
 				return new AdapterRegistry();
+			}
+		);
+		// The built-in proof Sink: the bundled Consent log table. The wpdb coupling is
+		// resolved lazily in the factory; an Integrator rebinds this to their own store.
+		$this->container->singleton(
+			Sink::class,
+			static function (): DatabaseSink {
+				global $wpdb;
+				/** @var \wpdb $wpdb */
+				return new DatabaseSink( $wpdb, DatabaseSink::table_name( $wpdb ) );
+			}
+		);
+		// Proof on by default; an Integrator overrides this binding to disable it.
+		$this->container->singleton(
+			ProofConfig::class,
+			static function (): ProofConfig {
+				return ProofConfig::defaults();
 			}
 		);
 	}

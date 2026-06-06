@@ -280,3 +280,128 @@ describe( 'gate async geo fallback', () => {
 		expect( api.get().analytics ).toBe( false );
 	} );
 } );
+
+/** Inject a navigator.sendBeacon mock (absent in jsdom); returns the spy. */
+function mockBeacon( impl = () => true ) {
+	const spy = vi.fn( impl );
+	Object.defineProperty( navigator, 'sendBeacon', { value: spy, configurable: true } );
+	return spy;
+}
+
+describe( 'gate proof of consent', () => {
+	beforeEach( () => {
+		resetGlobals();
+		resetGoogle();
+		resetScript();
+		resetGtm();
+	} );
+
+	afterEach( () => {
+		if ( 'sendBeacon' in navigator ) {
+			delete navigator.sendBeacon;
+		}
+		delete window.fetch;
+	} );
+
+	it( 'sends exactly one proof record per decision with the §2 payload', () => {
+		const beacon = mockBeacon();
+		const api = bootGate();
+		api.setConsent( { analytics: true, marketing: false } );
+
+		expect( beacon ).toHaveBeenCalledTimes( 1 );
+		const [ url, blob ] = beacon.mock.calls[ 0 ];
+		expect( url ).toBe( 'https://example.test/wp-json/consentful/v1/consent' );
+		expect( blob ).toBeInstanceOf( Blob );
+		return blob.text().then( ( text ) => {
+			const body = JSON.parse( text );
+			expect( typeof body.cid ).toBe( 'string' );
+			expect( body.cid.length ).toBeGreaterThan( 0 );
+			// grants = the normalized decision (necessary forced on, marketing denied).
+			expect( body.grants ).toEqual( api.get() );
+			expect( body.grants.necessary ).toBe( true );
+			expect( body.grants.analytics ).toBe( true );
+			expect( body.grants.marketing ).toBe( false );
+			expect( body.jurisdiction ).toBe( '*' );
+			expect( body.policyVersion ).toBe( 1 );
+			expect( body.schemaVersion ).toBe( 1 );
+			expect( body.bannerVersion ).toBe( 1 );
+			expect( typeof body.timestamp ).toBe( 'number' );
+		} );
+	} );
+
+	it( 'sends the resolved jurisdiction id, not the default', () => {
+		const beacon = mockBeacon();
+		document.cookie = 'cnf_geo=US; path=/';
+		const cfg = makeConfig();
+		cfg.geo.cookie = 'cnf_geo';
+		const api = bootGate( cfg );
+		api.acceptAll();
+		expect( beacon ).toHaveBeenCalledTimes( 1 );
+		expect( api.jurisdiction() ).toBe( 'US' );
+		return beacon.mock.calls[ 0 ][ 1 ].text().then( ( text ) => {
+			expect( JSON.parse( text ).jurisdiction ).toBe( 'US' );
+		} );
+	} );
+
+	it( 'sends once for acceptAll and once for rejectAll (funneled through setConsent)', () => {
+		const beacon = mockBeacon();
+		const api = bootGate();
+		api.acceptAll();
+		api.rejectAll();
+		expect( beacon ).toHaveBeenCalledTimes( 2 );
+	} );
+
+	it( 'does NOT send on the passive initial load', () => {
+		const beacon = mockBeacon();
+		bootGate();
+		expect( beacon ).not.toHaveBeenCalled();
+	} );
+
+	it( 'does NOT send when a stored decision boots the gate (no new decision)', () => {
+		seedCookie( { v: 1, p: 1, j: '*', g: { analytics: 1 }, t: Date.now() } );
+		const beacon = mockBeacon();
+		bootGate();
+		expect( beacon ).not.toHaveBeenCalled();
+	} );
+
+	it( 'does NOT send when proof.enabled is false', () => {
+		const beacon = mockBeacon();
+		const cfg = makeConfig();
+		cfg.proof.enabled = false;
+		const api = bootGate( cfg );
+		api.setConsent( { analytics: true } );
+		expect( beacon ).not.toHaveBeenCalled();
+	} );
+
+	it( 'does NOT send when proof.endpoint is empty', () => {
+		const beacon = mockBeacon();
+		const cfg = makeConfig();
+		cfg.proof.endpoint = '';
+		const api = bootGate( cfg );
+		api.setConsent( { analytics: true } );
+		expect( beacon ).not.toHaveBeenCalled();
+	} );
+
+	it( 'falls back to fetch keepalive when sendBeacon is unavailable', () => {
+		window.fetch = vi.fn( () => Promise.resolve() );
+		const api = bootGate();
+		api.setConsent( { analytics: true } );
+		expect( window.fetch ).toHaveBeenCalledTimes( 1 );
+		const [ url, opts ] = window.fetch.mock.calls[ 0 ];
+		expect( url ).toBe( 'https://example.test/wp-json/consentful/v1/consent' );
+		expect( opts.method ).toBe( 'POST' );
+		expect( opts.keepalive ).toBe( true );
+		expect( JSON.parse( opts.body ).grants.analytics ).toBe( true );
+	} );
+
+	it( 'a proof transport failure never breaks the decision', () => {
+		mockBeacon( () => {
+			throw new Error( 'beacon down' );
+		} );
+		const api = bootGate();
+		expect( () => api.setConsent( { analytics: true } ) ).not.toThrow();
+		// The decision still applied and persisted despite the proof failure.
+		expect( api.get().analytics ).toBe( true );
+		expect( api.hasDecision() ).toBe( true );
+	} );
+} );

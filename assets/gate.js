@@ -16,6 +16,7 @@ import {
 	serializeConsent,
 } from './lib/cookie.js';
 import { computeGrants, isTagGranted } from './lib/grants.js';
+import { newConsentId, sendConsentRecord } from './lib/proof.js';
 import {
 	resolveJurisdictionSync,
 	activeJurisdiction,
@@ -164,7 +165,34 @@ export function init( rawConfig, { win, doc } ) {
 		persist( decision );
 		applyAll();
 		dispatchChange();
+		sendProof( decision );
 		return { ...grants };
+	}
+
+	// Durable proof of consent (ADR 0002): post a pseudonymous record after each decision.
+	// Fire-and-forget — only on an actual decision (never the passive initial load) and
+	// only when configured; a proof failure must never break the consent pipeline.
+	function sendProof( decision ) {
+		if ( ! config.proof.enabled || ! config.proof.endpoint ) {
+			return;
+		}
+		try {
+			sendConsentRecord(
+				config.proof.endpoint,
+				{
+					cid: newConsentId( win ),
+					grants: decision,
+					jurisdiction: resolved.id,
+					policyVersion: config.policyVersion,
+					schemaVersion: config.schemaVersion,
+					bannerVersion: config.proof.bannerVersion,
+					timestamp: Date.now(),
+				},
+				win
+			);
+		} catch {
+			// A proof failure must never break the consent pipeline.
+		}
 	}
 
 	function acceptAll() {

@@ -4,6 +4,7 @@ declare( strict_types = 1 );
 namespace Consentful\Frontend;
 
 use Consentful\Adapter\AdapterRegistry;
+use Consentful\Consent\ProofConfig;
 use Consentful\Consent\PurposeRegistry;
 use Consentful\Container\Container;
 use Consentful\Jurisdiction\JurisdictionRegistry;
@@ -106,6 +107,8 @@ final class Gate {
 		$banner = $this->container->get( BannerConfig::class );
 		/** @var GeoConfig $geo */
 		$geo = $this->container->get( GeoConfig::class );
+		/** @var ProofConfig $proof */
+		$proof = $this->container->get( ProofConfig::class );
 
 		return new ClientConfig(
 			$purposes,
@@ -115,6 +118,8 @@ final class Gate {
 			$banner,
 			$geo,
 			geo_endpoint_url: rest_url( 'consentful/v1/geo' ),
+			proof: $proof,
+			proof_endpoint_url: rest_url( 'consentful/v1/consent' ),
 			schema_version: $this->schema_version,
 			policy_version: $this->policy_version,
 			cookie: $this->cookie,

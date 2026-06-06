@@ -27,6 +27,8 @@ define( 'CONSENTFUL_FILE', __FILE__ );
 define( 'CONSENTFUL_SCHEMA_VERSION', 1 );
 // Bump when a jurisdiction Policy changes — triggers re-consent.
 define( 'CONSENTFUL_POLICY_VERSION', 1 );
+// Bump when the Consent log table schema changes — triggers a dbDelta migration.
+define( 'CONSENTFUL_DB_VERSION', 1 );
 define( 'CONSENTFUL_OPTION', 'consentful_settings' );
 define( 'CONSENTFUL_COOKIE', 'consentful' );
 
@@ -38,6 +40,12 @@ if ( ! is_readable( $consentful_autoload ) ) {
 	return;
 }
 require $consentful_autoload;
+
+// Create the Consent log table and ensure the record salt on activation. The boot-time
+// upgrade check covers must-use / symlinked dev installs where this hook never fires.
+if ( class_exists( \Consentful\Activator::class ) ) {
+	register_activation_hook( CONSENTFUL_FILE, array( '\\Consentful\\Activator', 'activate' ) );
+}
 
 // Defer boot to plugins_loaded so integrator listeners on consentful_register
 // (added at their own plugin's include time) exist when the hook fires.

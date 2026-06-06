@@ -8,6 +8,7 @@ use Consentful\Consent\PurposeRegistry;
 use Consentful\Jurisdiction\JurisdictionRegistry;
 use Consentful\Plugin;
 use Consentful\Tag\TagRegistry;
+use Consentful\Tests\Unit\Support\FakeWpdb;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -17,6 +18,22 @@ use PHPUnit\Framework\TestCase;
  * (no-op WP shims: add_action, do_action, …).
  */
 final class PluginTest extends TestCase {
+
+	protected function setUp(): void {
+		parent::setUp();
+		// boot() wires the DB-backed Sink and runs the upgrade check. Seed a matching
+		// DB version so activation is skipped, and a fake wpdb so the Sink factory
+		// resolves (per-test scope; no global wpdb stub leaks across the suite).
+		$GLOBALS['consentful_test_options'] = array(
+			'consentful_db_version' => CONSENTFUL_DB_VERSION,
+		);
+		$GLOBALS['wpdb']                    = FakeWpdb::create();
+	}
+
+	protected function tearDown(): void {
+		unset( $GLOBALS['consentful_test_options'], $GLOBALS['wpdb'], $GLOBALS['consentful_test_actions'] );
+		parent::tearDown();
+	}
 
 	public function test_instance_is_a_singleton(): void {
 		$this->assertSame( Plugin::instance(), Plugin::instance() );

@@ -6,6 +6,7 @@ namespace Consentful\Tests\Unit\Frontend;
 use Consentful\Adapter\AdapterRegistry;
 use Consentful\Adapter\GoogleAdapter;
 use Consentful\Consent\DefaultPurpose;
+use Consentful\Consent\ProofConfig;
 use Consentful\Consent\PurposeRegistry;
 use Consentful\Frontend\BannerConfig;
 use Consentful\Frontend\ClientConfig;
@@ -35,7 +36,9 @@ final class ClientConfigTest extends TestCase {
 		?JurisdictionRegistry $jurisdictions = null,
 		?BannerConfig $banner = null,
 		?GeoConfig $geo = null,
-		string $geo_endpoint_url = ''
+		string $geo_endpoint_url = '',
+		?ProofConfig $proof = null,
+		string $proof_endpoint_url = ''
 	): array {
 		$config = new ClientConfig(
 			PurposeRegistry::with_defaults(),
@@ -45,6 +48,8 @@ final class ClientConfigTest extends TestCase {
 			$banner ?? BannerConfig::defaults(),
 			$geo ?? GeoConfig::defaults(),
 			$geo_endpoint_url,
+			$proof ?? ProofConfig::defaults(),
+			$proof_endpoint_url,
 			1,
 			1,
 		);
@@ -174,6 +179,67 @@ final class ClientConfigTest extends TestCase {
 		$this->assertSame( 'EU', $map['FR'] );
 	}
 
+	public function test_proof_block_shape_and_values(): void {
+		$out = $this->build(
+			null,
+			null,
+			null,
+			null,
+			null,
+			'',
+			ProofConfig::defaults(),
+			'http://example.test/wp-json/consentful/v1/consent'
+		);
+		$proof = $this->sub_array( $out, 'proof' );
+
+		$this->assertSame( array( 'enabled', 'endpoint', 'bannerVersion' ), array_keys( $proof ) );
+		$this->assertTrue( $proof['enabled'] );
+		$this->assertSame( 'http://example.test/wp-json/consentful/v1/consent', $proof['endpoint'] );
+		// bannerVersion mirrors the BannerConfig version (defaults to 1).
+		$this->assertSame( 1, $proof['bannerVersion'] );
+	}
+
+	public function test_proof_block_sits_between_geo_and_tags(): void {
+		$keys = array_keys( $this->build() );
+
+		$geo   = array_search( 'geo', $keys, true );
+		$proof = array_search( 'proof', $keys, true );
+		$tags  = array_search( 'tags', $keys, true );
+
+		$this->assertIsInt( $geo );
+		$this->assertIsInt( $proof );
+		$this->assertIsInt( $tags );
+		$this->assertSame( $proof, $geo + 1 );
+		$this->assertSame( $tags, $proof + 1 );
+	}
+
+	public function test_proof_disabled_when_proof_config_disabled(): void {
+		$out   = $this->build( null, null, null, null, null, '', new ProofConfig( false ) );
+		$proof = $this->sub_array( $out, 'proof' );
+
+		$this->assertFalse( $proof['enabled'] );
+		$this->assertSame( '', $proof['endpoint'] );
+	}
+
+	public function test_proof_banner_version_tracks_the_banner_config(): void {
+		$banner = new BannerConfig(
+			true,
+			'bar',
+			'auto',
+			'#2563eb',
+			8,
+			7,
+			'',
+			array(),
+			array()
+		);
+
+		$out   = $this->build( null, null, null, $banner );
+		$proof = $this->sub_array( $out, 'proof' );
+
+		$this->assertSame( 7, $proof['bannerVersion'] );
+	}
+
 	public function test_tags_serialize_with_purpose_keys_and_lowercase_delivery(): void {
 		$tags = new TagRegistry();
 		$tags->add( new Tag( 'ga4', 'GA4', array( DefaultPurpose::Analytics ), Delivery::Direct, 'google' ) );
@@ -237,6 +303,8 @@ final class ClientConfigTest extends TestCase {
 			JurisdictionRegistry::with_defaults( 1 ),
 			BannerConfig::defaults(),
 			GeoConfig::defaults(),
+			'',
+			ProofConfig::defaults(),
 			'',
 			2,
 			3,

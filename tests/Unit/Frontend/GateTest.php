@@ -5,6 +5,7 @@ namespace Consentful\Tests\Unit\Frontend;
 
 use Consentful\Adapter\AdapterRegistry;
 use Consentful\Adapter\GoogleAdapter;
+use Consentful\Consent\ProofConfig;
 use Consentful\Consent\PurposeRegistry;
 use Consentful\Container\Container;
 use Consentful\Frontend\BannerConfig;
@@ -79,6 +80,7 @@ final class GateTest extends TestCase {
 		$container->instance( JurisdictionRegistry::class, JurisdictionRegistry::with_defaults( 1 ) );
 		$container->instance( BannerConfig::class, BannerConfig::defaults() );
 		$container->instance( GeoConfig::class, GeoConfig::defaults() );
+		$container->instance( ProofConfig::class, ProofConfig::defaults() );
 		return $container;
 	}
 
@@ -167,6 +169,9 @@ final class GateTest extends TestCase {
 		$this->assertStringContainsString( '"defaultJurisdiction":"*"', $output );
 		$this->assertStringContainsString( '"jurisdictions":', $output );
 		$this->assertStringContainsString( '"geo":', $output );
+		// The proof block carries the non-cached consent endpoint (config, not markup).
+		$this->assertStringContainsString( '"proof":{"enabled":true', $output );
+		$this->assertStringContainsString( '\/wp-json\/consentful\/v1\/consent', $output );
 		$this->assertStringContainsString( '"google":{', $output );
 		$this->assertStringContainsString( 'window.__consentfulDecider = true;', $output );
 	}

@@ -58,6 +58,11 @@ export function makeConfig( overrides = {} ) {
 			endpoint: '',
 			map: { US: 'US', GB: 'UK', FR: 'EU', 'CA-QC': 'QC' },
 		},
+		proof: {
+			enabled: true,
+			endpoint: 'https://example.test/wp-json/consentful/v1/consent',
+			bannerVersion: 1,
+		},
 		tags: [
 			{ id: 'ga4', purposes: [ 'analytics' ], delivery: 'direct', adapter: 'google' },
 		],

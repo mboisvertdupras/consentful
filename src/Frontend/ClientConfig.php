@@ -4,6 +4,7 @@ declare( strict_types = 1 );
 namespace Consentful\Frontend;
 
 use Consentful\Adapter\AdapterRegistry;
+use Consentful\Consent\ProofConfig;
 use Consentful\Consent\Purpose;
 use Consentful\Consent\PurposeRegistry;
 use Consentful\Jurisdiction\JurisdictionRegistry;
@@ -31,6 +32,8 @@ final class ClientConfig {
 		private readonly BannerConfig $banner,
 		private readonly GeoConfig $geo,
 		private readonly string $geo_endpoint_url = '',
+		private readonly ProofConfig $proof = new ProofConfig( true ),
+		private readonly string $proof_endpoint_url = '',
 		private readonly int $schema_version = 1,
 		private readonly int $policy_version = 1,
 		private readonly int $max_age_days = 180,
@@ -50,6 +53,7 @@ final class ClientConfig {
 			'purposes'            => $this->purposes_array(),
 			'jurisdictions'       => $this->jurisdictions_array(),
 			'geo'                 => $this->geo->to_array( $this->geo_endpoint_url ),
+			'proof'               => $this->proof->to_array( $this->proof_endpoint_url, $this->banner->version ),
 			'tags'                => $this->tags_array(),
 			'adapters'            => $this->adapters_array(),
 			'banner'              => $this->banner->to_array(),

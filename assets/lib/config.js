@@ -72,6 +72,16 @@ const parseGeo = ( raw ) => {
 	};
 };
 
+const parseProof = ( raw ) => {
+	const p = toObject( raw );
+	return {
+		// Default true, but only loosen when the key is absent — an explicit value wins.
+		enabled: 'enabled' in p ? toBool( p.enabled ) : true,
+		endpoint: toStr( p.endpoint ),
+		bannerVersion: toInt( p.bannerVersion, 1 ),
+	};
+};
+
 const parseTags = ( raw ) =>
 	toArray( raw ).map( ( t ) => {
 		const tag = toObject( t );
@@ -110,6 +120,7 @@ export function parseConfig( raw ) {
 		defaultJurisdiction: toStr( cfg.defaultJurisdiction, '*' ),
 		jurisdictions: parseJurisdictions( cfg.jurisdictions ),
 		geo: parseGeo( cfg.geo ),
+		proof: parseProof( cfg.proof ),
 		purposes: parsePurposes( cfg.purposes ),
 		tags: parseTags( cfg.tags ),
 		adapters: parseAdapters( cfg.adapters ),

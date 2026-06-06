@@ -119,4 +119,33 @@ describe( 'lib/config parseConfig', () => {
 		expect( cfg.geo ).toEqual( { cookie: '', var: '', endpoint: '', map: {} } );
 		expect( cfg.jurisdictions[ '*' ].policy.type ).toBe( 'opt_in' );
 	} );
+
+	it( 'parses the proof block with explicit values', () => {
+		const cfg = parseConfig( {
+			proof: {
+				enabled: true,
+				endpoint: 'https://example.test/wp-json/consentful/v1/consent',
+				bannerVersion: 3,
+			},
+		} );
+		expect( cfg.proof ).toEqual( {
+			enabled: true,
+			endpoint: 'https://example.test/wp-json/consentful/v1/consent',
+			bannerVersion: 3,
+		} );
+	} );
+
+	it( 'coerces string-encoded proof values and honors an explicit disable', () => {
+		const cfg = parseConfig( {
+			proof: { enabled: 'false', endpoint: '/ep', bannerVersion: '4' },
+		} );
+		expect( cfg.proof.enabled ).toBe( false );
+		expect( cfg.proof.endpoint ).toBe( '/ep' );
+		expect( cfg.proof.bannerVersion ).toBe( 4 );
+	} );
+
+	it( 'defaults proof to enabled with an empty endpoint when absent', () => {
+		const cfg = parseConfig( {} );
+		expect( cfg.proof ).toEqual( { enabled: true, endpoint: '', bannerVersion: 1 } );
+	} );
 } );

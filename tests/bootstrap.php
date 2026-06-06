@@ -16,3 +16,6 @@ if ( ! defined( 'CONSENTFUL_POLICY_VERSION' ) ) {
 if ( ! defined( 'CONSENTFUL_COOKIE' ) ) {
 	define( 'CONSENTFUL_COOKIE', 'consentful' );
 }
+if ( ! defined( 'CONSENTFUL_DB_VERSION' ) ) {
+	define( 'CONSENTFUL_DB_VERSION', 1 );
+}
