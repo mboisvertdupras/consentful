@@ -97,4 +97,102 @@ final class BannerConfigTest extends TestCase {
 			$banner->to_array()
 		);
 	}
+
+	public function test_with_overrides_applies_unlocked_fields(): void {
+		$out = BannerConfig::defaults()->with_overrides(
+			array(
+				'position'     => 'corner',
+				'theme'        => 'dark',
+				'primaryColor' => '#ff0000',
+				'privacyUrl'   => 'https://example.test/p',
+			),
+			array()
+		);
+
+		$this->assertSame( 'corner', $out->position );
+		$this->assertSame( 'dark', $out->theme );
+		$this->assertSame( '#ff0000', $out->primary_color );
+		$this->assertSame( 'https://example.test/p', $out->privacy_url );
+	}
+
+	public function test_with_overrides_ignores_locked_fields_so_base_wins(): void {
+		$out = BannerConfig::defaults()->with_overrides(
+			array(
+				'position'     => 'corner',
+				'primaryColor' => '#ff0000',
+			),
+			array( 'primaryColor' )
+		);
+
+		$this->assertSame( 'corner', $out->position );
+		// primaryColor is locked: the integrator's Layer-1 default wins.
+		$this->assertSame( '#2563eb', $out->primary_color );
+	}
+
+	public function test_with_overrides_falls_back_to_base_on_invalid_position_or_theme(): void {
+		$out = BannerConfig::defaults()->with_overrides(
+			array(
+				'position' => 'floating',
+				'theme'    => 'neon',
+			),
+			array()
+		);
+
+		$this->assertSame( 'bar', $out->position );
+		$this->assertSame( 'auto', $out->theme );
+	}
+
+	public function test_with_overrides_merges_copy_per_known_key(): void {
+		$out = BannerConfig::defaults()->with_overrides(
+			array(
+				'copy' => array(
+					'title'   => 'Custom title',
+					'unknown' => 'dropped',
+				),
+			),
+			array()
+		);
+
+		$this->assertSame( 'Custom title', $out->copy['title'] );
+		// Untouched keys keep the base value; unknown keys are ignored.
+		$this->assertArrayNotHasKey( 'unknown', $out->copy );
+		$this->assertSame( BannerConfig::defaults()->copy['acceptAll'], $out->copy['acceptAll'] );
+	}
+
+	public function test_with_overrides_keeps_base_copy_when_copy_locked(): void {
+		$out = BannerConfig::defaults()->with_overrides(
+			array( 'copy' => array( 'title' => 'Hacked' ) ),
+			array( 'copy' )
+		);
+
+		$this->assertSame( BannerConfig::defaults()->copy['title'], $out->copy['title'] );
+	}
+
+	public function test_with_overrides_coerces_string_radius_and_enabled(): void {
+		$out = BannerConfig::defaults()->with_overrides(
+			array(
+				'radius'  => '12',
+				'enabled' => '',
+			),
+			array()
+		);
+
+		$this->assertSame( 12, $out->radius );
+		$this->assertFalse( $out->enabled );
+	}
+
+	public function test_with_overrides_keeps_version_and_purposes(): void {
+		$base = BannerConfig::defaults();
+		$out  = $base->with_overrides( array( 'position' => 'modal' ), array() );
+
+		$this->assertSame( $base->version, $out->version );
+		$this->assertSame( $base->purposes, $out->purposes );
+	}
+
+	public function test_empty_overrides_yield_an_identical_config(): void {
+		$base = BannerConfig::defaults();
+		$out  = $base->with_overrides( array(), array() );
+
+		$this->assertSame( $base->to_array(), $out->to_array() );
+	}
 }

@@ -68,8 +68,17 @@ final class ConsentLogExporter {
 		return implode( ',', array_map( self::quote( ... ), $fields ) );
 	}
 
-	/** RFC-4180 field: wrap in double quotes, doubling any embedded quote. */
+	/**
+	 * One RFC-4180 field — wrapped in double quotes with embedded quotes doubled — with CSV
+	 * formula injection neutralized: a field starting with `=`, `+`, `-`, `@`, tab or CR is
+	 * prefixed with a single quote so a spreadsheet app does not execute it as a formula.
+	 * Grant keys reach the log via the public consent endpoint, so the export must defend the
+	 * auditor's spreadsheet (CWE-1236).
+	 */
 	private static function quote( string $field ): string {
+		if ( '' !== $field && str_contains( "=+-@\t\r", $field[0] ) ) {
+			$field = "'" . $field;
+		}
 		return '"' . str_replace( '"', '""', $field ) . '"';
 	}
 }

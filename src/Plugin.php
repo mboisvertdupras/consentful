@@ -4,6 +4,9 @@ declare( strict_types = 1 );
 namespace Consentful;
 
 use Consentful\Adapter\AdapterRegistry;
+use Consentful\Admin\Admin;
+use Consentful\Admin\ConsentLogReader;
+use Consentful\Admin\Settings;
 use Consentful\Consent\DatabaseSink;
 use Consentful\Consent\ProofConfig;
 use Consentful\Consent\PurposeRegistry;
@@ -69,6 +72,12 @@ final class Plugin {
 		$gate = $this->container->get( Gate::class );
 		if ( $gate instanceof Gate ) {
 			$gate->register();
+		}
+
+		// The constrained Site-owner admin UI, only in admin context. Built after
+		// consentful_register so the integrator's locks and toggleable Tags are in effect.
+		if ( is_admin() ) {
+			Admin::for_container( $this->container )->register();
 		}
 
 		// The separate, non-cached endpoints (register on rest_api_init).
@@ -162,6 +171,22 @@ final class Plugin {
 			ProofConfig::class,
 			static function (): ProofConfig {
 				return ProofConfig::defaults();
+			}
+		);
+		// The Site-owner settings layer. Resolved lazily after consentful_register, so the
+		// integrator's locked_fields filter is in effect when the option is read.
+		$this->container->singleton(
+			Settings::class,
+			static function (): Settings {
+				return Settings::from_wp();
+			}
+		);
+		// The Consent-log reader for the admin screen + CSV export. wpdb coupling resolved
+		// lazily in the factory.
+		$this->container->singleton(
+			ConsentLogReader::class,
+			static function (): ConsentLogReader {
+				return ConsentLogReader::for_wp();
 			}
 		);
 	}

@@ -11,6 +11,14 @@ if ( ! defined( 'DAY_IN_SECONDS' ) ) {
 	define( 'DAY_IN_SECONDS', 86400 );
 }
 
+// wpdb result-format constants used by the ConsentLogReader's get_results() calls.
+if ( ! defined( 'ARRAY_A' ) ) {
+	define( 'ARRAY_A', 'ARRAY_A' );
+}
+if ( ! defined( 'OBJECT' ) ) {
+	define( 'OBJECT', 'OBJECT' );
+}
+
 // A throwaway ABSPATH so the schema shell's `require_once ABSPATH . 'wp-admin/…'`
 // resolves under PHPUnit (dbDelta itself is the recorder stub below). The upgrade.php
 // fixture is created on demand; nothing real is loaded.
@@ -39,8 +47,23 @@ if ( ! function_exists( 'add_action' ) ) {
 	}
 }
 
+// A minimal filter registry so tests can exercise filter-driven code (e.g. the
+// consentful_locked_settings lock list). Callbacks live in a per-process global.
 if ( ! function_exists( 'add_filter' ) ) {
 	function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
+		if ( ! isset( $GLOBALS['consentful_test_filters'] ) || ! is_array( $GLOBALS['consentful_test_filters'] ) ) {
+			$GLOBALS['consentful_test_filters'] = array();
+		}
+		$GLOBALS['consentful_test_filters'][ $hook ][] = $callback;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'remove_all_filters' ) ) {
+	function remove_all_filters( $hook, $priority = false ) {
+		if ( isset( $GLOBALS['consentful_test_filters'][ $hook ] ) ) {
+			unset( $GLOBALS['consentful_test_filters'][ $hook ] );
+		}
 		return true;
 	}
 }
@@ -53,6 +76,12 @@ if ( ! function_exists( 'do_action' ) ) {
 
 if ( ! function_exists( 'apply_filters' ) ) {
 	function apply_filters( $hook, $value, ...$args ) {
+		$callbacks = $GLOBALS['consentful_test_filters'][ $hook ] ?? array();
+		if ( is_array( $callbacks ) ) {
+			foreach ( $callbacks as $callback ) {
+				$value = $callback( $value, ...$args );
+			}
+		}
 		return $value;
 	}
 }
@@ -60,6 +89,18 @@ if ( ! function_exists( 'apply_filters' ) ) {
 if ( ! function_exists( '__' ) ) {
 	function __( $text, $domain = 'default' ) {
 		return $text;
+	}
+}
+
+if ( ! function_exists( 'esc_html__' ) ) {
+	function esc_html__( $text, $domain = 'default' ) {
+		return htmlspecialchars( (string) $text, ENT_QUOTES );
+	}
+}
+
+if ( ! function_exists( 'esc_attr__' ) ) {
+	function esc_attr__( $text, $domain = 'default' ) {
+		return htmlspecialchars( (string) $text, ENT_QUOTES );
 	}
 }
 
@@ -237,6 +278,151 @@ if ( ! function_exists( 'wp_generate_password' ) ) {
 	}
 }
 
+// Admin recorders. add_menu_page / add_submenu_page / register_setting record their
+// args into per-test globals when seeded; otherwise they are plain no-ops.
+if ( ! function_exists( 'add_menu_page' ) ) {
+	function add_menu_page( $page_title, $menu_title, $capability, $menu_slug, $callback = '', $icon_url = '', $position = null ) {
+		if ( isset( $GLOBALS['consentful_test_menus'] ) && is_array( $GLOBALS['consentful_test_menus'] ) ) {
+			$GLOBALS['consentful_test_menus'][] = array(
+				'type'       => 'menu',
+				'slug'       => $menu_slug,
+				'capability' => $capability,
+			);
+		}
+		return $menu_slug;
+	}
+}
+
+if ( ! function_exists( 'add_submenu_page' ) ) {
+	function add_submenu_page( $parent_slug, $page_title, $menu_title, $capability, $menu_slug, $callback = '', $position = null ) {
+		if ( isset( $GLOBALS['consentful_test_menus'] ) && is_array( $GLOBALS['consentful_test_menus'] ) ) {
+			$GLOBALS['consentful_test_menus'][] = array(
+				'type'       => 'submenu',
+				'parent'     => $parent_slug,
+				'slug'       => $menu_slug,
+				'capability' => $capability,
+			);
+		}
+		return $menu_slug;
+	}
+}
+
+if ( ! function_exists( 'register_setting' ) ) {
+	function register_setting( $option_group, $option_name, $args = array() ) {
+		if ( isset( $GLOBALS['consentful_test_settings'] ) && is_array( $GLOBALS['consentful_test_settings'] ) ) {
+			$GLOBALS['consentful_test_settings'][] = array(
+				'group' => $option_group,
+				'name'  => $option_name,
+				'args'  => $args,
+			);
+		}
+		return true;
+	}
+}
+
+if ( ! function_exists( 'settings_fields' ) ) {
+	function settings_fields( $option_group ) {
+		echo '';
+	}
+}
+
+if ( ! function_exists( 'do_settings_sections' ) ) {
+	function do_settings_sections( $page ) {
+		echo '';
+	}
+}
+
+if ( ! function_exists( 'submit_button' ) ) {
+	function submit_button( $text = '', $type = 'primary', $name = 'submit', $wrap = true, $other_attributes = '' ) {
+		echo '<input type="submit" />';
+	}
+}
+
+if ( ! function_exists( 'is_admin' ) ) {
+	function is_admin() {
+		return ! empty( $GLOBALS['consentful_test_is_admin'] );
+	}
+}
+
+if ( ! function_exists( 'current_user_can' ) ) {
+	function current_user_can( $capability, ...$args ) {
+		return ! array_key_exists( 'consentful_test_can', $GLOBALS ) || (bool) $GLOBALS['consentful_test_can'];
+	}
+}
+
+if ( ! function_exists( 'check_admin_referer' ) ) {
+	function check_admin_referer( $action = -1, $query_arg = '_wpnonce' ) {
+		return 1;
+	}
+}
+
+if ( ! function_exists( 'wp_verify_nonce' ) ) {
+	function wp_verify_nonce( $nonce, $action = -1 ) {
+		return 1;
+	}
+}
+
+if ( ! function_exists( 'wp_nonce_field' ) ) {
+	function wp_nonce_field( $action = -1, $name = '_wpnonce', $referer = true, $display = true ) {
+		$field = '<input type="hidden" name="' . $name . '" value="nonce" />';
+		if ( $display ) {
+			echo $field;
+		}
+		return $field;
+	}
+}
+
+if ( ! function_exists( 'admin_url' ) ) {
+	function admin_url( $path = '', $scheme = 'admin' ) {
+		return 'http://example.test/wp-admin/' . ltrim( (string) $path, '/' );
+	}
+}
+
+if ( ! function_exists( 'wp_unslash' ) ) {
+	function wp_unslash( $value ) {
+		return is_string( $value ) ? stripslashes( $value ) : $value;
+	}
+}
+
+if ( ! function_exists( 'sanitize_key' ) ) {
+	function sanitize_key( $key ) {
+		return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $key ) );
+	}
+}
+
+if ( ! function_exists( 'sanitize_hex_color' ) ) {
+	function sanitize_hex_color( $color ) {
+		$color = (string) $color;
+		return preg_match( '/^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})$/', $color ) ? $color : null;
+	}
+}
+
+if ( ! function_exists( 'esc_textarea' ) ) {
+	function esc_textarea( $text ) {
+		return htmlspecialchars( (string) $text, ENT_QUOTES );
+	}
+}
+
+if ( ! function_exists( 'selected' ) ) {
+	function selected( $selected, $current = true, $display = true ) {
+		$result = (string) $selected === (string) $current ? ' selected="selected"' : '';
+		if ( $display ) {
+			echo $result;
+		}
+		return $result;
+	}
+}
+
+if ( ! function_exists( 'checked' ) ) {
+	function checked( $checked, $current = true, $display = true ) {
+		$result = (string) $checked === (string) $current ? ' checked="checked"' : '';
+		if ( $display ) {
+			echo $result;
+		}
+		return $result;
+	}
+}
+
 if ( ! function_exists( 'sanitize_text_field' ) ) {
 	function sanitize_text_field( $value ) {
 		$value = (string) $value;
@@ -321,6 +507,21 @@ if ( ! class_exists( 'wpdb' ) ) {
 		/** @return int|bool */
 		public function query( $query ) {
 			return 0;
+		}
+
+		/** @return string */
+		public function prepare( $query, ...$args ) {
+			return (string) $query;
+		}
+
+		/** @return int|string|null */
+		public function get_var( $query = null, $column_offset = 0, $row_offset = 0 ) {
+			return null;
+		}
+
+		/** @return array<int, mixed>|object|null */
+		public function get_results( $query = null, $output = OBJECT ) {
+			return array();
 		}
 
 		public function get_charset_collate() {

@@ -117,4 +117,16 @@ final class TagTest extends TestCase {
 
 		$this->assertSame( array( Delivery::Direct, Delivery::Delegated ), $cases );
 	}
+
+	public function test_site_toggleable_defaults_false(): void {
+		$tag = new Tag( 'ga4', 'GA4', array( DefaultPurpose::Analytics ), Delivery::Direct, 'google' );
+
+		$this->assertFalse( $tag->site_toggleable );
+	}
+
+	public function test_site_toggleable_is_settable_true(): void {
+		$tag = new Tag( 'ga4', 'GA4', array( DefaultPurpose::Analytics ), Delivery::Direct, 'google', true );
+
+		$this->assertTrue( $tag->site_toggleable );
+	}
 }

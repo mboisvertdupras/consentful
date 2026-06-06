@@ -4,6 +4,7 @@ declare( strict_types = 1 );
 namespace Consentful\Frontend;
 
 use Consentful\Adapter\AdapterRegistry;
+use Consentful\Admin\Settings;
 use Consentful\Consent\ProofConfig;
 use Consentful\Consent\PurposeRegistry;
 use Consentful\Container\Container;
@@ -109,6 +110,13 @@ final class Gate {
 		$geo = $this->container->get( GeoConfig::class );
 		/** @var ProofConfig $proof */
 		$proof = $this->container->get( ProofConfig::class );
+		/** @var Settings $settings */
+		$settings = $this->container->get( Settings::class );
+
+		// Overlay the Site owner's unlocked settings on the integrator's banner (Layer 1).
+		// With no saved settings the overrides are empty and the result is identical to
+		// today — and identical for every Visitor (settings are global, not per-visitor).
+		$banner = $banner->with_overrides( $settings->banner_overrides(), Settings::locked_fields() );
 
 		return new ClientConfig(
 			$purposes,
@@ -123,6 +131,30 @@ final class Gate {
 			schema_version: $this->schema_version,
 			policy_version: $this->policy_version,
 			cookie: $this->cookie,
+			hidden_tags: $this->hidden_tags( $tags, $settings ),
+		);
+	}
+
+	/**
+	 * The Site-owner-disabled Tag ids, intersected with the toggleable Tags — only
+	 * toggleable Tags can be hidden, so a non-toggleable id in the option is ignored.
+	 *
+	 * @return list<string>
+	 */
+	private function hidden_tags( TagRegistry $tags, Settings $settings ): array {
+		$disabled   = $settings->hidden_tag_ids();
+		$toggleable = array();
+		foreach ( $tags->all() as $tag ) {
+			if ( $tag->site_toggleable ) {
+				$toggleable[ $tag->id ] = true;
+			}
+		}
+
+		return array_values(
+			array_filter(
+				$disabled,
+				static fn ( string $id ): bool => isset( $toggleable[ $id ] )
+			)
 		);
 	}
 

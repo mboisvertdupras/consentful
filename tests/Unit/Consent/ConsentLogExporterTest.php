@@ -99,6 +99,28 @@ final class ConsentLogExporterTest extends TestCase {
 		$this->assertSame( 'cid,"x"', $rows[1][0] );
 	}
 
+	public function test_formula_injection_triggers_are_neutralized(): void {
+		// Grant keys reach the log via the public consent endpoint, so a value beginning with
+		// a formula trigger (=, +, -, @, tab, CR) must be prefixed with a single quote so the
+		// auditor's spreadsheet does not execute it as a formula (CWE-1236).
+		$row = array(
+			'consent_id'     => 'cid',
+			'created_at'     => '2024-12-05T12:00:00+00:00',
+			'jurisdiction'   => 'US',
+			'policy_version' => 1,
+			'schema_version' => 1,
+			'banner_version' => 1,
+			'purposes'       => '=cmd|calc!A1=1',
+			'ip_hash'        => '',
+			'ua_hash'        => '',
+		);
+
+		$rows = $this->parse( ConsentLogExporter::to_csv( array( $row ) ) );
+
+		// The dangerous leading '=' is now an inert literal, prefixed with a single quote.
+		$this->assertSame( "'=cmd|calc!A1=1", $rows[1][6] );
+	}
+
 	public function test_accepts_a_generator_of_records(): void {
 		$gen = ( static function () {
 			yield ( new ConsentRecord( 'g1', 1733400000, 'EU', 1, 1, 1, array( 'necessary' => true ), null, null ) );

@@ -74,4 +74,21 @@
 	<rule ref="WordPress.Security.EscapeOutput.ExceptionNotEscaped">
 		<exclude-pattern>*/Container/Container.php</exclude-pattern>
 	</rule>
+
+	<!-- ConsentLogDownload streams a `text/csv` attachment (Content-Disposition: attachment),
+	     not an HTML response — EscapeOutput is an HTML/XSS sniff that does not apply. The body
+	     is built by the unit-tested ConsentLogExporter, which RFC-4180-quotes every field.
+	     Scoped to this zero-HTML download shell ONLY, so EscapeOutput stays fully enforced on
+	     every HTML-rendering admin screen (Admin.php). -->
+	<rule ref="WordPress.Security.EscapeOutput.OutputNotEscaped">
+		<exclude-pattern>*/Admin/ConsentLogDownload.php</exclude-pattern>
+	</rule>
+
+	<!-- The Consent-log page reads `$_GET['paged']` to display a page of records — a
+	     read-only navigation var, absint-coerced, that changes no state. NonceVerification
+	     guards state-changing form processing (the save and the export DO verify a nonce),
+	     so it is a false positive for read-only pagination. Scoped to the admin shell. -->
+	<rule ref="WordPress.Security.NonceVerification.Recommended">
+		<exclude-pattern>*/Admin/Admin.php</exclude-pattern>
+	</rule>
 </ruleset>

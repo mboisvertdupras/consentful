@@ -5,6 +5,8 @@ namespace Consentful\Tests\Unit\Frontend;
 
 use Consentful\Adapter\AdapterRegistry;
 use Consentful\Adapter\GoogleAdapter;
+use Consentful\Admin\Settings;
+use Consentful\Consent\DefaultPurpose;
 use Consentful\Consent\ProofConfig;
 use Consentful\Consent\PurposeRegistry;
 use Consentful\Container\Container;
@@ -13,6 +15,8 @@ use Consentful\Frontend\Gate;
 use Consentful\Frontend\GeoConfig;
 use Consentful\Frontend\Manifest;
 use Consentful\Jurisdiction\JurisdictionRegistry;
+use Consentful\Tag\Delivery;
+use Consentful\Tag\Tag;
 use Consentful\Tag\TagRegistry;
 use PHPUnit\Framework\TestCase;
 
@@ -70,10 +74,10 @@ final class GateTest extends TestCase {
 		return $dir . '/.vite/manifest.json';
 	}
 
-	private function container(): Container {
+	private function container( ?Settings $settings = null, ?TagRegistry $tags = null ): Container {
 		$container = new Container();
 		$container->instance( PurposeRegistry::class, PurposeRegistry::with_defaults() );
-		$container->instance( TagRegistry::class, new TagRegistry() );
+		$container->instance( TagRegistry::class, $tags ?? new TagRegistry() );
 		$adapters = new AdapterRegistry();
 		$adapters->add( new GoogleAdapter( array( 'G-XXXXXXX' ) ) );
 		$container->instance( AdapterRegistry::class, $adapters );
@@ -81,6 +85,7 @@ final class GateTest extends TestCase {
 		$container->instance( BannerConfig::class, BannerConfig::defaults() );
 		$container->instance( GeoConfig::class, GeoConfig::defaults() );
 		$container->instance( ProofConfig::class, ProofConfig::defaults() );
+		$container->instance( Settings::class, $settings ?? new Settings( array(), array() ) );
 		return $container;
 	}
 
@@ -128,9 +133,9 @@ final class GateTest extends TestCase {
 		return $out;
 	}
 
-	private function gate( string $dir, string $manifest_path ): Gate {
+	private function gate( string $dir, string $manifest_path, ?Settings $settings = null, ?TagRegistry $tags = null ): Gate {
 		return new Gate(
-			$this->container(),
+			$this->container( $settings, $tags ),
 			new Manifest( $manifest_path ),
 			$dir,
 			'http://example.test/wp-content/plugins/consentful/build',
@@ -280,5 +285,83 @@ final class GateTest extends TestCase {
 		$this->gate( $dir, $manifest_path )->enqueue();
 
 		$this->assertSame( array(), $this->recorded_styles() );
+	}
+
+	public function test_print_head_applies_a_saved_banner_override(): void {
+		$dir      = $this->build_dir();
+		$settings = new Settings(
+			array(
+				'position'     => 'modal',
+				'primaryColor' => '#ff0000',
+			),
+			array()
+		);
+
+		ob_start();
+		$this->gate( $dir, $dir . '/.vite/manifest.json', $settings )->print_head();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( '"position":"modal"', $output );
+		$this->assertStringContainsString( '"primaryColor":"#ff0000"', $output );
+	}
+
+	public function test_print_head_omits_a_site_owner_disabled_toggleable_tag(): void {
+		$dir  = $this->build_dir();
+		$tags = new TagRegistry();
+		$tags->add( new Tag( 'ga4', 'GA4', array( DefaultPurpose::Analytics ), Delivery::Direct, 'google', true ) );
+		$tags->add( new Tag( 'meta', 'Meta Pixel', array( DefaultPurpose::Marketing ), Delivery::Direct, 'meta', true ) );
+
+		$settings = new Settings( array( 'tags' => array( 'meta' => false ) ), array() );
+
+		ob_start();
+		$this->gate( $dir, $dir . '/.vite/manifest.json', $settings, $tags )->print_head();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( '"id":"ga4"', $output );
+		$this->assertStringNotContainsString( '"id":"meta"', $output );
+	}
+
+	public function test_print_head_keeps_a_non_toggleable_tag_even_when_listed_disabled(): void {
+		$dir  = $this->build_dir();
+		$tags = new TagRegistry();
+		// Not toggleable: a site-owner "disable" must be ignored (only toggleable Tags hide).
+		$tags->add( new Tag( 'ga4', 'GA4', array( DefaultPurpose::Analytics ), Delivery::Direct, 'google', false ) );
+
+		$settings = new Settings( array( 'tags' => array( 'ga4' => false ) ), array() );
+
+		ob_start();
+		$this->gate( $dir, $dir . '/.vite/manifest.json', $settings, $tags )->print_head();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( '"id":"ga4"', $output );
+	}
+
+	public function test_print_head_with_settings_is_identical_for_every_visitor(): void {
+		$dir      = $this->build_dir();
+		$this->write_decider( $dir, 'window.__consentfulDecider = true;' );
+		$settings = new Settings( array( 'theme' => 'dark' ), array() );
+
+		ob_start();
+		$this->gate( $dir, $dir . '/.vite/manifest.json', $settings )->print_head();
+		$first = (string) ob_get_clean();
+
+		ob_start();
+		$this->gate( $dir, $dir . '/.vite/manifest.json', $settings )->print_head();
+		$second = (string) ob_get_clean();
+
+		$this->assertSame( $first, $second );
+		$this->assertStringContainsString( '"theme":"dark"', $first );
+	}
+
+	public function test_print_head_degrades_to_today_with_no_saved_settings(): void {
+		$dir = $this->build_dir();
+
+		ob_start();
+		$this->gate( $dir, $dir . '/.vite/manifest.json' )->print_head();
+		$output = (string) ob_get_clean();
+
+		// With empty Settings the banner matches the integrator's defaults.
+		$banner = (string) wp_json_encode( BannerConfig::defaults()->to_array() );
+		$this->assertStringContainsString( '"banner":' . $banner, $output );
 	}
 }

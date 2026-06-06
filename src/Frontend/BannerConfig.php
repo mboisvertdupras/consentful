@@ -15,6 +15,12 @@ namespace Consentful\Frontend;
  */
 final class BannerConfig {
 
+	/** @var list<string> Allowed banner positions; anything else falls back to the base. */
+	private const POSITIONS = array( 'bar', 'corner', 'modal' );
+
+	/** @var list<string> Allowed banner themes; anything else falls back to the base. */
+	private const THEMES = array( 'light', 'dark', 'auto' );
+
 	/**
 	 * @param array<string, string>                        $copy     UI copy keyed by control (camelCase keys per §2).
 	 * @param array<string, array{label: string, description: string}> $purposes Presentation copy keyed by Purpose key.
@@ -46,6 +52,74 @@ final class BannerConfig {
 			'copy'         => $this->copy,
 			'purposes'     => $this->purposes,
 		);
+	}
+
+	/**
+	 * Return a NEW BannerConfig with the Site owner's unlocked overrides layered over this
+	 * base (the integrator's Layer 1). A field is overlaid only when it is present in
+	 * `$overrides` AND not in `$locked` — locked fields keep the base value (Layer 1 wins).
+	 * Values may arrive as strings (from the option), so each is coerced defensively;
+	 * invalid `position`/`theme` fall back to the base. `purposes` is not Site-owner editable
+	 * in this increment. Pure: no WordPress calls.
+	 *
+	 * @param array<string, mixed> $overrides The Site owner's stored banner values.
+	 * @param list<string>         $locked    Locked top-level field keys.
+	 */
+	public function with_overrides( array $overrides, array $locked ): self {
+		$has = static fn ( string $field ): bool => array_key_exists( $field, $overrides ) && ! in_array( $field, $locked, true );
+
+		return new self(
+			$has( 'enabled' ) ? (bool) $overrides['enabled'] : $this->enabled,
+			$has( 'position' ) ? self::in_list( self::to_string( $overrides['position'] ), self::POSITIONS, $this->position ) : $this->position,
+			$has( 'theme' ) ? self::in_list( self::to_string( $overrides['theme'] ), self::THEMES, $this->theme ) : $this->theme,
+			$has( 'primaryColor' ) ? self::to_string( $overrides['primaryColor'] ) : $this->primary_color,
+			$has( 'radius' ) ? self::to_int( $overrides['radius'] ) : $this->radius,
+			$this->version,
+			$has( 'privacyUrl' ) ? self::to_string( $overrides['privacyUrl'] ) : $this->privacy_url,
+			$this->merged_copy( $overrides, $locked ),
+			$this->purposes,
+		);
+	}
+
+	/**
+	 * Merge the override copy map (when `'copy'` is present and unlocked) over the base copy,
+	 * per known key only — unknown keys are ignored and missing keys keep the base value.
+	 *
+	 * @param array<string, mixed> $overrides
+	 * @param list<string>         $locked
+	 * @return array<string, string>
+	 */
+	private function merged_copy( array $overrides, array $locked ): array {
+		if ( ! array_key_exists( 'copy', $overrides ) || in_array( 'copy', $locked, true ) || ! is_array( $overrides['copy'] ) ) {
+			return $this->copy;
+		}
+
+		$copy = $this->copy;
+		foreach ( $overrides['copy'] as $key => $value ) {
+			if ( array_key_exists( $key, $copy ) ) {
+				$copy[ $key ] = self::to_string( $value );
+			}
+		}
+		return $copy;
+	}
+
+	/**
+	 * Return `$value` when it is in the allowlist, otherwise the `$fallback`.
+	 *
+	 * @param list<string> $allowed
+	 */
+	private static function in_list( string $value, array $allowed, string $fallback ): string {
+		return in_array( $value, $allowed, true ) ? $value : $fallback;
+	}
+
+	/** Defensively coerce a scalar override value to string (non-scalars become ''). */
+	private static function to_string( mixed $value ): string {
+		return is_scalar( $value ) ? (string) $value : '';
+	}
+
+	/** Defensively coerce a scalar override value to int (non-numerics become 0). */
+	private static function to_int( mixed $value ): int {
+		return is_numeric( $value ) ? (int) $value : 0;
 	}
 
 	/**
