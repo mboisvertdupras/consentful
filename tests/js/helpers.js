@@ -1,0 +1,80 @@
+/**
+ * Shared test helpers — a §2-shaped config fixture and global-reset utilities so each
+ * suite drives the entries/handlers against a clean jsdom.
+ */
+
+export function makeConfig( overrides = {} ) {
+	return {
+		cookie: 'consentful',
+		schemaVersion: 1,
+		policyVersion: 1,
+		maxAgeDays: 180,
+		jurisdiction: '*',
+		purposes: [
+			{ key: 'necessary', alwaysOn: true },
+			{ key: 'functional', alwaysOn: false },
+			{ key: 'analytics', alwaysOn: false },
+			{ key: 'marketing', alwaysOn: false },
+			{ key: 'personalization', alwaysOn: false },
+		],
+		policy: {
+			type: 'opt_in',
+			version: 1,
+			denyByDefault: true,
+			blocksBeforeConsent: true,
+			showsBanner: true,
+			defaultGranted: [],
+		},
+		tags: [
+			{ id: 'ga4', purposes: [ 'analytics' ], delivery: 'direct', adapter: 'google' },
+		],
+		adapters: {
+			google: {
+				handler: 'google',
+				measurementIds: [ 'G-XXXX' ],
+				purposeSignals: {
+					necessary: [ 'security_storage' ],
+					functional: [ 'functionality_storage' ],
+					analytics: [ 'analytics_storage' ],
+					marketing: [ 'ad_storage', 'ad_user_data', 'ad_personalization' ],
+					personalization: [ 'personalization_storage' ],
+				},
+				adsDataRedaction: true,
+				urlPassthrough: true,
+				waitForUpdate: 500,
+			},
+		},
+		...overrides,
+	};
+}
+
+/** Clear cookies, dataLayer, gtag, GPC and the decider emit/registration flags. */
+export function resetGlobals() {
+	document.cookie.split( ';' ).forEach( ( c ) => {
+		const name = c.split( '=' )[ 0 ].trim();
+		if ( name ) {
+			document.cookie = name + '=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+		}
+	} );
+	delete window.dataLayer;
+	delete window.gtag;
+	delete window.consentful;
+	delete window.__consentfulDefaultEmitted;
+	if ( 'globalPrivacyControl' in navigator ) {
+		delete navigator.globalPrivacyControl;
+	}
+}
+
+/** Force navigator.globalPrivacyControl for a test. */
+export function setGpc( value ) {
+	Object.defineProperty( navigator, 'globalPrivacyControl', {
+		value,
+		configurable: true,
+	} );
+}
+
+/** Write a v1 cookie payload directly (for "stored decision" tests). */
+export function seedCookie( payload ) {
+	document.cookie =
+		'consentful=' + encodeURIComponent( JSON.stringify( payload ) ) + '; path=/';
+}

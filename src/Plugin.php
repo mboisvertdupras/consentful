@@ -6,6 +6,8 @@ namespace Consentful;
 use Consentful\Adapter\AdapterRegistry;
 use Consentful\Consent\PurposeRegistry;
 use Consentful\Container\Container;
+use Consentful\Frontend\Gate;
+use Consentful\Frontend\Manifest;
 use Consentful\Jurisdiction\JurisdictionRegistry;
 use Consentful\Tag\TagRegistry;
 
@@ -50,8 +52,16 @@ final class Plugin {
 		$this->booted = true;
 
 		$this->register_core_services();
+		$this->register_frontend_services();
 
+		// Integrators declare adapters, tags and policy here (the source of truth).
 		do_action( 'consentful_register', $this->container );
+
+		// Register the gate last, so it observes the integrator's final wiring.
+		$gate = $this->container->get( Gate::class );
+		if ( $gate instanceof Gate ) {
+			$gate->register();
+		}
 	}
 
 	/**
@@ -80,6 +90,32 @@ final class Plugin {
 			AdapterRegistry::class,
 			static function (): AdapterRegistry {
 				return new AdapterRegistry();
+			}
+		);
+	}
+
+	/**
+	 * Bind the cache-safe client gate and its Vite manifest reader. The gate is
+	 * resolved and registered after `consentful_register` (see boot()).
+	 */
+	private function register_frontend_services(): void {
+		$build_dir = plugin_dir_path( CONSENTFUL_FILE ) . 'build';
+		$build_url = plugins_url( 'build', CONSENTFUL_FILE );
+		$manifest  = new Manifest( $build_dir . '/.vite/manifest.json' );
+
+		$this->container->instance( Manifest::class, $manifest );
+		$this->container->singleton(
+			Gate::class,
+			static function ( Container $container ) use ( $manifest, $build_dir, $build_url ): Gate {
+				return new Gate(
+					$container,
+					$manifest,
+					$build_dir,
+					$build_url,
+					CONSENTFUL_SCHEMA_VERSION,
+					CONSENTFUL_POLICY_VERSION,
+					CONSENTFUL_COOKIE
+				);
 			}
 		);
 	}

@@ -13,3 +13,6 @@ if ( ! defined( 'CONSENTFUL_SCHEMA_VERSION' ) ) {
 if ( ! defined( 'CONSENTFUL_POLICY_VERSION' ) ) {
 	define( 'CONSENTFUL_POLICY_VERSION', 1 );
 }
+if ( ! defined( 'CONSENTFUL_COOKIE' ) ) {
+	define( 'CONSENTFUL_COOKIE', 'consentful' );
+}

@@ -1,0 +1,165 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import { init } from '../../assets/gate.js';
+import { reset as resetGoogle } from '../../assets/adapters/google.js';
+import { reset as resetScript } from '../../assets/adapters/script.js';
+import { reset as resetGtm } from '../../assets/adapters/gtm.js';
+import {
+	parseConsent,
+	validateConsent,
+} from '../../assets/lib/cookie.js';
+import { readCookie } from '../../assets/lib/cookie.js';
+import { makeConfig, resetGlobals, setGpc, seedCookie } from './helpers.js';
+
+function bootGate( config = makeConfig() ) {
+	return init( config, { win: window, doc: document } );
+}
+
+function storedDecision() {
+	return validateConsent( parseConsent( readCookie( 'consentful', document ) ), {
+		schemaVersion: 1,
+		policyVersion: 1,
+		maxAgeMs: 1000 * 60 * 60 * 24 * 180,
+	} );
+}
+
+describe( 'gate', () => {
+	beforeEach( () => {
+		resetGlobals();
+		resetGoogle();
+		resetScript();
+		resetGtm();
+	} );
+
+	it( 'exposes the public API on window.consentful', () => {
+		const api = bootGate();
+		for ( const fn of [
+			'get',
+			'hasDecision',
+			'gpc',
+			'purposes',
+			'jurisdiction',
+			'policy',
+			'setConsent',
+			'acceptAll',
+			'rejectAll',
+			'onChange',
+			'registerAdapter',
+		] ) {
+			expect( typeof api[ fn ] ).toBe( 'function' );
+		}
+		expect( api.jurisdiction() ).toBe( '*' );
+		expect( api.policy().type ).toBe( 'opt_in' );
+		expect( api.purposes().length ).toBe( 5 );
+	} );
+
+	it( 'recomputes without the decider _init', () => {
+		// No decider ran; gate alone must compute opt-in deny-all.
+		const api = bootGate();
+		expect( api.get() ).toEqual( {
+			necessary: true,
+			functional: false,
+			analytics: false,
+			marketing: false,
+			personalization: false,
+		} );
+		expect( api.hasDecision() ).toBe( false );
+	} );
+
+	it( 'setConsent writes a valid v1 cookie with g as 0/1', () => {
+		const api = bootGate();
+		api.setConsent( { analytics: true, marketing: false } );
+
+		const raw = parseConsent( readCookie( 'consentful', document ) );
+		expect( raw.v ).toBe( 1 );
+		expect( raw.p ).toBe( 1 );
+		expect( raw.j ).toBe( '*' );
+		expect( raw.g.analytics ).toBe( 1 );
+		expect( raw.g.marketing ).toBe( 0 );
+		expect( raw.g.necessary ).toBe( 1 );
+		expect( raw.t ).toBeGreaterThan( 0 );
+		expect( storedDecision() ).not.toBeNull();
+		expect( api.hasDecision() ).toBe( true );
+	} );
+
+	it( 'forces always-on true and drops unknown keys', () => {
+		const api = bootGate();
+		const grants = api.setConsent( { necessary: false, analytics: true, bogus: true } );
+		expect( grants.necessary ).toBe( true );
+		expect( 'bogus' in grants ).toBe( false );
+	} );
+
+	it( 'acceptAll grants every purpose; rejectAll denies non-essential', () => {
+		const api = bootGate();
+		expect( api.acceptAll() ).toEqual( {
+			necessary: true,
+			functional: true,
+			analytics: true,
+			marketing: true,
+			personalization: true,
+		} );
+		expect( api.rejectAll() ).toEqual( {
+			necessary: true,
+			functional: false,
+			analytics: false,
+			marketing: false,
+			personalization: false,
+		} );
+	} );
+
+	it( 'GPC forces non-essential false even on acceptAll', () => {
+		setGpc( true );
+		const api = bootGate();
+		expect( api.gpc() ).toBe( true );
+		expect( api.acceptAll() ).toEqual( {
+			necessary: true,
+			functional: false,
+			analytics: false,
+			marketing: false,
+			personalization: false,
+		} );
+	} );
+
+	it( 'onChange fires with grants and unsubscribe stops it', () => {
+		const api = bootGate();
+		const seen = [];
+		const off = api.onChange( ( g ) => seen.push( g ) );
+		api.setConsent( { analytics: true } );
+		off();
+		api.setConsent( { marketing: true } );
+		expect( seen.length ).toBe( 1 );
+		expect( seen[ 0 ].analytics ).toBe( true );
+	} );
+
+	it( 'dispatches a consentful:change CustomEvent', () => {
+		const api = bootGate();
+		let detail = null;
+		document.addEventListener( 'consentful:change', ( e ) => {
+			detail = e.detail;
+		} );
+		api.setConsent( { analytics: true } );
+		expect( detail ).not.toBeNull();
+		expect( detail.analytics ).toBe( true );
+	} );
+
+	it( 'reads an existing valid stored decision on boot', () => {
+		seedCookie( { v: 1, p: 1, j: '*', g: { analytics: 1 }, t: Date.now() } );
+		const api = bootGate();
+		expect( api.hasDecision() ).toBe( true );
+		expect( api.get().analytics ).toBe( true );
+	} );
+
+	it( 'drains the decider _adapterQueue', () => {
+		const applied = [];
+		window.consentful = {
+			_adapterQueue: [ [ 'custom', { apply: ( ctx ) => applied.push( ctx.tag.id ) } ] ],
+		};
+		const cfg = makeConfig( {
+			tags: [
+				{ id: 'snip', purposes: [ 'necessary' ], delivery: 'direct', adapter: 'custom' },
+			],
+			adapters: { custom: { handler: 'custom' } },
+		} );
+		bootGate( cfg );
+		expect( applied ).toEqual( [ 'snip' ] );
+	} );
+} );

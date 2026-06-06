@@ -56,9 +56,14 @@ literal `<script>` (so they can't use `document.write`). **Never** add a code pa
 that varies server-rendered HTML per visitor cookie/geo.
 
 The inline decider and the adapter-load path must run **before any framework, in old
-browsers** — keep them framework-free and **ES5-safe** (Vite targets `es2015`;
-ESLint enforces the WordPress es5 standard on that code). Values injected via
-`wp_localize_script` arrive as strings — coerce explicitly.
+browsers** — keep them **framework-free**. Author them as **modern ES modules** under
+`assets/` (shared pure helpers in `assets/lib/`) and let **Vite bundle each entry to a
+self-contained, dependency-free script targeting `es2015`** (broad reach, no IE11):
+the **decider** builds to a single inlined IIFE (it sets the Consent Mode default
+before any tag, so it can't be a deferred `type=module`); the **gate** to a hashed,
+enqueued classic script. ESLint lints `assets/` as modern ESM; Vitest unit-tests the
+`lib/` helpers directly. Config injected via the inline blob / `wp_localize_script` may
+arrive as strings — coerce explicitly.
 
 ### Jurisdiction & consent (see ADR 0002)
 
