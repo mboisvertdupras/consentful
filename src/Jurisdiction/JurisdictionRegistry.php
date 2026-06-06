@@ -57,7 +57,7 @@ final class JurisdictionRegistry {
 
 		$default_granted = array_values(
 			array_filter(
-				DefaultPurpose::cases(),
+				DefaultPurpose::defaults(),
 				static fn ( DefaultPurpose $purpose ): bool => ! $purpose->is_always_on(),
 			)
 		);

@@ -94,10 +94,6 @@ final class ClientConfigTest extends TestCase {
 					'key'      => 'marketing',
 					'alwaysOn' => false,
 				),
-				array(
-					'key'      => 'personalization',
-					'alwaysOn' => false,
-				),
 			),
 			$out['purposes']
 		);
@@ -144,7 +140,7 @@ final class ClientConfigTest extends TestCase {
 		$this->assertSame( 'opt_out', $policy['type'] );
 		$this->assertFalse( $policy['denyByDefault'] );
 		$this->assertSame(
-			array( 'functional', 'analytics', 'marketing', 'personalization' ),
+			array( 'functional', 'analytics', 'marketing' ),
 			$policy['defaultGranted']
 		);
 	}

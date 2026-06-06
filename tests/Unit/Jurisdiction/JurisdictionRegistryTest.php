@@ -67,13 +67,13 @@ final class JurisdictionRegistryTest extends TestCase {
 		$this->assertSame( PolicyType::OptOut, $us->policy->type );
 	}
 
-	public function test_us_default_granted_is_every_non_always_on_purpose(): void {
+	public function test_us_default_granted_is_every_non_always_on_default_purpose(): void {
 		$registry = JurisdictionRegistry::with_defaults( 1 );
 		$us       = $registry->get( 'US' );
 
 		$expected = array_values(
 			array_filter(
-				DefaultPurpose::cases(),
+				DefaultPurpose::defaults(),
 				static fn ( DefaultPurpose $purpose ): bool => ! $purpose->is_always_on(),
 			)
 		);
@@ -81,6 +81,8 @@ final class JurisdictionRegistryTest extends TestCase {
 		$this->assertSame( $expected, $us->policy->default_granted );
 		$this->assertTrue( $us->policy->grants_by_default( DefaultPurpose::Analytics ) );
 		$this->assertTrue( $us->policy->grants_by_default( DefaultPurpose::Marketing ) );
+		// Personalization is opt-in (not in the default set), so it is not default-granted.
+		$this->assertFalse( $us->policy->grants_by_default( DefaultPurpose::Personalization ) );
 	}
 
 	public function test_with_defaults_fallback_is_strictest_opt_in(): void {

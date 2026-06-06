@@ -35,19 +35,24 @@ final class DefaultPurposeTest extends TestCase {
 		$this->assertFalse( DefaultPurpose::Personalization->is_always_on() );
 	}
 
-	public function test_defaults_returns_five_purposes_in_order(): void {
+	public function test_defaults_ship_the_four_universal_purposes_in_order(): void {
 		$defaults = DefaultPurpose::defaults();
 
-		$this->assertCount( 5, $defaults );
+		$this->assertCount( 4, $defaults );
 
 		$expected = array(
 			DefaultPurpose::Necessary,
 			DefaultPurpose::Functional,
 			DefaultPurpose::Analytics,
 			DefaultPurpose::Marketing,
-			DefaultPurpose::Personalization,
 		);
 		$this->assertSame( $expected, $defaults );
+	}
+
+	public function test_personalization_is_an_optional_member_not_shipped_by_default(): void {
+		// It exists as a case (with key + copy) but is opt-in — an Integrator adds it.
+		$this->assertContains( DefaultPurpose::Personalization, DefaultPurpose::cases() );
+		$this->assertNotContains( DefaultPurpose::Personalization, DefaultPurpose::defaults() );
 	}
 
 	public function test_default_purpose_implements_the_purpose_contract(): void {

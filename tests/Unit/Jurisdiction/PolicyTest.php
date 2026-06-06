@@ -54,6 +54,18 @@ final class PolicyTest extends TestCase {
 		$this->assertFalse( $policy->shows_banner() );
 	}
 
+	public function test_notice_only_grants_its_default_list_without_a_banner(): void {
+		// NoticeOnly performs no gating: it informs without a banner and loads exactly the
+		// purposes its default_granted lists (typically all non-essential).
+		$policy = Policy::notice_only( 1, array( DefaultPurpose::Analytics, DefaultPurpose::Marketing ) );
+
+		$this->assertFalse( $policy->shows_banner() );
+		$this->assertFalse( $policy->blocks_before_consent() );
+		$this->assertTrue( $policy->grants_by_default( DefaultPurpose::Analytics ) );
+		$this->assertTrue( $policy->grants_by_default( DefaultPurpose::Marketing ) );
+		$this->assertFalse( $policy->grants_by_default( DefaultPurpose::Functional ) );
+	}
+
 	public function test_grants_by_default_always_on_is_true(): void {
 		$opt_in = Policy::opt_in( 1 );
 

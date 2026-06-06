@@ -2,270 +2,246 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Consent Mode v2 — Loi 25 & RGPD 2.0.0\n"
+"Project-Id-Version: Consentful 1.0.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/consent-mode-v2\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-06-05T19:34:24+00:00\n"
+"POT-Creation-Date: 2026-06-06T18:56:22+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
-"X-Domain: consent-mode-v2\n"
+"X-Domain: consentful\n"
 
 #. Plugin Name of the plugin
-#: consent-mode-v2.php
-msgid "Consent Mode v2 — Loi 25 & RGPD"
+#: consentful.php
+#: src/Admin/Admin.php:52
+#: src/Admin/Admin.php:53
+msgid "Consentful"
 msgstr ""
 
 #. Plugin URI of the plugin
-#: consent-mode-v2.php
-msgid "https://github.com/"
+#: consentful.php
+msgid "https://github.com/tamarak/consentful"
 msgstr ""
 
 #. Description of the plugin
-#: consent-mode-v2.php
-msgid "Google Consent Mode v2 (block-before-consent) + a gated GA4 tag, with a consent banner that meets Québec Loi 25 / GDPR. The Google tag loads ONLY after the visitor makes a choice. Theme-independent and fully customizable (color, light/dark, position, copy)."
+#: consentful.php
+msgid "A white-label, universal consent layer that gates all non-essential third-party tags behind visitor consent, adapts to the visitor's jurisdiction, and keeps demonstrable proof of consent."
 msgstr ""
 
 #. Author of the plugin
-#: consent-mode-v2.php
+#: consentful.php
 msgid "Tamarak"
 msgstr ""
 
 #. Author URI of the plugin
-#: consent-mode-v2.php
+#: consentful.php
 msgid "https://tamarak.dev"
 msgstr ""
 
-#: consent-mode-v2.php:303
-#: consent-mode-v2.php:552
-msgid "Your privacy"
-msgstr ""
-
-#: consent-mode-v2.php:304
-#: consent-mode-v2.php:556
-msgid "We use cookies to measure traffic and improve your experience. No non-essential cookie is set without your consent. You can change your choices at any time."
-msgstr ""
-
-#: consent-mode-v2.php:314
-msgid "Learn more"
-msgstr ""
-
-#: consent-mode-v2.php:318
-msgid "Cookie preferences by category"
-msgstr ""
-
-#: consent-mode-v2.php:321
-msgid "Necessary cookies"
-msgstr ""
-
-#: consent-mode-v2.php:321
-msgid "always on, essential to the operation of the site."
-msgstr ""
-
-#: consent-mode-v2.php:325
-msgid "Analytics"
-msgstr ""
-
-#: consent-mode-v2.php:325
-msgid "Google Analytics, to understand how the site is used."
-msgstr ""
-
-#: consent-mode-v2.php:330
-msgid "Marketing & personalization"
-msgstr ""
-
-#: consent-mode-v2.php:330
-msgid "advertising, remarketing (Google Ads) and content personalization."
-msgstr ""
-
-#: consent-mode-v2.php:336
-msgid "Accept all"
-msgstr ""
-
-#: consent-mode-v2.php:337
-msgid "Reject all"
-msgstr ""
-
-#: consent-mode-v2.php:338
-msgid "Customize"
-msgstr ""
-
-#: consent-mode-v2.php:339
-msgid "Save my choices"
-msgstr ""
-
-#: consent-mode-v2.php:344
-msgid "Manage cookies"
-msgstr ""
-
-#: consent-mode-v2.php:364
-#: consent-mode-v2.php:377
-#: consent-mode-v2.php:387
-#: consent-mode-v2.php:388
-#: consent-mode-v2.php:489
-msgid "Consent Mode v2"
-msgstr ""
-
-#: consent-mode-v2.php:365
-msgid "Add your GA4 measurement ID to activate the consent banner and the tag."
-msgstr ""
-
-#: consent-mode-v2.php:366
-#: consent-mode-v2.php:399
+#: src/Admin/Admin.php:61
+#: src/Admin/Admin.php:62
 msgid "Settings"
 msgstr ""
 
-#: consent-mode-v2.php:371
-msgid "Google Listings &amp; Ads is active. If it is connected to a Google Ads conversion, it injects a second gtag.js with a default consent region limited to the EEA (Canada is not included) - a duplicate tag and advertising that is not blocked for Quebec. Keep the Ads conversion disconnected, or disable GLA tag injection."
+#: src/Admin/Admin.php:69
+#: src/Admin/Admin.php:70
+#: src/Admin/Admin.php:231
+msgid "Consent log"
 msgstr ""
 
-#: consent-mode-v2.php:374
-msgid "Facebook for WooCommerce is active. The Meta pixel is NOT governed by this banner (Consent Mode does not control fbq). Wire its consent to the Marketing category via the \"facebook_signals_held\" filter, otherwise the pixel fires despite \"Reject all\"."
+#: src/Admin/Admin.php:101
+msgid "Consentful settings"
 msgstr ""
 
-#: consent-mode-v2.php:460
-msgid "Invalid measurement ID (expected format: G-XXXXXXXXXX). Previous value kept."
-msgstr ""
-
-#: consent-mode-v2.php:469
-msgid "Settings saved."
-msgstr ""
-
-#: consent-mode-v2.php:473
-msgid "Auto (follow the visitor's system)"
-msgstr ""
-
-#: consent-mode-v2.php:474
-msgid "Light"
-msgstr ""
-
-#: consent-mode-v2.php:475
-msgid "Dark"
-msgstr ""
-
-#: consent-mode-v2.php:478
-msgid "Bottom bar (full width)"
-msgstr ""
-
-#: consent-mode-v2.php:479
-msgid "Floating card (bottom corner)"
-msgstr ""
-
-#: consent-mode-v2.php:480
-msgid "Centered modal"
-msgstr ""
-
-#: consent-mode-v2.php:483
-msgid "Auto (site language)"
-msgstr ""
-
-#: consent-mode-v2.php:484
-msgid "French"
-msgstr ""
-
-#: consent-mode-v2.php:485
-msgid "English"
-msgstr ""
-
-#: consent-mode-v2.php:490
-msgid "This plugin is the SINGLE source of the site's Google tag. Do not inject gtag.js anywhere else (Insert Headers & Footers, GLA, Site Kit, GTM). The tag loads only after the visitor makes a choice."
-msgstr ""
-
-#: consent-mode-v2.php:494
-msgid "Tag & consent"
-msgstr ""
-
-#: consent-mode-v2.php:497
-msgid "GA4 measurement ID"
-msgstr ""
-
-#: consent-mode-v2.php:501
-msgid "Privacy policy URL"
-msgstr ""
-
-#: consent-mode-v2.php:503
-msgid "Leave blank to use the privacy page configured in WordPress."
-msgstr ""
-
-#: consent-mode-v2.php:506
-msgid "Advertising signals"
-msgstr ""
-
-#: consent-mode-v2.php:507
-msgid "Manage ad_storage / ad_user_data / ad_personalization (Google Ads). Adds a Marketing category to the banner."
-msgstr ""
-
-#: consent-mode-v2.php:510
-msgid "Re-ask after (days)"
-msgstr ""
-
-#: consent-mode-v2.php:512
-msgid "Maximum 390 days (~13 months). Consent expires and the banner reappears."
-msgstr ""
-
-#: consent-mode-v2.php:515
-msgid "Banner language"
-msgstr ""
-
-#: consent-mode-v2.php:520
+#: src/Admin/Admin.php:114
 msgid "Appearance"
 msgstr ""
 
-#: consent-mode-v2.php:523
-msgid "Primary color"
+#: src/Admin/Admin.php:118
+msgid "Show banner"
 msgstr ""
 
-#: consent-mode-v2.php:525
-msgid "Used for the \"Accept\" button and links. Button text color is chosen automatically for contrast."
-msgstr ""
-
-#: consent-mode-v2.php:528
-msgid "Theme"
-msgstr ""
-
-#: consent-mode-v2.php:532
+#: src/Admin/Admin.php:124
 msgid "Position"
 msgstr ""
 
-#: consent-mode-v2.php:534
-msgid "The bottom bar is recommended for strict Loi 25 (it blocks no interaction). The centered modal covers the page until a choice is made, which may be treated as a cookie wall."
+#: src/Admin/Admin.php:130
+msgid "Theme"
 msgstr ""
 
-#: consent-mode-v2.php:537
-msgid "Button corner radius"
+#: src/Admin/Admin.php:136
+msgid "Primary color"
 msgstr ""
 
-#: consent-mode-v2.php:539
-msgid "0 = square, 40 = pill."
+#: src/Admin/Admin.php:142
+msgid "Corner radius (px)"
 msgstr ""
 
-#: consent-mode-v2.php:542
-msgid "Re-open button"
+#: src/Admin/Admin.php:148
+msgid "Privacy policy URL"
 msgstr ""
 
-#: consent-mode-v2.php:543
-msgid "Show the floating \"Manage cookies\" button after a choice is made."
+#: src/Admin/Admin.php:159
+msgid "Copy"
 msgstr ""
 
-#: consent-mode-v2.php:544
-msgid "If hidden, add a link with data-cmv2-open (e.g. in the footer menu) to let visitors re-open the manager."
+#: src/Admin/Admin.php:163
+msgid "Banner copy is locked by your developer."
 msgstr ""
 
-#: consent-mode-v2.php:548
-msgid "Banner text (optional override)"
+#: src/Admin/Admin.php:196
+msgid "Tags"
 msgstr ""
 
-#: consent-mode-v2.php:551
-msgid "Heading"
+#: src/Admin/Admin.php:200
+msgid "Tag visibility is locked by your developer."
 msgstr ""
 
-#: consent-mode-v2.php:555
-msgid "Description"
+#: src/Admin/Admin.php:213
+msgid "Enabled"
 msgstr ""
 
-#: consent-mode-v2.php:557
-msgid "Leave blank to use the translated default. Plain text only."
+#: src/Admin/Admin.php:236
+msgid "Export CSV"
+msgstr ""
+
+#. translators: %d: total number of consent records.
+#: src/Admin/Admin.php:242
+#, php-format
+msgid "%d records"
+msgstr ""
+
+#: src/Admin/Admin.php:248
+msgid "Recorded"
+msgstr ""
+
+#: src/Admin/Admin.php:248
+msgid "Jurisdiction"
+msgstr ""
+
+#: src/Admin/Admin.php:248
+msgid "Policy"
+msgstr ""
+
+#: src/Admin/Admin.php:248
+msgid "Schema"
+msgstr ""
+
+#: src/Admin/Admin.php:248
+msgid "Banner"
+msgstr ""
+
+#: src/Admin/Admin.php:248
+msgid "Purposes"
+msgstr ""
+
+#: src/Admin/Admin.php:248
+msgid "IP hash"
+msgstr ""
+
+#: src/Admin/Admin.php:248
+msgid "UA hash"
+msgstr ""
+
+#: src/Admin/Admin.php:277
+msgid "You are not allowed to export the consent log."
+msgstr ""
+
+#: src/Admin/Admin.php:301
+msgid "Locked by your developer."
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:139
+msgid "Your privacy"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:140
+msgid "We use cookies and similar technologies to run this site and, with your consent, to measure traffic and personalize content."
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:141
+msgid "Privacy policy"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:142
+msgid "Manage preferences"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:143
+msgid "Accept all"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:144
+msgid "Reject all"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:145
+msgid "Customize"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:146
+msgid "Save preferences"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:147
+msgid "Privacy settings"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:148
+msgid "Your privacy choices"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:149
+msgid "We and our partners process personal data for advertising, analytics and personalization. You can opt out at any time."
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:150
+msgid "Do Not Sell or Share My Personal Information"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:151
+msgid "Close"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:155
+msgid "Strictly necessary"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:156
+msgid "Required for the site to function; always on and cannot be turned off."
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:159
+msgid "Functional"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:160
+msgid "Remembers your choices and preferences to improve your experience."
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:163
+msgid "Analytics"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:164
+msgid "Measures how the site is used so we can improve it."
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:167
+msgid "Marketing"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:168
+msgid "Used to deliver and measure advertising relevant to you."
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:171
+msgid "Personalization"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:172
+msgid "Tailors content and recommendations to your interests."
 msgstr ""

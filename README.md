@@ -7,11 +7,13 @@ one vendor's tag) meets Québec Loi 25 / GDPR / US opt-out laws. Reusable across
 client sites: no brand-specific code, prefix `consentful_`, fully themeable. Google
 Consent Mode is the first integration, not the boundary.
 
-> **Foundation release.** This `1.0.0` is the first increment of a ground-up rewrite:
-> the PSR-4 OOP domain core (container, Purpose model, Signal, Consent, Tag, Adapter,
-> Jurisdiction/Policy registries) and the rebranded build/packaging surface. The
-> front-end gate, the Google adapter, jurisdiction geo-resolution, the consent log,
-> and the admin UI land in later increments.
+> **Status.** `1.0.0` implements the full architecture of ADR 0001/0002/0003: the PSR-4
+> OOP domain core (container, Purpose model, Signal, Consent, Tag, Adapter,
+> Jurisdiction/Policy registries), the cache-safe client gate + Google Consent Mode v2
+> adapter, the geo-adaptive jurisdiction resolver (edge signal → non-cached endpoint,
+> fail-closed), the opt-in / opt-out (Do Not Sell/Share) / notice banner variants,
+> durable proof of consent (record + log table + Sink + REST), and the constrained
+> site-owner admin UI.
 
 ## What it does
 
@@ -39,6 +41,47 @@ The audience is **integrators** (agencies/devs): adapters, tags, purpose mapping
 jurisdiction policy and banner defaults are declared in code/config — the source of
 truth — and any setting can be locked. The site owner gets a deliberately constrained
 admin UI. See `readme.txt` for the WordPress.org-format user readme.
+
+## Integration (in code)
+
+Integrators wire everything through the `consentful_register` action, which hands over
+the DI container — the single registration surface (ADR 0003). Register from your theme
+or a companion plugin:
+
+```php
+add_action(
+	'consentful_register',
+	function ( \Consentful\Container\Container $c ): void {
+		// 1. Register the Google adapter (Consent Mode v2) with your measurement IDs.
+		$c->get( \Consentful\Adapter\AdapterRegistry::class )
+			->add( new \Consentful\Adapter\GoogleAdapter( array( 'G-XXXXXXXX' ) ) );
+
+		// 2. Gate a tag on the 'analytics' purpose; the Google adapter fires it (Direct).
+		//    site_toggleable: true lets the site owner switch it off in the admin UI.
+		$c->get( \Consentful\Tag\TagRegistry::class )->add(
+			new \Consentful\Tag\Tag(
+				id: 'ga4',
+				label: 'Google Analytics 4',
+				purposes: array( \Consentful\Consent\DefaultPurpose::Analytics ),
+				delivery: \Consentful\Tag\Delivery::Direct,
+				adapter_id: 'google',
+				site_toggleable: true,
+			)
+		);
+
+		// 3. Opt in to the optional Personalization purpose (off by default).
+		$c->get( \Consentful\Consent\PurposeRegistry::class )
+			->add( \Consentful\Consent\DefaultPurpose::Personalization );
+
+		// 4. Override banner copy/appearance, geo resolution, or the proof Sink by
+		//    rebinding the matching value object, e.g.:
+		//    $c->singleton( \Consentful\Frontend\GeoConfig::class, fn() => /* your GeoConfig */ );
+	}
+);
+
+// Lock fields so the site owner cannot change them in the constrained admin UI.
+add_filter( 'consentful_locked_settings', fn( array $locked ) => array( 'position', 'theme' ) );
+```
 
 ## Local development (symlink into a WP install)
 

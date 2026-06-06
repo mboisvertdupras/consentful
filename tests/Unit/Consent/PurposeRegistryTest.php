@@ -13,11 +13,21 @@ use PHPUnit\Framework\TestCase;
  */
 final class PurposeRegistryTest extends TestCase {
 
-	public function test_with_defaults_holds_the_five_default_purposes_in_order(): void {
+	public function test_with_defaults_holds_the_four_default_purposes_in_order(): void {
 		$registry = PurposeRegistry::with_defaults();
 
 		$this->assertSame( DefaultPurpose::defaults(), $registry->all() );
-		$this->assertCount( 5, $registry->all() );
+		$this->assertCount( 4, $registry->all() );
+	}
+
+	public function test_personalization_is_opt_in_via_add(): void {
+		// The optional Personalization purpose is added explicitly by an Integrator.
+		$registry = PurposeRegistry::with_defaults();
+		$registry->add( DefaultPurpose::Personalization );
+
+		$all = $registry->all();
+		$this->assertCount( 5, $all );
+		$this->assertSame( DefaultPurpose::Personalization, $all[4] );
 	}
 
 	public function test_constructor_adds_each_purpose_from_the_iterable(): void {
@@ -44,8 +54,8 @@ final class PurposeRegistryTest extends TestCase {
 		$registry->add( $custom );
 
 		$all = $registry->all();
-		$this->assertCount( 6, $all );
-		$this->assertSame( $custom, $all[5] );
+		$this->assertCount( 5, $all );
+		$this->assertSame( $custom, $all[4] );
 	}
 
 	public function test_add_dedupes_by_key(): void {

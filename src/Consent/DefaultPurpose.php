@@ -24,11 +24,20 @@ enum DefaultPurpose: string implements Purpose {
 	}
 
 	/**
-	 * The default-set Purposes, in display order.
+	 * The shipped default-set Purposes, in display order. Personalization is the OPTIONAL
+	 * member (ADR 0002): it exists as a case with a key/copy, but is NOT shipped by default
+	 * — an Integrator opts in by adding `DefaultPurpose::Personalization` to the
+	 * PurposeRegistry. Keeping the default set to the four universal categories avoids a
+	 * banner toggle / Consent Mode signal most sites never use.
 	 *
 	 * @return list<self>
 	 */
 	public static function defaults(): array {
-		return self::cases();
+		return array(
+			self::Necessary,
+			self::Functional,
+			self::Analytics,
+			self::Marketing,
+		);
 	}
 }
