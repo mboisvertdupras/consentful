@@ -16,6 +16,11 @@ use Consentful\Tag\TagRegistry;
  * trust boundary is enforced here — `manage_options` on every screen and the export
  * action, a nonce on save + export, sanitize on input, escape on output.
  *
+ * The form is the WordPress-native Settings layout (`form-table`, the Iris color picker,
+ * help text). Banner *copy* is deliberately NOT editable here: it comes from the gettext
+ * defaults (English source, French shipped via the bundled `.mo` files), so the Site owner
+ * tunes appearance while translation stays in the language files.
+ *
  * Logic lives in pure, unit-tested classes (Settings, ConsentLogReader, the
  * ConsentLogExporter); this shell only registers hooks and renders escaped markup. The
  * export body is built by `export_csv_body()` (tested) so the header-send / `wp_die`
@@ -30,6 +35,9 @@ final class Admin {
 	private const NONCE_EXPORT  = 'consentful_export';
 	private const PER_PAGE      = 50;
 
+	/** The settings-page hook suffix, captured at menu registration; gates the asset enqueue. */
+	private string $settings_hook = '';
+
 	public function __construct(
 		private readonly Container $container,
 	) {}
@@ -39,16 +47,17 @@ final class Admin {
 		return new self( $container );
 	}
 
-	/** Wire the admin menu, settings registration and the export handler. */
+	/** Wire the admin menu, settings registration, asset enqueue and the export handler. */
 	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_post_consentful_export', array( $this, 'handle_export' ) );
 	}
 
 	/** Register the Settings page and the Consent-log submenu (both `manage_options`). */
 	public function register_menu(): void {
-		add_menu_page(
+		$this->settings_hook = (string) add_menu_page(
 			__( 'Consentful', 'consentful' ),
 			__( 'Consentful', 'consentful' ),
 			self::CAPABILITY,
@@ -72,6 +81,19 @@ final class Admin {
 			self::LOG_PAGE,
 			array( $this, 'render_log_page' )
 		);
+	}
+
+	/**
+	 * Enqueue the WordPress color picker on our settings screen only — the native Iris
+	 * picker the appearance form's `.consentful-color` input upgrades to.
+	 */
+	public function enqueue_assets( string $hook ): void {
+		if ( '' === $this->settings_hook || $this->settings_hook !== $hook ) {
+			return;
+		}
+		wp_enqueue_style( 'wp-color-picker' );
+		wp_enqueue_script( 'wp-color-picker' );
+		wp_add_inline_script( 'wp-color-picker', 'jQuery(function($){$(".consentful-color").wpColorPicker();});' );
 	}
 
 	/** Register the single option with the pure `Settings::sanitize` as its callback. */
@@ -99,86 +121,62 @@ final class Admin {
 
 		echo '<div class="wrap consentful">';
 		echo '<h1>' . esc_html__( 'Consentful settings', 'consentful' ) . '</h1>';
+		echo '<p>' . esc_html__( 'Customize the consent banner shown to your visitors. Your developer controls which tags are gated and may lock some of the settings below. Banner wording is translated through the language files.', 'consentful' ) . '</p>';
 		echo '<form action="options.php" method="post">';
 		settings_fields( self::OPTION_GROUP );
 		$this->render_appearance_fields( $settings, $base );
-		$this->render_copy_fields( $settings, $base );
 		$this->render_tag_fields( $settings, $tags );
 		submit_button();
 		echo '</form>';
 		echo '</div>';
 	}
 
-	/** Render the appearance fields (enabled, position, theme, color, radius, privacy URL). */
+	/** Render the appearance fields (banner toggle, position, theme, color, radius, privacy URL). */
 	private function render_appearance_fields( Settings $settings, BannerConfig $base ): void {
-		echo '<h2>' . esc_html__( 'Appearance', 'consentful' ) . '</h2>';
+		echo '<h2 class="title">' . esc_html__( 'Appearance', 'consentful' ) . '</h2>';
 		echo '<table class="form-table" role="presentation"><tbody>';
 
 		$this->row(
-			__( 'Show banner', 'consentful' ),
+			__( 'Banner', 'consentful' ),
 			'enabled',
 			$settings,
-			fn () => $this->checkbox_field( 'enabled', $this->effective_bool( $settings, 'enabled', $base->enabled ), $settings->is_locked( 'enabled' ) )
+			fn () => $this->checkbox_field( 'enabled', $this->effective_bool( $settings, 'enabled', $base->enabled ), $settings->is_locked( 'enabled' ), __( 'Show the consent banner to visitors.', 'consentful' ) )
 		);
 		$this->row(
 			__( 'Position', 'consentful' ),
 			'position',
 			$settings,
-			fn () => $this->select_field( 'position', array( 'bar', 'corner', 'modal' ), $this->effective_string( $settings, 'position', $base->position ), $settings->is_locked( 'position' ) )
+			fn () => $this->select_field( 'position', $this->position_choices(), $this->effective_string( $settings, 'position', $base->position ), $settings->is_locked( 'position' ) ),
+			__( 'The bottom bar blocks no interaction (recommended for strict opt-in regimes such as Loi 25 / GDPR). A centered modal covers the page until a choice is made, which some regulators treat as a cookie wall.', 'consentful' )
 		);
 		$this->row(
 			__( 'Theme', 'consentful' ),
 			'theme',
 			$settings,
-			fn () => $this->select_field( 'theme', array( 'light', 'dark', 'auto' ), $this->effective_string( $settings, 'theme', $base->theme ), $settings->is_locked( 'theme' ) )
+			fn () => $this->select_field( 'theme', $this->theme_choices(), $this->effective_string( $settings, 'theme', $base->theme ), $settings->is_locked( 'theme' ) )
 		);
 		$this->row(
 			__( 'Primary color', 'consentful' ),
 			'primaryColor',
 			$settings,
-			fn () => $this->color_field( 'primaryColor', $this->effective_string( $settings, 'primaryColor', $base->primary_color ), $settings->is_locked( 'primaryColor' ) )
+			fn () => $this->color_field( 'primaryColor', $this->effective_string( $settings, 'primaryColor', $base->primary_color ), $base->primary_color, $settings->is_locked( 'primaryColor' ) ),
+			__( 'Used for the primary button and links. The button text color is chosen automatically for contrast.', 'consentful' )
 		);
 		$this->row(
 			__( 'Corner radius (px)', 'consentful' ),
 			'radius',
 			$settings,
-			fn () => $this->number_field( 'radius', $this->effective_int( $settings, 'radius', $base->radius ), $settings->is_locked( 'radius' ) )
+			fn () => $this->number_field( 'radius', $this->effective_int( $settings, 'radius', $base->radius ), $settings->is_locked( 'radius' ) ),
+			__( '0 = square, 32 = pill.', 'consentful' )
 		);
 		$this->row(
 			__( 'Privacy policy URL', 'consentful' ),
 			'privacyUrl',
 			$settings,
-			fn () => $this->url_field( 'privacyUrl', $this->effective_string( $settings, 'privacyUrl', $base->privacy_url ), $settings->is_locked( 'privacyUrl' ) )
+			fn () => $this->url_field( 'privacyUrl', $this->effective_string( $settings, 'privacyUrl', $base->privacy_url ), $settings->is_locked( 'privacyUrl' ) ),
+			__( 'Leave blank to use the privacy page configured in WordPress.', 'consentful' )
 		);
 
-		echo '</tbody></table>';
-	}
-
-	/** Render the editable banner copy (description is a textarea; the rest are text). */
-	private function render_copy_fields( Settings $settings, BannerConfig $base ): void {
-		echo '<h2>' . esc_html__( 'Copy', 'consentful' ) . '</h2>';
-
-		$locked = $settings->is_locked( 'copy' );
-		if ( $locked ) {
-			echo '<p class="description">' . esc_html__( 'Banner copy is locked by your developer.', 'consentful' ) . '</p>';
-		}
-
-		$stored = $settings->stored( 'copy' );
-		$stored = is_array( $stored ) ? $stored : array();
-
-		echo '<table class="form-table" role="presentation"><tbody>';
-		foreach ( $base->copy as $key => $default ) {
-			$value = isset( $stored[ $key ] ) && is_scalar( $stored[ $key ] ) ? (string) $stored[ $key ] : $default;
-			$name  = CONSENTFUL_OPTION . '[copy][' . $key . ']';
-
-			echo '<tr><th scope="row"><label for="' . esc_attr( 'consentful-copy-' . $key ) . '">' . esc_html( (string) $key ) . '</label></th><td>';
-			if ( 'description' === $key || 'noticeDescription' === $key ) {
-				echo '<textarea id="' . esc_attr( 'consentful-copy-' . $key ) . '" name="' . esc_attr( $name ) . '" rows="2" class="large-text"' . esc_attr( $this->disabled_attr( $locked ) ) . '>' . esc_textarea( $value ) . '</textarea>';
-			} else {
-				echo '<input type="text" id="' . esc_attr( 'consentful-copy-' . $key ) . '" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '" class="regular-text"' . esc_attr( $this->disabled_attr( $locked ) ) . ' />';
-			}
-			echo '</td></tr>';
-		}
 		echo '</tbody></table>';
 	}
 
@@ -193,11 +191,13 @@ final class Admin {
 			return;
 		}
 
-		echo '<h2>' . esc_html__( 'Tags', 'consentful' ) . '</h2>';
+		echo '<h2 class="title">' . esc_html__( 'Tags', 'consentful' ) . '</h2>';
 
 		$locked = $settings->is_locked( 'tags' );
 		if ( $locked ) {
 			echo '<p class="description">' . esc_html__( 'Tag visibility is locked by your developer.', 'consentful' ) . '</p>';
+		} else {
+			echo '<p class="description">' . esc_html__( 'Turn off a pre-approved tag to stop it loading for visitors.', 'consentful' ) . '</p>';
 		}
 
 		$stored = $settings->stored( 'tags' );
@@ -287,18 +287,23 @@ final class Admin {
 	}
 
 	/**
-	 * Render a labeled form row, invoking `$control` to print the (inline-escaped) control
-	 * and appending a lock note when the field is locked.
+	 * Render a labeled form row, invoking `$control` to print the (inline-escaped) control,
+	 * then any help text, then a lock note when the field is locked.
 	 *
-	 * @param string          $label   The field label.
-	 * @param string          $field   The top-level field key.
-	 * @param callable():void $control Prints the control markup, escaping inline.
+	 * @param string          $label       The field label.
+	 * @param string          $field       The top-level field key (also drives the control id).
+	 * @param callable():void $control     Prints the control markup, escaping inline.
+	 * @param string          $description Optional help text shown under the control.
 	 */
-	private function row( string $label, string $field, Settings $settings, callable $control ): void {
-		echo '<tr><th scope="row">' . esc_html( $label ) . '</th><td>';
+	private function row( string $label, string $field, Settings $settings, callable $control, string $description = '' ): void {
+		$id = 'consentful-' . $field;
+		echo '<tr><th scope="row"><label for="' . esc_attr( $id ) . '">' . esc_html( $label ) . '</label></th><td>';
 		$control();
+		if ( '' !== $description ) {
+			echo '<p class="description">' . esc_html( $description ) . '</p>';
+		}
 		if ( $settings->is_locked( $field ) ) {
-			echo ' <span class="description">' . esc_html__( 'Locked by your developer.', 'consentful' ) . '</span>';
+			echo '<p class="description">' . esc_html__( 'Locked by your developer.', 'consentful' ) . '</p>';
 		}
 		echo '</td></tr>';
 	}
@@ -308,37 +313,72 @@ final class Admin {
 		return $locked ? ' disabled' : '';
 	}
 
-	private function checkbox_field( string $field, bool $value, bool $locked ): void {
+	private function checkbox_field( string $field, bool $value, bool $locked, string $label = '' ): void {
+		$id   = 'consentful-' . $field;
 		$name = CONSENTFUL_OPTION . '[' . $field . ']';
 		echo '<input type="hidden" name="' . esc_attr( $name ) . '" value="0" />';
-		echo '<input type="checkbox" name="' . esc_attr( $name ) . '" value="1"' . checked( $value, true, false ) . esc_attr( $this->disabled_attr( $locked ) ) . ' />';
+		echo '<label><input type="checkbox" id="' . esc_attr( $id ) . '" name="' . esc_attr( $name ) . '" value="1"' . checked( $value, true, false ) . esc_attr( $this->disabled_attr( $locked ) ) . ' /> ' . esc_html( $label ) . '</label>';
 	}
 
 	/**
-	 * @param list<string> $options
+	 * @param array<string, string> $choices Option value => visible (translated) label.
 	 */
-	private function select_field( string $field, array $options, string $value, bool $locked ): void {
+	private function select_field( string $field, array $choices, string $value, bool $locked ): void {
+		$id   = 'consentful-' . $field;
 		$name = CONSENTFUL_OPTION . '[' . $field . ']';
-		echo '<select name="' . esc_attr( $name ) . '"' . esc_attr( $this->disabled_attr( $locked ) ) . '>';
-		foreach ( $options as $option ) {
-			echo '<option value="' . esc_attr( $option ) . '"' . selected( $value, $option, false ) . '>' . esc_html( $option ) . '</option>';
+		echo '<select id="' . esc_attr( $id ) . '" name="' . esc_attr( $name ) . '"' . esc_attr( $this->disabled_attr( $locked ) ) . '>';
+		foreach ( $choices as $option => $label ) {
+			echo '<option value="' . esc_attr( $option ) . '"' . selected( $value, $option, false ) . '>' . esc_html( $label ) . '</option>';
 		}
 		echo '</select>';
 	}
 
-	private function color_field( string $field, string $value, bool $locked ): void {
+	/**
+	 * The native WordPress (Iris) color control: a text input the enqueued `wp-color-picker`
+	 * upgrades. `data-default-color` is the integrator's base so the picker's reset matches.
+	 */
+	private function color_field( string $field, string $value, string $default_color, bool $locked ): void {
+		$id   = 'consentful-' . $field;
 		$name = CONSENTFUL_OPTION . '[' . $field . ']';
-		echo '<input type="color" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '"' . esc_attr( $this->disabled_attr( $locked ) ) . ' />';
+		echo '<input type="text" id="' . esc_attr( $id ) . '" class="consentful-color" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '" data-default-color="' . esc_attr( $default_color ) . '"' . esc_attr( $this->disabled_attr( $locked ) ) . ' />';
 	}
 
 	private function number_field( string $field, int $value, bool $locked ): void {
+		$id   = 'consentful-' . $field;
 		$name = CONSENTFUL_OPTION . '[' . $field . ']';
-		echo '<input type="number" min="0" max="32" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '"' . esc_attr( $this->disabled_attr( $locked ) ) . ' />';
+		echo '<input type="number" id="' . esc_attr( $id ) . '" class="small-text" min="0" max="32" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '"' . esc_attr( $this->disabled_attr( $locked ) ) . ' />';
 	}
 
 	private function url_field( string $field, string $value, bool $locked ): void {
+		$id   = 'consentful-' . $field;
 		$name = CONSENTFUL_OPTION . '[' . $field . ']';
-		echo '<input type="url" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '" class="regular-text"' . esc_attr( $this->disabled_attr( $locked ) ) . ' />';
+		echo '<input type="url" id="' . esc_attr( $id ) . '" class="regular-text" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '"' . esc_attr( $this->disabled_attr( $locked ) ) . ' />';
+	}
+
+	/**
+	 * The position choices (value => translated label).
+	 *
+	 * @return array<string, string>
+	 */
+	private function position_choices(): array {
+		return array(
+			'bar'    => __( 'Bottom bar (full width)', 'consentful' ),
+			'corner' => __( 'Floating card (bottom corner)', 'consentful' ),
+			'modal'  => __( 'Centered modal', 'consentful' ),
+		);
+	}
+
+	/**
+	 * The theme choices (value => translated label).
+	 *
+	 * @return array<string, string>
+	 */
+	private function theme_choices(): array {
+		return array(
+			'auto'  => __( "Auto (match the visitor's system)", 'consentful' ),
+			'light' => __( 'Light', 'consentful' ),
+			'dark'  => __( 'Dark', 'consentful' ),
+		);
 	}
 
 	/**

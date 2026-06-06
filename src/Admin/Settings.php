@@ -3,8 +3,6 @@ declare( strict_types = 1 );
 
 namespace Consentful\Admin;
 
-use Consentful\Frontend\BannerConfig;
-
 /**
  * The Site-owner layer (Layer 2) of the two-tier operator model: the constrained
  * `consentful_settings` option, overlaid on the integrator's BannerConfig and registered
@@ -14,11 +12,14 @@ use Consentful\Frontend\BannerConfig;
  * The Integrator declares which fields are locked via the `consentful_locked_settings`
  * filter; a locked field can never be saved (dropped by `sanitize`), is rendered
  * read-only, and is skipped by the overlay so Layer 1 always wins.
+ *
+ * Appearance (and tag visibility) is Site-owner editable; banner *copy* is not — copy comes
+ * from the gettext defaults and is translated in the language files, never overridden here.
  */
 final class Settings {
 
 	/** @var list<string> The top-level lockable/overlayable field keys. */
-	private const FIELDS = array( 'enabled', 'position', 'theme', 'primaryColor', 'radius', 'privacyUrl', 'copy', 'tags' );
+	private const FIELDS = array( 'enabled', 'position', 'theme', 'primaryColor', 'radius', 'privacyUrl', 'tags' );
 
 	/** @var list<string> Allowed banner positions. */
 	private const POSITIONS = array( 'bar', 'corner', 'modal' );
@@ -59,7 +60,7 @@ final class Settings {
 	}
 
 	/**
-	 * The stored banner appearance + copy values, EXCLUDING locked fields — ready for
+	 * The stored banner appearance values, EXCLUDING locked fields — ready for
 	 * `BannerConfig::with_overrides`. (The overlay also honors locks, but excluding here
 	 * keeps the override map free of values the Site owner can never have set.)
 	 *
@@ -67,7 +68,7 @@ final class Settings {
 	 */
 	public function banner_overrides(): array {
 		$overrides = array();
-		foreach ( array( 'enabled', 'position', 'theme', 'primaryColor', 'radius', 'privacyUrl', 'copy' ) as $field ) {
+		foreach ( array( 'enabled', 'position', 'theme', 'primaryColor', 'radius', 'privacyUrl' ) as $field ) {
 			if ( array_key_exists( $field, $this->stored ) && ! $this->is_locked( $field ) ) {
 				$overrides[ $field ] = $this->stored[ $field ];
 			}
@@ -135,7 +136,6 @@ final class Settings {
 			'primaryColor' => self::sanitize_color( $value ),
 			'radius'       => min( absint( self::to_string( $value ) ), self::MAX_RADIUS ),
 			'privacyUrl'   => self::sanitize_url( $value ),
-			'copy'         => self::sanitize_copy( $value ),
 			'tags'         => self::sanitize_tags( $value ),
 			default        => null,
 		};
@@ -160,27 +160,6 @@ final class Settings {
 	private static function sanitize_url( mixed $value ): ?string {
 		$url = esc_url_raw( self::to_string( $value ) );
 		return '' !== $url ? $url : null;
-	}
-
-	/**
-	 * Keep only known copy keys (the keys of `BannerConfig::defaults()->copy`), each run
-	 * through `sanitize_text_field`. Unknown keys are dropped.
-	 *
-	 * @return array<string, string>
-	 */
-	private static function sanitize_copy( mixed $value ): array {
-		if ( ! is_array( $value ) ) {
-			return array();
-		}
-
-		$known = BannerConfig::defaults()->copy;
-		$out   = array();
-		foreach ( $value as $key => $text ) {
-			if ( array_key_exists( $key, $known ) ) {
-				$out[ (string) $key ] = sanitize_text_field( self::to_string( $text ) );
-			}
-		}
-		return $out;
 	}
 
 	/** Defensively coerce a scalar option value to string (non-scalars become ''). */

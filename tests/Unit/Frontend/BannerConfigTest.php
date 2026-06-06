@@ -142,30 +142,19 @@ final class BannerConfigTest extends TestCase {
 		$this->assertSame( 'auto', $out->theme );
 	}
 
-	public function test_with_overrides_merges_copy_per_known_key(): void {
+	public function test_with_overrides_never_overrides_copy(): void {
+		// Copy is gettext-translated, not Site-owner editable: a posted `copy` map is ignored
+		// and the base (integrator/gettext) copy is preserved verbatim.
 		$out = BannerConfig::defaults()->with_overrides(
 			array(
-				'copy' => array(
-					'title'   => 'Custom title',
-					'unknown' => 'dropped',
-				),
+				'position' => 'corner',
+				'copy'     => array( 'title' => 'Hacked' ),
 			),
 			array()
 		);
 
-		$this->assertSame( 'Custom title', $out->copy['title'] );
-		// Untouched keys keep the base value; unknown keys are ignored.
-		$this->assertArrayNotHasKey( 'unknown', $out->copy );
-		$this->assertSame( BannerConfig::defaults()->copy['acceptAll'], $out->copy['acceptAll'] );
-	}
-
-	public function test_with_overrides_keeps_base_copy_when_copy_locked(): void {
-		$out = BannerConfig::defaults()->with_overrides(
-			array( 'copy' => array( 'title' => 'Hacked' ) ),
-			array( 'copy' )
-		);
-
-		$this->assertSame( BannerConfig::defaults()->copy['title'], $out->copy['title'] );
+		$this->assertSame( 'corner', $out->position );
+		$this->assertSame( BannerConfig::defaults()->copy, $out->copy );
 	}
 
 	public function test_with_overrides_coerces_string_radius_and_enabled(): void {

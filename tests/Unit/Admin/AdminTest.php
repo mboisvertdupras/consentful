@@ -27,7 +27,14 @@ final class AdminTest extends TestCase {
 	}
 
 	protected function tearDown(): void {
-		unset( $GLOBALS['consentful_test_actions'], $GLOBALS['consentful_test_menus'], $GLOBALS['consentful_test_settings'] );
+		unset(
+			$GLOBALS['consentful_test_actions'],
+			$GLOBALS['consentful_test_menus'],
+			$GLOBALS['consentful_test_settings'],
+			$GLOBALS['consentful_test_enqueues'],
+			$GLOBALS['consentful_test_styles'],
+			$GLOBALS['consentful_test_inline_scripts']
+		);
 		parent::tearDown();
 	}
 
@@ -65,7 +72,30 @@ final class AdminTest extends TestCase {
 		$hooks = array_column( $this->recorded( 'consentful_test_actions' ), 'hook' );
 		$this->assertContains( 'admin_menu', $hooks );
 		$this->assertContains( 'admin_init', $hooks );
+		$this->assertContains( 'admin_enqueue_scripts', $hooks );
 		$this->assertContains( 'admin_post_consentful_export', $hooks );
+	}
+
+	public function test_enqueue_assets_loads_the_color_picker_on_the_settings_screen_only(): void {
+		$GLOBALS['consentful_test_menus']          = array();
+		$GLOBALS['consentful_test_enqueues']       = array();
+		$GLOBALS['consentful_test_styles']         = array();
+		$GLOBALS['consentful_test_inline_scripts'] = array();
+
+		$admin = Admin::for_container( $this->container() );
+		// register_menu records the settings-page hook (the stub returns the menu slug).
+		$admin->register_menu();
+
+		// A foreign admin screen enqueues nothing.
+		$admin->enqueue_assets( 'edit.php' );
+		$this->assertSame( array(), $this->recorded( 'consentful_test_styles' ) );
+		$this->assertSame( array(), $this->recorded( 'consentful_test_inline_scripts' ) );
+
+		// Our settings screen loads the color-picker style + script and the Iris init.
+		$admin->enqueue_assets( 'consentful' );
+		$this->assertContains( array( 'wp-color-picker' ), $this->recorded( 'consentful_test_styles' ) );
+		$this->assertContains( array( 'wp-color-picker' ), $this->recorded( 'consentful_test_enqueues' ) );
+		$this->assertCount( 1, $this->recorded( 'consentful_test_inline_scripts' ) );
 	}
 
 	public function test_register_menu_records_pages_with_manage_options(): void {

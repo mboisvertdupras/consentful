@@ -4,7 +4,6 @@ declare( strict_types = 1 );
 namespace Consentful\Tests\Unit\Admin;
 
 use Consentful\Admin\Settings;
-use Consentful\Frontend\BannerConfig;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -62,11 +61,10 @@ final class SettingsTest extends TestCase {
 			'primaryColor' => '#123456',
 			'radius'       => 4,
 			'privacyUrl'   => 'https://example.test',
-			'copy'         => array( 'title' => 'Hi' ),
 			'tags'         => array( 'ga4' => false ),
 		);
 
-		$out = Settings::sanitize( $raw, array( 'enabled', 'position', 'theme', 'primaryColor', 'radius', 'privacyUrl', 'copy', 'tags' ) );
+		$out = Settings::sanitize( $raw, array( 'enabled', 'position', 'theme', 'primaryColor', 'radius', 'privacyUrl', 'tags' ) );
 
 		$this->assertSame( array(), $out );
 	}
@@ -105,18 +103,19 @@ final class SettingsTest extends TestCase {
 		$this->assertSame( 5, $neg['radius'] );
 	}
 
-	public function test_sanitize_keeps_known_copy_keys_and_drops_unknown(): void {
+	public function test_sanitize_drops_copy_entirely(): void {
+		// Banner copy is not Site-owner editable: it comes from the gettext defaults and is
+		// translated in the language files, so a posted `copy` map is dropped like any unknown key.
 		$out = Settings::sanitize(
 			array(
-				'copy' => array(
-					'title'   => '  Hello  ',
-					'unknown' => 'drop me',
-				),
+				'enabled' => true,
+				'copy'    => array( 'title' => 'Hello' ),
 			),
 			array()
 		);
 
-		$this->assertSame( array( 'title' => 'Hello' ), $out['copy'] );
+		$this->assertSame( array( 'enabled' ), array_keys( $out ) );
+		$this->assertArrayNotHasKey( 'copy', $out );
 	}
 
 	public function test_sanitize_coerces_tags_to_bool(): void {
@@ -211,14 +210,5 @@ final class SettingsTest extends TestCase {
 
 	public function test_locked_fields_is_empty_without_a_filter(): void {
 		$this->assertSame( array(), Settings::locked_fields() );
-	}
-
-	public function test_copy_known_keys_match_banner_defaults(): void {
-		// Guard: sanitize's allowlist is derived from BannerConfig::defaults()->copy.
-		$known = array_fill_keys( array_keys( BannerConfig::defaults()->copy ), 'x' );
-		$out   = Settings::sanitize( array( 'copy' => $known ), array() );
-
-		$this->assertIsArray( $out['copy'] );
-		$this->assertSame( array_keys( BannerConfig::defaults()->copy ), array_keys( $out['copy'] ) );
 	}
 }

@@ -9,15 +9,15 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-06-06T18:56:22+00:00\n"
+"POT-Creation-Date: 2026-06-06T19:39:52+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: consentful\n"
 
 #. Plugin Name of the plugin
 #: consentful.php
-#: src/Admin/Admin.php:52
-#: src/Admin/Admin.php:53
+#: src/Admin/Admin.php:61
+#: src/Admin/Admin.php:62
 msgid "Consentful"
 msgstr ""
 
@@ -41,63 +41,84 @@ msgstr ""
 msgid "https://tamarak.dev"
 msgstr ""
 
-#: src/Admin/Admin.php:61
-#: src/Admin/Admin.php:62
+#: src/Admin/Admin.php:70
+#: src/Admin/Admin.php:71
 msgid "Settings"
 msgstr ""
 
-#: src/Admin/Admin.php:69
-#: src/Admin/Admin.php:70
+#: src/Admin/Admin.php:78
+#: src/Admin/Admin.php:79
 #: src/Admin/Admin.php:231
 msgid "Consent log"
 msgstr ""
 
-#: src/Admin/Admin.php:101
+#: src/Admin/Admin.php:123
 msgid "Consentful settings"
 msgstr ""
 
-#: src/Admin/Admin.php:114
-msgid "Appearance"
-msgstr ""
-
-#: src/Admin/Admin.php:118
-msgid "Show banner"
-msgstr ""
-
 #: src/Admin/Admin.php:124
-msgid "Position"
-msgstr ""
-
-#: src/Admin/Admin.php:130
-msgid "Theme"
+msgid "Customize the consent banner shown to your visitors. Your developer controls which tags are gated and may lock some of the settings below. Banner wording is translated through the language files."
 msgstr ""
 
 #: src/Admin/Admin.php:136
-msgid "Primary color"
+msgid "Appearance"
 msgstr ""
 
-#: src/Admin/Admin.php:142
-msgid "Corner radius (px)"
+#: src/Admin/Admin.php:140
+#: src/Admin/Admin.php:248
+msgid "Banner"
 msgstr ""
 
-#: src/Admin/Admin.php:148
-msgid "Privacy policy URL"
+#: src/Admin/Admin.php:143
+msgid "Show the consent banner to visitors."
+msgstr ""
+
+#: src/Admin/Admin.php:146
+msgid "Position"
+msgstr ""
+
+#: src/Admin/Admin.php:150
+msgid "The bottom bar blocks no interaction (recommended for strict opt-in regimes such as Loi 25 / GDPR). A centered modal covers the page until a choice is made, which some regulators treat as a cookie wall."
+msgstr ""
+
+#: src/Admin/Admin.php:153
+msgid "Theme"
 msgstr ""
 
 #: src/Admin/Admin.php:159
-msgid "Copy"
+msgid "Primary color"
 msgstr ""
 
 #: src/Admin/Admin.php:163
-msgid "Banner copy is locked by your developer."
+msgid "Used for the primary button and links. The button text color is chosen automatically for contrast."
 msgstr ""
 
-#: src/Admin/Admin.php:196
+#: src/Admin/Admin.php:166
+msgid "Corner radius (px)"
+msgstr ""
+
+#: src/Admin/Admin.php:170
+msgid "0 = square, 32 = pill."
+msgstr ""
+
+#: src/Admin/Admin.php:173
+msgid "Privacy policy URL"
+msgstr ""
+
+#: src/Admin/Admin.php:177
+msgid "Leave blank to use the privacy page configured in WordPress."
+msgstr ""
+
+#: src/Admin/Admin.php:194
 msgid "Tags"
 msgstr ""
 
-#: src/Admin/Admin.php:200
+#: src/Admin/Admin.php:198
 msgid "Tag visibility is locked by your developer."
+msgstr ""
+
+#: src/Admin/Admin.php:200
+msgid "Turn off a pre-approved tag to stop it loading for visitors."
 msgstr ""
 
 #: src/Admin/Admin.php:213
@@ -131,10 +152,6 @@ msgid "Schema"
 msgstr ""
 
 #: src/Admin/Admin.php:248
-msgid "Banner"
-msgstr ""
-
-#: src/Admin/Admin.php:248
 msgid "Purposes"
 msgstr ""
 
@@ -150,98 +167,122 @@ msgstr ""
 msgid "You are not allowed to export the consent log."
 msgstr ""
 
-#: src/Admin/Admin.php:301
+#: src/Admin/Admin.php:306
 msgid "Locked by your developer."
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:139
+#: src/Admin/Admin.php:365
+msgid "Bottom bar (full width)"
+msgstr ""
+
+#: src/Admin/Admin.php:366
+msgid "Floating card (bottom corner)"
+msgstr ""
+
+#: src/Admin/Admin.php:367
+msgid "Centered modal"
+msgstr ""
+
+#: src/Admin/Admin.php:378
+msgid "Auto (match the visitor's system)"
+msgstr ""
+
+#: src/Admin/Admin.php:379
+msgid "Light"
+msgstr ""
+
+#: src/Admin/Admin.php:380
+msgid "Dark"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:118
 msgid "Your privacy"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:140
+#: src/Frontend/BannerConfig.php:119
 msgid "We use cookies and similar technologies to run this site and, with your consent, to measure traffic and personalize content."
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:141
+#: src/Frontend/BannerConfig.php:120
 msgid "Privacy policy"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:142
+#: src/Frontend/BannerConfig.php:121
 msgid "Manage preferences"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:143
+#: src/Frontend/BannerConfig.php:122
 msgid "Accept all"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:144
+#: src/Frontend/BannerConfig.php:123
 msgid "Reject all"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:145
+#: src/Frontend/BannerConfig.php:124
 msgid "Customize"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:146
+#: src/Frontend/BannerConfig.php:125
 msgid "Save preferences"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:147
+#: src/Frontend/BannerConfig.php:126
 msgid "Privacy settings"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:148
+#: src/Frontend/BannerConfig.php:127
 msgid "Your privacy choices"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:149
+#: src/Frontend/BannerConfig.php:128
 msgid "We and our partners process personal data for advertising, analytics and personalization. You can opt out at any time."
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:150
+#: src/Frontend/BannerConfig.php:129
 msgid "Do Not Sell or Share My Personal Information"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:151
+#: src/Frontend/BannerConfig.php:130
 msgid "Close"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:155
+#: src/Frontend/BannerConfig.php:134
 msgid "Strictly necessary"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:156
+#: src/Frontend/BannerConfig.php:135
 msgid "Required for the site to function; always on and cannot be turned off."
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:159
+#: src/Frontend/BannerConfig.php:138
 msgid "Functional"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:160
+#: src/Frontend/BannerConfig.php:139
 msgid "Remembers your choices and preferences to improve your experience."
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:163
+#: src/Frontend/BannerConfig.php:142
 msgid "Analytics"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:164
+#: src/Frontend/BannerConfig.php:143
 msgid "Measures how the site is used so we can improve it."
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:167
+#: src/Frontend/BannerConfig.php:146
 msgid "Marketing"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:168
+#: src/Frontend/BannerConfig.php:147
 msgid "Used to deliver and measure advertising relevant to you."
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:171
+#: src/Frontend/BannerConfig.php:150
 msgid "Personalization"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:172
+#: src/Frontend/BannerConfig.php:151
 msgid "Tailors content and recommendations to your interests."
 msgstr ""

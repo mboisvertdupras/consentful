@@ -164,6 +164,15 @@ if ( ! function_exists( 'wp_register_script' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_add_inline_script' ) ) {
+	function wp_add_inline_script( ...$args ) {
+		if ( isset( $GLOBALS['consentful_test_inline_scripts'] ) && is_array( $GLOBALS['consentful_test_inline_scripts'] ) ) {
+			$GLOBALS['consentful_test_inline_scripts'][] = $args;
+		}
+		return true;
+	}
+}
+
 if ( ! function_exists( 'plugins_url' ) ) {
 	function plugins_url( $path = '', $plugin = '' ) {
 		return 'http://example.test/wp-content/plugins/consentful/' . ltrim( (string) $path, '/' );

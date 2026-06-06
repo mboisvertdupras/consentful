@@ -59,8 +59,9 @@ final class BannerConfig {
 	 * base (the integrator's Layer 1). A field is overlaid only when it is present in
 	 * `$overrides` AND not in `$locked` — locked fields keep the base value (Layer 1 wins).
 	 * Values may arrive as strings (from the option), so each is coerced defensively;
-	 * invalid `position`/`theme` fall back to the base. `purposes` is not Site-owner editable
-	 * in this increment. Pure: no WordPress calls.
+	 * invalid `position`/`theme` fall back to the base. `copy` and `purposes` are not
+	 * Site-owner editable — copy is gettext-translated, never overridden. Pure: no WordPress
+	 * calls.
 	 *
 	 * @param array<string, mixed> $overrides The Site owner's stored banner values.
 	 * @param list<string>         $locked    Locked top-level field keys.
@@ -76,31 +77,9 @@ final class BannerConfig {
 			$has( 'radius' ) ? self::to_int( $overrides['radius'] ) : $this->radius,
 			$this->version,
 			$has( 'privacyUrl' ) ? self::to_string( $overrides['privacyUrl'] ) : $this->privacy_url,
-			$this->merged_copy( $overrides, $locked ),
+			$this->copy,
 			$this->purposes,
 		);
-	}
-
-	/**
-	 * Merge the override copy map (when `'copy'` is present and unlocked) over the base copy,
-	 * per known key only — unknown keys are ignored and missing keys keep the base value.
-	 *
-	 * @param array<string, mixed> $overrides
-	 * @param list<string>         $locked
-	 * @return array<string, string>
-	 */
-	private function merged_copy( array $overrides, array $locked ): array {
-		if ( ! array_key_exists( 'copy', $overrides ) || in_array( 'copy', $locked, true ) || ! is_array( $overrides['copy'] ) ) {
-			return $this->copy;
-		}
-
-		$copy = $this->copy;
-		foreach ( $overrides['copy'] as $key => $value ) {
-			if ( array_key_exists( $key, $copy ) ) {
-				$copy[ $key ] = self::to_string( $value );
-			}
-		}
-		return $copy;
 	}
 
 	/**
