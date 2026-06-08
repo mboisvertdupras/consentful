@@ -291,35 +291,7 @@ final class ClientConfigTest extends TestCase {
 		$this->assertSame( $banner->to_array(), $out['banner'] );
 	}
 
-	public function test_hidden_tags_are_omitted_from_the_emitted_tags(): void {
-		$tags = new TagRegistry();
-		$tags->add( new Tag( 'ga4', 'GA4', array( DefaultPurpose::Analytics ), Delivery::Direct, 'google' ) );
-		$tags->add( new Tag( 'meta', 'Meta', array( DefaultPurpose::Marketing ), Delivery::Direct, 'meta' ) );
-
-		$config = new ClientConfig(
-			PurposeRegistry::with_defaults(),
-			$tags,
-			new AdapterRegistry(),
-			JurisdictionRegistry::with_defaults( 1 ),
-			BannerConfig::defaults(),
-			GeoConfig::defaults(),
-			'',
-			ProofConfig::defaults(),
-			'',
-			1,
-			1,
-			180,
-			'consentful',
-			array( 'meta' ),
-		);
-
-		$out = $config->to_array();
-		$this->assertIsArray( $out['tags'] );
-		$ids = array_column( $out['tags'], 'id' );
-		$this->assertSame( array( 'ga4' ), $ids );
-	}
-
-	public function test_empty_hidden_tags_leave_tags_unchanged(): void {
+	public function test_all_registered_tags_are_emitted_in_order(): void {
 		$tags = new TagRegistry();
 		$tags->add( new Tag( 'ga4', 'GA4', array( DefaultPurpose::Analytics ), Delivery::Direct, 'google' ) );
 		$tags->add( new Tag( 'meta', 'Meta', array( DefaultPurpose::Marketing ), Delivery::Direct, 'meta' ) );

@@ -148,6 +148,26 @@ describe( 'gate', () => {
 		expect( api.get().analytics ).toBe( true );
 	} );
 
+	it( 'resolves several instances of one handler by the adapter handler field', () => {
+		// Two custom snippets, distinct adapter ids, both mapped to the `script` handler.
+		// The old lookup keyed by adapter id would miss both; the handler-field lookup fires them.
+		const cfg = makeConfig( {
+			tags: [
+				{ id: 'a', purposes: [ 'necessary' ], delivery: 'direct', adapter: 'cnf-a' },
+				{ id: 'b', purposes: [ 'necessary' ], delivery: 'direct', adapter: 'cnf-b' },
+			],
+			adapters: {
+				'cnf-a': { handler: 'script', src: 'https://example.test/a.js' },
+				'cnf-b': { handler: 'script', code: 'window.__cnfB = 1;' },
+			},
+		} );
+		bootGate( cfg );
+
+		const scripts = [ ...document.head.querySelectorAll( 'script' ) ];
+		expect( scripts.some( ( s ) => s.src === 'https://example.test/a.js' ) ).toBe( true );
+		expect( scripts.some( ( s ) => s.textContent === 'window.__cnfB = 1;' ) ).toBe( true );
+	} );
+
 	it( 'drains the decider _adapterQueue', () => {
 		const applied = [];
 		window.consentful = {

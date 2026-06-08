@@ -10,8 +10,8 @@ use Consentful\Tag\Tag;
 /**
  * The first-class Google integration. Owns the Purpose→Signal mapping and emits the
  * Consent Mode v2 client config (default-deny, wait_for_update, ads_data_redaction,
- * url_passthrough). Not auto-registered: core stays vendor-neutral, so the
- * Integrator instantiates and registers this in `consentful_register`.
+ * url_passthrough). Core stays vendor-neutral: the hydrator constructs this from the
+ * Administrator's catalog selections (the Google merge rule), not code.
  */
 final class GoogleAdapter implements Adapter {
 

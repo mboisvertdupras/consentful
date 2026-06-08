@@ -3,13 +3,11 @@ declare( strict_types = 1 );
 
 namespace Consentful\Frontend;
 
-use Consentful\Adapter\AdapterRegistry;
+use Consentful\Adapter\Adapter;
 use Consentful\Admin\Settings;
-use Consentful\Consent\ProofConfig;
-use Consentful\Consent\PurposeRegistry;
-use Consentful\Container\Container;
-use Consentful\Jurisdiction\JurisdictionRegistry;
-use Consentful\Tag\TagRegistry;
+use Consentful\Catalog\Catalog;
+use Consentful\Consent\Purpose;
+use Consentful\Tag\Tag;
 
 /**
  * The cache-safe client gate's WordPress surface — the only WP-coupled class here.
@@ -27,7 +25,6 @@ final class Gate {
 	private const DECIDER_FILE = 'decider.js';
 
 	public function __construct(
-		private readonly Container $container,
 		private readonly Manifest $manifest,
 		private readonly string $build_dir,
 		private readonly string $build_url,
@@ -91,80 +88,82 @@ final class Gate {
 	}
 
 	/**
-	 * Build the config from the live registries. Ships ALL Jurisdictions plus the geo
-	 * block (the client resolves the active one at runtime — cache-safe). The built-in
-	 * geo endpoint URL is the only per-request server surface, and it is non-cached.
+	 * Build the config from the canonical `consentful_settings` option via the hydrator —
+	 * the admin UI is the source of truth; dev hooks only append (never override). Ships
+	 * ALL Jurisdictions plus the geo block (the client resolves the active one at runtime —
+	 * cache-safe). The built-in geo endpoint URL is the only per-request server surface,
+	 * and it is non-cached.
 	 */
 	private function config(): ClientConfig {
-		/** @var PurposeRegistry $purposes */
-		$purposes = $this->container->get( PurposeRegistry::class );
-		/** @var TagRegistry $tags */
-		$tags = $this->container->get( TagRegistry::class );
-		/** @var AdapterRegistry $adapters */
-		$adapters = $this->container->get( AdapterRegistry::class );
-		/** @var JurisdictionRegistry $jurisdictions */
-		$jurisdictions = $this->container->get( JurisdictionRegistry::class );
-		/** @var BannerConfig $banner */
-		$banner = $this->container->get( BannerConfig::class );
-		/** @var GeoConfig $geo */
-		$geo = $this->container->get( GeoConfig::class );
-		/** @var ProofConfig $proof */
-		$proof = $this->container->get( ProofConfig::class );
-		/** @var Settings $settings */
-		$settings = $this->container->get( Settings::class );
+		$hydrator = new SettingsHydrator(
+			Settings::from_wp()->effective(),
+			Catalog::with_defaults(),
+			$this->extra_purposes(),
+			$this->extra_adapters(),
+			$this->extra_tags(),
+		);
 
-		// Overlay the Site owner's unlocked settings on the integrator's banner (Layer 1).
-		// With no saved settings the overrides are empty and the result is identical to
-		// today — and identical for every Visitor (settings are global, not per-visitor).
-		$banner = $banner->with_overrides( $settings->banner_overrides(), Settings::locked_fields() );
-
-		// When no explicit privacy URL is set, fall back to the site's configured WordPress
-		// privacy page so the banner's privacy link still resolves. Site-global, so cache-safe.
-		$banner = $banner->with_privacy_fallback( $this->privacy_policy_url() );
-
-		return new ClientConfig(
-			$purposes,
-			$tags,
-			$adapters,
-			$jurisdictions,
-			$banner,
-			$geo,
-			geo_endpoint_url: rest_url( 'consentful/v1/geo' ),
-			proof: $proof,
-			proof_endpoint_url: rest_url( 'consentful/v1/consent' ),
-			schema_version: $this->schema_version,
-			policy_version: $this->policy_version,
-			cookie: $this->cookie,
-			hidden_tags: $this->hidden_tags( $tags, $settings ),
+		return $hydrator->client_config(
+			$this->schema_version,
+			$this->policy_version,
+			$this->cookie,
+			rest_url( 'consentful/v1/geo' ),
+			rest_url( 'consentful/v1/consent' ),
+			get_privacy_policy_url(),
 		);
 	}
 
 	/**
-	 * The Site-owner-disabled Tag ids, intersected with the toggleable Tags — only
-	 * toggleable Tags can be hidden, so a non-toggleable id in the option is ignored.
+	 * Optional dev-hook purposes (append-only; default = none). Filtered to Purpose instances.
 	 *
-	 * @return list<string>
+	 * @return list<Purpose>
 	 */
-	private function hidden_tags( TagRegistry $tags, Settings $settings ): array {
-		$disabled   = $settings->hidden_tag_ids();
-		$toggleable = array();
-		foreach ( $tags->all() as $tag ) {
-			if ( $tag->site_toggleable ) {
-				$toggleable[ $tag->id ] = true;
-			}
-		}
-
-		return array_values(
-			array_filter(
-				$disabled,
-				static fn ( string $id ): bool => isset( $toggleable[ $id ] )
-			)
-		);
+	private function extra_purposes(): array {
+		/** @var mixed $filtered */
+		$filtered = apply_filters( 'consentful_purposes', array() );
+		return self::instances_of( $filtered, Purpose::class );
 	}
 
-	/** The site's configured WordPress privacy-policy page URL ('' when none is set). */
-	private function privacy_policy_url(): string {
-		return get_privacy_policy_url();
+	/**
+	 * Optional dev-hook adapters (append-only; default = none). Filtered to Adapter instances.
+	 *
+	 * @return list<Adapter>
+	 */
+	private function extra_adapters(): array {
+		/** @var mixed $filtered */
+		$filtered = apply_filters( 'consentful_adapters', array() );
+		return self::instances_of( $filtered, Adapter::class );
+	}
+
+	/**
+	 * Optional dev-hook tags (append-only; default = none). Filtered to Tag instances.
+	 *
+	 * @return list<Tag>
+	 */
+	private function extra_tags(): array {
+		/** @var mixed $filtered */
+		$filtered = apply_filters( 'consentful_tags', array() );
+		return self::instances_of( $filtered, Tag::class );
+	}
+
+	/**
+	 * Coerce a filtered value to a list of instances of `$type` (anything else dropped).
+	 *
+	 * @template T of object
+	 * @param  class-string<T> $type
+	 * @return list<T>
+	 */
+	private static function instances_of( mixed $value, string $type ): array {
+		if ( ! is_array( $value ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( $value as $item ) {
+			if ( $item instanceof $type ) {
+				$out[] = $item;
+			}
+		}
+		return $out;
 	}
 
 	/** The built decider's source, inlined verbatim. Null when the file is absent. */

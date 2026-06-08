@@ -3,73 +3,127 @@ declare( strict_types = 1 );
 
 namespace Consentful\Tests\Unit\Plugin;
 
-use Consentful\Adapter\AdapterRegistry;
-use Consentful\Consent\PurposeRegistry;
-use Consentful\Jurisdiction\JurisdictionRegistry;
+use Consentful\Activator;
 use Consentful\Plugin;
-use Consentful\Tag\TagRegistry;
 use Consentful\Tests\Unit\Support\FakeWpdb;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 
 /**
- * Plugin bootstrap: singleton, idempotent boot, and core service wiring.
+ * Plugin bootstrap: singleton, idempotent boot, and direct service wiring (no container).
+ * boot() registers the cache-safe gate (wp_head priority 1 + wp_enqueue_scripts), the REST
+ * controllers, the retention-purge hook, and — only in admin context — the admin UI hooks.
  *
- * Relies on tests/bootstrap.php (CONSENTFUL_* constants) and tests/stubs.php
- * (no-op WP shims: add_action, do_action, …).
+ * Relies on tests/bootstrap.php (CONSENTFUL_* constants) and tests/stubs.php (no-op WP
+ * shims: add_action, register_setting, the option/cron/wpdb recorders, …).
  */
 final class PluginTest extends TestCase {
 
 	protected function setUp(): void {
 		parent::setUp();
-		// boot() wires the DB-backed Sink and runs the upgrade check. Seed a matching
-		// DB version so activation is skipped, and a fake wpdb so the Sink factory
-		// resolves (per-test scope; no global wpdb stub leaks across the suite).
+		// boot() wires the DB-backed Sink and runs the upgrade check. Seed a matching DB
+		// version so activation is skipped, and a fake wpdb so the Sink factory resolves.
 		$GLOBALS['consentful_test_options'] = array(
-			'consentful_db_version' => CONSENTFUL_DB_VERSION,
+			Activator::VERSION_OPTION => CONSENTFUL_DB_VERSION,
 		);
 		$GLOBALS['wpdb']                    = FakeWpdb::create();
+		$GLOBALS['consentful_test_actions'] = array();
+
+		// The singleton's $booted flag persists across tests in one process, so reset it to a
+		// fresh, un-booted instance per test (boot() is otherwise a no-op the second time).
+		$this->reset_singleton();
 	}
 
 	protected function tearDown(): void {
-		unset( $GLOBALS['consentful_test_options'], $GLOBALS['wpdb'], $GLOBALS['consentful_test_actions'] );
+		unset(
+			$GLOBALS['consentful_test_options'],
+			$GLOBALS['wpdb'],
+			$GLOBALS['consentful_test_actions'],
+			$GLOBALS['consentful_test_is_admin']
+		);
+		$this->reset_singleton();
 		parent::tearDown();
+	}
+
+	/** Null the private static singleton so the next instance() builds a fresh, un-booted Plugin. */
+	private function reset_singleton(): void {
+		$property = ( new ReflectionClass( Plugin::class ) )->getProperty( 'instance' );
+		$property->setValue( null, null );
+	}
+
+	/**
+	 * The hooks recorded by the add_action stub for this test.
+	 *
+	 * @return list<array{hook: string, priority: int}>
+	 */
+	private function recorded_actions(): array {
+		$actions = $GLOBALS['consentful_test_actions'] ?? array();
+		if ( ! is_array( $actions ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( $actions as $action ) {
+			if ( is_array( $action ) ) {
+				$hook     = $action['hook'] ?? '';
+				$priority = $action['priority'] ?? 0;
+				$out[]    = array(
+					'hook'     => is_scalar( $hook ) ? (string) $hook : '',
+					'priority' => is_numeric( $priority ) ? (int) $priority : 0,
+				);
+			}
+		}
+		return $out;
 	}
 
 	public function test_instance_is_a_singleton(): void {
 		$this->assertSame( Plugin::instance(), Plugin::instance() );
 	}
 
+	public function test_boot_registers_the_gate_and_purge_hooks(): void {
+		Plugin::instance()->boot();
+
+		$actions = $this->recorded_actions();
+		$this->assertContains(
+			array(
+				'hook'     => 'wp_head',
+				'priority' => 1,
+			),
+			$actions
+		);
+		$hooks = array_column( $actions, 'hook' );
+		$this->assertContains( 'wp_enqueue_scripts', $hooks );
+		$this->assertContains( Activator::PURGE_HOOK, $hooks );
+	}
+
 	public function test_boot_is_idempotent(): void {
 		$plugin = Plugin::instance();
 
 		$plugin->boot();
-		$registry = $plugin->container()->get( PurposeRegistry::class );
+		$first = count( $this->recorded_actions() );
 
-		// A second boot must not rebuild the singletons.
+		// A second boot must not re-register the hooks.
 		$plugin->boot();
+		$second = count( $this->recorded_actions() );
 
-		$this->assertInstanceOf( PurposeRegistry::class, $registry );
-		$this->assertSame( $registry, $plugin->container()->get( PurposeRegistry::class ) );
+		$this->assertSame( $first, $second );
 	}
 
-	public function test_boot_wires_all_four_registries(): void {
-		$plugin    = Plugin::instance();
-		$plugin->boot();
-		$container = $plugin->container();
+	public function test_boot_registers_the_admin_hooks_only_in_admin_context(): void {
+		$GLOBALS['consentful_test_is_admin'] = true;
 
-		$this->assertInstanceOf( PurposeRegistry::class, $container->get( PurposeRegistry::class ) );
-		$this->assertInstanceOf( JurisdictionRegistry::class, $container->get( JurisdictionRegistry::class ) );
-		$this->assertInstanceOf( TagRegistry::class, $container->get( TagRegistry::class ) );
-		$this->assertInstanceOf( AdapterRegistry::class, $container->get( AdapterRegistry::class ) );
-	}
-
-	public function test_registries_resolve_as_singletons(): void {
-		$container = Plugin::instance()->container();
 		Plugin::instance()->boot();
 
-		$this->assertSame(
-			$container->get( PurposeRegistry::class ),
-			$container->get( PurposeRegistry::class )
-		);
+		$hooks = array_column( $this->recorded_actions(), 'hook' );
+		$this->assertContains( 'admin_menu', $hooks );
+		$this->assertContains( 'admin_init', $hooks );
+	}
+
+	public function test_boot_skips_the_admin_hooks_outside_admin_context(): void {
+		// $GLOBALS['consentful_test_is_admin'] is unset → is_admin() is false.
+		Plugin::instance()->boot();
+
+		$hooks = array_column( $this->recorded_actions(), 'hook' );
+		$this->assertNotContains( 'admin_menu', $hooks );
+		$this->assertNotContains( 'admin_init', $hooks );
 	}
 }

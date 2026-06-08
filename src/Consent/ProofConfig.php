@@ -9,8 +9,8 @@ namespace Consentful\Consent;
  * ClientConfig serializes only the client-facing fields into the camelCase `proof` block;
  * `retention_days` is SERVER-ONLY (the cron purge reads it, the client never sees it).
  *
- * An Integrator overrides the binding in `consentful_register` to disable proof or change
- * the retention window.
+ * `enabled` is driven by the admin `proof` setting; `retention_days` stays a server-only
+ * default (the cron purge reads it).
  */
 final class ProofConfig {
 

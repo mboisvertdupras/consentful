@@ -7,208 +7,356 @@ use Consentful\Admin\Settings;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Settings is the pure Site-owner layer (Layer 2). `sanitize` is the heart: allowlist +
- * coerce, dropping unknown keys AND every locked field. `banner_overrides` /
- * `hidden_tag_ids` / `is_locked` / `locked_fields` feed the Gate overlay. Locked fields
- * always defer to the integrator's Layer 1.
+ * Settings is the canonical `consentful_settings` option: `sanitize()` is the pure
+ * allowlist+coerce `register_setting` callback; the typed accessors return the EFFECTIVE
+ * config (stored deep-merged over `defaults()`), so an empty option yields the compliant
+ * baseline. Custom-snippet `code` is stored raw (admin `unfiltered_html` trust).
  */
 final class SettingsTest extends TestCase {
 
-	protected function tearDown(): void {
-		remove_all_filters( 'consentful_locked_settings' );
-		parent::tearDown();
+	/**
+	 * Narrow a sub-array of an untyped (`mixed`-valued) array for nested offset access.
+	 *
+	 * @param array<array-key, mixed> $source
+	 * @return array<array-key, mixed>
+	 */
+	private function sub( array $source, string|int $key ): array {
+		$value = $source[ $key ] ?? null;
+		$this->assertIsArray( $value );
+		return $value;
 	}
 
-	public function test_sanitize_coerces_and_allowlists_each_field(): void {
+	public function test_empty_option_yields_full_defaults(): void {
+		$settings = new Settings( array() );
+
+		$this->assertSame( $this->sub( Settings::defaults(), 'banner' ), $settings->banner() );
+		$this->assertSame( $this->sub( Settings::defaults(), 'geo' ), $settings->geo() );
+		$this->assertSame( $this->sub( Settings::defaults(), 'proof' ), $settings->proof() );
+		$this->assertSame( array(), $settings->tags() );
+		$this->assertFalse( $this->sub( $settings->purposes(), 'personalization' )['enabled'] );
+	}
+
+	public function test_defaults_describe_the_compliant_baseline(): void {
+		$defaults = Settings::defaults();
+
+		$this->assertSame( 1, $defaults['version'] );
+		$this->assertTrue( $this->sub( $defaults, 'banner' )['enabled'] );
+		$this->assertSame( 'bar', $this->sub( $defaults, 'banner' )['position'] );
+		$this->assertTrue( $this->sub( $defaults, 'geo' )['adaptive'] );
+		$this->assertSame( 'opt_in', $this->sub( $defaults, 'geo' )['globalPolicy'] );
+		$this->assertTrue( $this->sub( $defaults, 'proof' )['enabled'] );
+	}
+
+	public function test_accessors_merge_stored_over_defaults(): void {
+		$settings = new Settings(
+			array(
+				'banner' => array( 'position' => 'modal' ),
+				'geo'    => array( 'adaptive' => false ),
+			)
+		);
+
+		// Overridden field changes; siblings keep the default.
+		$this->assertSame( 'modal', $settings->banner()['position'] );
+		$this->assertSame( 'auto', $settings->banner()['theme'] );
+		$this->assertFalse( $settings->geo()['adaptive'] );
+		$this->assertSame( 'opt_in', $settings->geo()['globalPolicy'] );
+	}
+
+	public function test_all_returns_the_raw_stored_array(): void {
+		$stored   = array( 'banner' => array( 'position' => 'corner' ) );
+		$settings = new Settings( $stored );
+
+		$this->assertSame( $stored, $settings->all() );
+	}
+
+	public function test_sanitize_always_stamps_the_version(): void {
+		$this->assertSame( 1, Settings::sanitize( array() )['version'] );
+	}
+
+	public function test_sanitize_drops_unknown_top_level_keys(): void {
 		$out = Settings::sanitize(
 			array(
-				'enabled'      => '1',
+				'banner' => array( 'enabled' => true ),
+				'evil'   => 'x',
+				'locked' => array( 'theme' ),
+			)
+		);
+
+		$this->assertSame( array( 'version', 'banner' ), array_keys( $out ) );
+	}
+
+	public function test_sanitize_banner_coerces_and_allowlists(): void {
+		$out = Settings::sanitize(
+			array(
+				'banner' => array(
+					'enabled'      => '1',
+					'position'     => 'corner',
+					'theme'        => 'dark',
+					'primaryColor' => '#abcdef',
+					'radius'       => '12',
+					'privacyUrl'   => 'https://example.test/privacy',
+					'evil'         => 'x',
+				),
+			)
+		);
+
+		$this->assertSame(
+			array(
+				'enabled'      => true,
 				'position'     => 'corner',
 				'theme'        => 'dark',
 				'primaryColor' => '#abcdef',
-				'radius'       => '12',
+				'radius'       => 12,
 				'privacyUrl'   => 'https://example.test/privacy',
 			),
-			array()
+			$this->sub( $out, 'banner' )
 		);
-
-		$this->assertTrue( $out['enabled'] );
-		$this->assertSame( 'corner', $out['position'] );
-		$this->assertSame( 'dark', $out['theme'] );
-		$this->assertSame( '#abcdef', $out['primaryColor'] );
-		$this->assertSame( 12, $out['radius'] );
-		$this->assertSame( 'https://example.test/privacy', $out['privacyUrl'] );
 	}
 
-	public function test_sanitize_drops_unknown_keys(): void {
+	public function test_sanitize_banner_drops_invalid_position_theme_and_color(): void {
 		$out = Settings::sanitize(
 			array(
-				'enabled' => true,
-				'evil'    => 'x',
-				'purposes' => array( 'analytics' => 'hacked' ),
-			),
-			array()
+				'banner' => array(
+					'position'     => 'floating',
+					'theme'        => 'neon',
+					'primaryColor' => 'not-a-color',
+				),
+			)
 		);
 
-		$this->assertSame( array( 'enabled' ), array_keys( $out ) );
+		$this->assertSame( array(), $this->sub( $out, 'banner' ) );
 	}
 
-	public function test_sanitize_drops_every_locked_field_even_when_present(): void {
-		$raw = array(
-			'enabled'      => true,
-			'position'     => 'modal',
-			'theme'        => 'light',
-			'primaryColor' => '#123456',
-			'radius'       => 4,
-			'privacyUrl'   => 'https://example.test',
-			'tags'         => array( 'ga4' => false ),
-		);
+	public function test_sanitize_banner_clamps_radius(): void {
+		$high = Settings::sanitize( array( 'banner' => array( 'radius' => 999 ) ) );
+		$neg  = Settings::sanitize( array( 'banner' => array( 'radius' => -5 ) ) );
 
-		$out = Settings::sanitize( $raw, array( 'enabled', 'position', 'theme', 'primaryColor', 'radius', 'privacyUrl', 'tags' ) );
-
-		$this->assertSame( array(), $out );
+		$this->assertSame( 32, $this->sub( $high, 'banner' )['radius'] );
+		$this->assertSame( 5, $this->sub( $neg, 'banner' )['radius'] );
 	}
 
-	public function test_sanitize_drops_invalid_position_and_theme(): void {
-		$out = Settings::sanitize(
+	public function test_sanitize_purposes_keeps_only_fixed_keys_and_copy(): void {
+		$out      = Settings::sanitize(
 			array(
-				'position' => 'floating',
-				'theme'    => 'neon',
-			),
-			array()
+				'purposes' => array(
+					'personalization' => array( 'enabled' => '1' ),
+					'analytics'       => array(
+						'label'       => 'Stats',
+						'description' => 'How we measure',
+					),
+					'bogus'           => array( 'enabled' => true ),
+				),
+			)
 		);
+		$purposes = $this->sub( $out, 'purposes' );
 
-		$this->assertArrayNotHasKey( 'position', $out );
-		$this->assertArrayNotHasKey( 'theme', $out );
+		$this->assertTrue( $this->sub( $purposes, 'personalization' )['enabled'] );
+		$this->assertSame( 'Stats', $this->sub( $purposes, 'analytics' )['label'] );
+		$this->assertSame( 'How we measure', $this->sub( $purposes, 'analytics' )['description'] );
+		$this->assertArrayNotHasKey( 'bogus', $purposes );
 	}
 
-	public function test_sanitize_drops_an_invalid_color_and_empty_url(): void {
+	public function test_sanitize_purposes_allows_blank_copy(): void {
 		$out = Settings::sanitize(
-			array(
-				'primaryColor' => 'not-a-color',
-				'privacyUrl'   => '',
-			),
-			array()
+			array( 'purposes' => array( 'marketing' => array( 'label' => '' ) ) )
 		);
 
-		$this->assertArrayNotHasKey( 'primaryColor', $out );
-		$this->assertArrayNotHasKey( 'privacyUrl', $out );
+		$this->assertSame( '', $this->sub( $this->sub( $out, 'purposes' ), 'marketing' )['label'] );
 	}
 
-	public function test_sanitize_clamps_radius_to_zero_through_thirty_two(): void {
-		$high = Settings::sanitize( array( 'radius' => 999 ), array() );
-		$neg  = Settings::sanitize( array( 'radius' => -5 ), array() );
-
-		$this->assertSame( 32, $high['radius'] );
-		$this->assertSame( 5, $neg['radius'] );
-	}
-
-	public function test_sanitize_drops_copy_entirely(): void {
-		// Banner copy is not Site-owner editable: it comes from the gettext defaults and is
-		// translated in the language files, so a posted `copy` map is dropped like any unknown key.
-		$out = Settings::sanitize(
-			array(
-				'enabled' => true,
-				'copy'    => array( 'title' => 'Hello' ),
-			),
-			array()
-		);
-
-		$this->assertSame( array( 'enabled' ), array_keys( $out ) );
-		$this->assertArrayNotHasKey( 'copy', $out );
-	}
-
-	public function test_sanitize_coerces_tags_to_bool(): void {
+	public function test_sanitize_tags_catalog_instance(): void {
 		$out = Settings::sanitize(
 			array(
 				'tags' => array(
-					'ga4'  => '1',
-					'meta' => '0',
-					'ads'  => false,
-					'gtm'  => true,
+					array(
+						'id'       => 'ga4',
+						'catalog'  => 'ga4',
+						'enabled'  => '1',
+						'purposes' => array( 'analytics', 'bogus' ),
+						'fields'   => array( 'measurementId' => 'G-XXXX' ),
+					),
 				),
-			),
-			array()
+			)
 		);
 
-		// PHP's bool coercion: '1'/true → true, '0'/false → false.
 		$this->assertSame(
 			array(
-				'ga4'  => true,
-				'meta' => false,
-				'ads'  => false,
-				'gtm'  => true,
-			),
-			$out['tags']
-		);
-	}
-
-	public function test_sanitize_preserves_tag_id_case(): void {
-		// Tag ids may carry uppercase (e.g. GTM-ABC); sanitize_key would lowercase them and
-		// silently break the toggle, so the id must round-trip verbatim.
-		$out = Settings::sanitize(
-			array(
-				'tags' => array( 'GTM-ABC' => false ),
-			),
-			array()
-		);
-
-		$this->assertSame( array( 'GTM-ABC' => false ), $out['tags'] );
-	}
-
-	public function test_banner_overrides_excludes_locked_fields(): void {
-		$settings = new Settings(
-			array(
-				'position' => 'modal',
-				'theme'    => 'dark',
-			),
-			array( 'theme' )
-		);
-
-		$this->assertSame( array( 'position' => 'modal' ), $settings->banner_overrides() );
-	}
-
-	public function test_hidden_tag_ids_lists_only_disabled_tags(): void {
-		$settings = new Settings(
-			array(
-				'tags' => array(
-					'ga4'  => true,
-					'meta' => false,
-					'ads'  => false,
+				array(
+					'id'       => 'ga4',
+					'catalog'  => 'ga4',
+					'enabled'  => true,
+					'purposes' => array( 'analytics' ),
+					'fields'   => array( 'measurementId' => 'G-XXXX' ),
 				),
 			),
-			array()
+			$this->sub( $out, 'tags' )
+		);
+	}
+
+	public function test_sanitize_tags_drops_unknown_catalog(): void {
+		$out = Settings::sanitize(
+			array(
+				'tags' => array(
+					array(
+						'id'      => 'mystery',
+						'catalog' => 'not-a-catalog',
+					),
+					array(
+						'id'      => 'gtm',
+						'catalog' => 'gtm',
+					),
+				),
+			)
 		);
 
-		$this->assertSame( array( 'meta', 'ads' ), $settings->hidden_tag_ids() );
+		$this->assertSame( array( 'gtm' ), array_column( $this->sub( $out, 'tags' ), 'id' ) );
 	}
 
-	public function test_hidden_tag_ids_is_empty_when_tags_locked(): void {
-		$settings = new Settings(
-			array( 'tags' => array( 'meta' => false ) ),
-			array( 'tags' )
+	public function test_sanitize_tags_dedupes_by_id_and_drops_empty_id(): void {
+		$out  = Settings::sanitize(
+			array(
+				'tags' => array(
+					array(
+						'id'      => 'ga4',
+						'catalog' => 'ga4',
+					),
+					array(
+						'id'      => 'ga4',
+						'catalog' => 'ga4',
+					),
+					array(
+						'id'      => '',
+						'catalog' => 'ga4',
+					),
+				),
+			)
+		);
+		$tags = $this->sub( $out, 'tags' );
+
+		$this->assertCount( 1, $tags );
+		$this->assertSame( 'ga4', $this->sub( $tags, 0 )['id'] );
+	}
+
+	public function test_sanitize_tags_preserves_id_case(): void {
+		$out = Settings::sanitize(
+			array(
+				'tags' => array(
+					array(
+						'id'      => 'GTM-ABC',
+						'catalog' => 'gtm',
+					),
+				),
+			)
 		);
 
-		$this->assertSame( array(), $settings->hidden_tag_ids() );
+		$this->assertSame( 'GTM-ABC', $this->sub( $this->sub( $out, 'tags' ), 0 )['id'] );
 	}
 
-	public function test_is_locked_reflects_the_locked_list(): void {
-		$settings = new Settings( array(), array( 'primaryColor' ) );
-
-		$this->assertTrue( $settings->is_locked( 'primaryColor' ) );
-		$this->assertFalse( $settings->is_locked( 'theme' ) );
-	}
-
-	public function test_locked_fields_reads_the_filter_and_drops_non_strings(): void {
-		add_filter(
-			'consentful_locked_settings',
-			static fn (): array => array( 'theme', 42, 'primaryColor' )
+	public function test_sanitize_tags_keeps_custom_code_raw_and_escapes_src(): void {
+		$code = '<script>document.title = "x";</script>';
+		$out  = Settings::sanitize(
+			array(
+				'tags' => array(
+					array(
+						'id'      => 'custom-hotjar',
+						'catalog' => 'custom',
+						'label'   => 'Hotjar',
+						'fields'  => array(
+							'code'       => $code,
+							'src'        => 'https://example.test/h.js',
+							'attributes' => array( 'data-id' => '123' ),
+						),
+					),
+				),
+			)
 		);
 
-		$this->assertSame( array( 'theme', 'primaryColor' ), Settings::locked_fields() );
+		$tag    = $this->sub( $this->sub( $out, 'tags' ), 0 );
+		$fields = $this->sub( $tag, 'fields' );
+		// code is stored verbatim — never escaped (injected by JS).
+		$this->assertSame( $code, $fields['code'] );
+		$this->assertSame( 'https://example.test/h.js', $fields['src'] );
+		$this->assertSame( array( 'data-id' => '123' ), $fields['attributes'] );
+		$this->assertSame( 'Hotjar', $tag['label'] );
 	}
 
-	public function test_locked_fields_is_empty_without_a_filter(): void {
-		$this->assertSame( array(), Settings::locked_fields() );
+	public function test_sanitize_tags_drops_empty_custom_row_but_keeps_one_with_code(): void {
+		$out = Settings::sanitize(
+			array(
+				'tags' => array(
+					// An untouched "add another" row: no code, no src — drop it.
+					array(
+						'id'      => 'custom-1',
+						'catalog' => 'custom',
+						'fields'  => array(
+							'code' => '',
+							'src'  => '',
+						),
+					),
+					// A filled-in custom snippet: keep it.
+					array(
+						'id'      => 'custom-2',
+						'catalog' => 'custom',
+						'fields'  => array( 'code' => 'A();' ),
+					),
+				),
+			)
+		);
+
+		$tags = $this->sub( $out, 'tags' );
+		$this->assertSame( array( 'custom-2' ), array_column( $tags, 'id' ) );
+		$this->assertSame( 'A();', $this->sub( $this->sub( $tags, 0 ), 'fields' )['code'] );
+	}
+
+	public function test_sanitize_tags_drops_fields_outside_catalog_schema(): void {
+		$out = Settings::sanitize(
+			array(
+				'tags' => array(
+					array(
+						'id'      => 'ga4',
+						'catalog' => 'ga4',
+						'fields'  => array(
+							'measurementId' => 'G-XXXX',
+							'pixelId'       => 'evil',
+						),
+					),
+				),
+			)
+		);
+
+		$tag = $this->sub( $this->sub( $out, 'tags' ), 0 );
+		$this->assertSame( array( 'measurementId' => 'G-XXXX' ), $this->sub( $tag, 'fields' ) );
+	}
+
+	public function test_sanitize_geo(): void {
+		$out = Settings::sanitize(
+			array(
+				'geo' => array(
+					'adaptive'     => '0',
+					'globalPolicy' => 'opt_out',
+					'evil'         => 'x',
+				),
+			)
+		);
+
+		$this->assertSame(
+			array(
+				'adaptive'     => false,
+				'globalPolicy' => 'opt_out',
+			),
+			$this->sub( $out, 'geo' )
+		);
+	}
+
+	public function test_sanitize_geo_drops_invalid_global_policy(): void {
+		$out = Settings::sanitize( array( 'geo' => array( 'globalPolicy' => 'whatever' ) ) );
+
+		$this->assertArrayNotHasKey( 'globalPolicy', $this->sub( $out, 'geo' ) );
+	}
+
+	public function test_sanitize_proof(): void {
+		$out = Settings::sanitize( array( 'proof' => array( 'enabled' => '0' ) ) );
+
+		$this->assertSame( array( 'enabled' => false ), $this->sub( $out, 'proof' ) );
 	}
 }

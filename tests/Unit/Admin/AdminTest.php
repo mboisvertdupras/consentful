@@ -5,18 +5,16 @@ namespace Consentful\Tests\Unit\Admin;
 
 use Consentful\Admin\Admin;
 use Consentful\Admin\ConsentLogReader;
-use Consentful\Admin\Settings;
-use Consentful\Container\Container;
-use Consentful\Frontend\BannerConfig;
-use Consentful\Tag\TagRegistry;
+use Consentful\Catalog\Catalog;
 use Consentful\Tests\Unit\Support\FakeWpdb;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Admin is the thin WP shell of the constrained Site-owner UI: it registers the menu,
+ * Admin is the thin WP shell of the self-serve Administrator UI: it registers the menu,
  * settings and export hooks (recorder-tested), the menu carries the `manage_options`
- * capability on every screen, and the export data path (`export_csv_body`) builds CSV from
- * the reader + exporter. The render/header-send shells stay out of the tested core.
+ * capability on every screen, the `register_setting` callback delegates to the pure
+ * `Settings::sanitize`, and the export data path (`export_csv_body`) builds CSV from the
+ * reader + exporter. The render/header-send shells stay out of the tested core.
  */
 final class AdminTest extends TestCase {
 
@@ -55,19 +53,17 @@ final class AdminTest extends TestCase {
 		return $out;
 	}
 
-	private function container( ?ConsentLogReader $reader = null, ?TagRegistry $tags = null ): Container {
-		$container = new Container();
-		$container->instance( TagRegistry::class, $tags ?? new TagRegistry() );
-		$container->instance( BannerConfig::class, BannerConfig::defaults() );
-		$container->instance( Settings::class, new Settings( array(), array() ) );
-		$container->instance( ConsentLogReader::class, $reader ?? new ConsentLogReader( FakeWpdb::create(), 'wp_consentful_consent_log' ) );
-		return $container;
+	private function admin( ?ConsentLogReader $reader = null ): Admin {
+		return new Admin(
+			Catalog::with_defaults(),
+			$reader ?? new ConsentLogReader( FakeWpdb::create(), 'wp_consentful_consent_log' )
+		);
 	}
 
 	public function test_register_records_the_admin_hooks(): void {
 		$GLOBALS['consentful_test_actions'] = array();
 
-		Admin::for_container( $this->container() )->register();
+		$this->admin()->register();
 
 		$hooks = array_column( $this->recorded( 'consentful_test_actions' ), 'hook' );
 		$this->assertContains( 'admin_menu', $hooks );
@@ -82,7 +78,7 @@ final class AdminTest extends TestCase {
 		$GLOBALS['consentful_test_styles']         = array();
 		$GLOBALS['consentful_test_inline_scripts'] = array();
 
-		$admin = Admin::for_container( $this->container() );
+		$admin = $this->admin();
 		// register_menu records the settings-page hook (the stub returns the menu slug).
 		$admin->register_menu();
 
@@ -101,7 +97,7 @@ final class AdminTest extends TestCase {
 	public function test_register_menu_records_pages_with_manage_options(): void {
 		$GLOBALS['consentful_test_menus'] = array();
 
-		Admin::for_container( $this->container() )->register_menu();
+		$this->admin()->register_menu();
 
 		$menus = $this->recorded( 'consentful_test_menus' );
 		$this->assertCount( 3, $menus );
@@ -117,22 +113,26 @@ final class AdminTest extends TestCase {
 	public function test_register_settings_uses_the_pure_sanitize_callback(): void {
 		$GLOBALS['consentful_test_settings'] = array();
 
-		Admin::for_container( $this->container() )->register_settings();
+		$this->admin()->register_settings();
 
 		$registered = $this->recorded( 'consentful_test_settings' )[0];
 		$this->assertSame( 'consentful', $registered['group'] );
 		$this->assertSame( 'consentful_settings', $registered['name'] );
 
-		// The callback delegates to Settings::sanitize (drops unknown keys).
+		// The (one-arg) callback delegates to Settings::sanitize (stamps the version,
+		// allowlists the banner, drops unknown keys).
 		$this->assertIsArray( $registered['args'] );
 		$callback = $registered['args']['sanitize_callback'];
 		$this->assertIsCallable( $callback );
 		$this->assertSame(
-			array( 'enabled' => true ),
+			array(
+				'version' => 1,
+				'banner'  => array( 'enabled' => true ),
+			),
 			$callback(
 				array(
-					'enabled' => '1',
-					'evil'    => 'x',
+					'banner' => array( 'enabled' => '1' ),
+					'evil'   => 'x',
 				)
 			)
 		);
@@ -155,7 +155,7 @@ final class AdminTest extends TestCase {
 		);
 		$reader = new ConsentLogReader( $db, 'wp_consentful_consent_log' );
 
-		$csv = Admin::for_container( $this->container( $reader ) )->export_csv_body();
+		$csv = $this->admin( $reader )->export_csv_body();
 
 		$this->assertStringContainsString( '"consent_id"', $csv );
 		$this->assertStringContainsString( '"cid-1"', $csv );

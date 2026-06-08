@@ -9,9 +9,9 @@ namespace Consentful\Frontend;
  * camelCase `banner` key the JS banner coercer consumes; the same value feeds the
  * cache-safe, identical-for-every-visitor head output.
  *
- * `defaults()` is the only place gettext is called — copy comes from code defaults
- * until the site-owner admin UI lands. An Integrator overrides the binding in
- * `consentful_register` to supply their own instance.
+ * `defaults()` is the only place gettext is called — copy comes from code defaults;
+ * the Administrator tunes appearance and purpose copy from the admin UI, applied here
+ * by the hydrator via `with_overrides()` / `with_purpose_overrides()`.
  */
 final class BannerConfig {
 
@@ -55,19 +55,16 @@ final class BannerConfig {
 	}
 
 	/**
-	 * Return a NEW BannerConfig with the Site owner's unlocked overrides layered over this
-	 * base (the integrator's Layer 1). A field is overlaid only when it is present in
-	 * `$overrides` AND not in `$locked` — locked fields keep the base value (Layer 1 wins).
-	 * Values may arrive as strings (from the option), so each is coerced defensively;
-	 * invalid `position`/`theme` fall back to the base. `copy` and `purposes` are not
-	 * Site-owner editable — copy is gettext-translated, never overridden. Pure: no WordPress
-	 * calls.
+	 * Return a NEW BannerConfig with the Administrator's appearance overrides layered over
+	 * this base. A field is overlaid only when it is present in `$overrides`. Values may
+	 * arrive as strings (from the option), so each is coerced defensively; invalid
+	 * `position`/`theme` fall back to the base. `copy` is not editable here — it is
+	 * gettext-translated, never overridden. Pure: no WordPress calls.
 	 *
-	 * @param array<string, mixed> $overrides The Site owner's stored banner values.
-	 * @param list<string>         $locked    Locked top-level field keys.
+	 * @param array<string, mixed> $overrides The Administrator's stored banner values.
 	 */
-	public function with_overrides( array $overrides, array $locked ): self {
-		$has = static fn ( string $field ): bool => array_key_exists( $field, $overrides ) && ! in_array( $field, $locked, true );
+	public function with_overrides( array $overrides ): self {
+		$has = static fn ( string $field ): bool => array_key_exists( $field, $overrides );
 
 		return new self(
 			$has( 'enabled' ) ? (bool) $overrides['enabled'] : $this->enabled,
@@ -104,6 +101,40 @@ final class BannerConfig {
 			$fallback,
 			$this->copy,
 			$this->purposes,
+		);
+	}
+
+	/**
+	 * Return a NEW BannerConfig with the Administrator's per-Purpose copy overrides layered
+	 * over this base. A purpose's `label`/`description` is overridden only when the override
+	 * is a non-blank string — a blank or absent value keeps the gettext default. Pure: no
+	 * WordPress calls. Overrides for purposes not in the base map are ignored.
+	 *
+	 * @param array<string, array<string, mixed>> $overrides Purpose key → { label?, description? }.
+	 */
+	public function with_purpose_overrides( array $overrides ): self {
+		$purposes = $this->purposes;
+		foreach ( $purposes as $key => $copy ) {
+			$over = $overrides[ $key ] ?? array();
+			foreach ( array( 'label', 'description' ) as $field ) {
+				$value = self::to_string( $over[ $field ] ?? '' );
+				if ( '' !== $value ) {
+					$copy[ $field ] = $value;
+				}
+			}
+			$purposes[ $key ] = $copy;
+		}
+
+		return new self(
+			$this->enabled,
+			$this->position,
+			$this->theme,
+			$this->primary_color,
+			$this->radius,
+			$this->version,
+			$this->privacy_url,
+			$this->copy,
+			$purposes,
 		);
 	}
 

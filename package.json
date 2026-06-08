@@ -1,7 +1,7 @@
 {
   "name": "consentful",
   "version": "1.0.0",
-  "description": "Consentful — a white-label WordPress universal consent layer that gates all non-essential third-party tags behind visitor consent, adapts to the visitor's jurisdiction (Québec Loi 25 / GDPR / US opt-out), and keeps demonstrable proof of consent.",
+  "description": "Consentful — an open-source WordPress universal consent layer that gates all non-essential third-party tags behind visitor consent, adapts to the visitor's jurisdiction (Québec Loi 25 / GDPR / US opt-out), and keeps demonstrable proof of consent.",
   "private": true,
   "license": "GPL-2.0-or-later",
   "author": "Tamarak (https://tamarak.dev)",

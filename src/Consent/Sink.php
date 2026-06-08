@@ -5,9 +5,9 @@ namespace Consentful\Consent;
 
 /**
  * The destination a Consent record is written to. The built-in default is
- * DatabaseSink (the bundled Consent log table); an Integrator may bind their own
- * implementation in `consentful_register` to redirect records to an external store
- * (per ADR 0002). The REST controller depends only on this interface.
+ * DatabaseSink (the bundled Consent log table); a developer may redirect records to
+ * their own store via the `consentful_sink` filter (per ADR 0002). The REST controller
+ * depends only on this interface.
  */
 interface Sink {
 

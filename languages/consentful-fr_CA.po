@@ -22,23 +22,24 @@ msgstr ""
 msgid "https://tamarak.dev"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:118
+#: src/Frontend/BannerConfig.php:174
 msgid "Your privacy"
 msgstr "Votre vie privée"
 
-#: src/Frontend/BannerConfig.php:142
+#: src/Admin/Admin.php:634
+#: src/Frontend/BannerConfig.php:198
 msgid "Analytics"
 msgstr "Mesure d’audience"
 
-#: src/Frontend/BannerConfig.php:122
+#: src/Frontend/BannerConfig.php:178
 msgid "Accept all"
 msgstr "Tout accepter"
 
-#: src/Frontend/BannerConfig.php:123
+#: src/Frontend/BannerConfig.php:179
 msgid "Reject all"
 msgstr "Tout refuser"
 
-#: src/Frontend/BannerConfig.php:124
+#: src/Frontend/BannerConfig.php:180
 msgid "Customize"
 msgstr "Personnaliser"
 
@@ -47,15 +48,11 @@ msgstr "Personnaliser"
 msgid "Settings"
 msgstr "Réglages"
 
-#: src/Admin/Admin.php:173
+#: src/Admin/Admin.php:170
 msgid "Privacy policy URL"
 msgstr "URL de la politique de confidentialité"
 
-#: src/Admin/Admin.php:136
-msgid "Appearance"
-msgstr "Apparence"
-
-#: src/Admin/Admin.php:159
+#: src/Admin/Admin.php:158
 msgid "Primary color"
 msgstr "Couleur principale"
 
@@ -63,7 +60,7 @@ msgstr "Couleur principale"
 msgid "Theme"
 msgstr "Thème"
 
-#: src/Admin/Admin.php:146
+#: src/Admin/Admin.php:147
 msgid "Position"
 msgstr "Position"
 
@@ -79,165 +76,156 @@ msgstr ""
 msgid "https://github.com/tamarak/consentful"
 msgstr ""
 
-#. Description of the plugin
-#: consentful.php
-msgid "A white-label, universal consent layer that gates all non-essential third-party tags behind visitor consent, adapts to the visitor's jurisdiction, and keeps demonstrable proof of consent."
-msgstr "Une couche de consentement universelle en marque blanche qui bloque toutes les balises tierces non essentielles jusqu'au consentement du visiteur, s'adapte à la juridiction du visiteur et conserve une preuve de consentement démontrable."
-
 #: src/Admin/Admin.php:78
 #: src/Admin/Admin.php:79
-#: src/Admin/Admin.php:231
+#: src/Admin/Admin.php:379
 msgid "Consent log"
 msgstr "Journal des consentements"
 
-#: src/Admin/Admin.php:123
+#: src/Admin/Admin.php:121
 msgid "Consentful settings"
 msgstr "Réglages de Consentful"
 
-#: src/Admin/Admin.php:166
+#: src/Admin/Admin.php:164
 msgid "Corner radius (px)"
 msgstr "Rayon des coins (px)"
 
-#: src/Admin/Admin.php:194
+#: src/Admin/Admin.php:228
 msgid "Tags"
 msgstr "Balises"
 
-#: src/Admin/Admin.php:198
-msgid "Tag visibility is locked by your developer."
-msgstr "La visibilité des balises est verrouillée par votre développeur."
-
-#: src/Admin/Admin.php:213
+#: src/Admin/Admin.php:258
 msgid "Enabled"
 msgstr "Activée"
 
-#: src/Admin/Admin.php:236
+#: src/Admin/Admin.php:384
 msgid "Export CSV"
 msgstr "Exporter en CSV"
 
 #. translators: %d: total number of consent records.
-#: src/Admin/Admin.php:242
+#: src/Admin/Admin.php:390
 #, php-format
 msgid "%d records"
 msgstr "%d enregistrements"
 
-#: src/Admin/Admin.php:248
+#: src/Admin/Admin.php:396
 msgid "Recorded"
 msgstr "Horodatage"
 
-#: src/Admin/Admin.php:248
+#: src/Admin/Admin.php:349
+#: src/Admin/Admin.php:396
 msgid "Jurisdiction"
 msgstr "Juridiction"
 
-#: src/Admin/Admin.php:248
+#: src/Admin/Admin.php:396
 msgid "Policy"
 msgstr "Politique"
 
-#: src/Admin/Admin.php:248
+#: src/Admin/Admin.php:396
 msgid "Schema"
 msgstr "Schéma"
 
-#: src/Admin/Admin.php:140
-#: src/Admin/Admin.php:248
+#: src/Admin/Admin.php:142
+#: src/Admin/Admin.php:396
 msgid "Banner"
 msgstr "Bannière"
 
-#: src/Admin/Admin.php:248
+#: src/Admin/Admin.php:187
+#: src/Admin/Admin.php:273
+#: src/Admin/Admin.php:338
+#: src/Admin/Admin.php:396
 msgid "Purposes"
 msgstr "Finalités"
 
-#: src/Admin/Admin.php:248
+#: src/Admin/Admin.php:396
 msgid "IP hash"
 msgstr "Empreinte IP"
 
-#: src/Admin/Admin.php:248
+#: src/Admin/Admin.php:396
 msgid "UA hash"
 msgstr "Empreinte UA"
 
-#: src/Admin/Admin.php:277
+#: src/Admin/Admin.php:425
 msgid "You are not allowed to export the consent log."
 msgstr "Vous n'êtes pas autorisé à exporter le journal des consentements."
 
-#: src/Admin/Admin.php:306
-msgid "Locked by your developer."
-msgstr "Verrouillé par votre développeur."
-
-#: src/Frontend/BannerConfig.php:119
+#: src/Frontend/BannerConfig.php:175
 msgid "We use cookies and similar technologies to run this site and, with your consent, to measure traffic and personalize content."
 msgstr "Nous utilisons des témoins et des technologies similaires pour faire fonctionner ce site et, avec votre consentement, pour mesurer l'audience et personnaliser le contenu."
 
-#: src/Frontend/BannerConfig.php:120
+#: src/Frontend/BannerConfig.php:176
 msgid "Privacy policy"
 msgstr "Politique de confidentialité"
 
-#: src/Frontend/BannerConfig.php:121
+#: src/Frontend/BannerConfig.php:177
 msgid "Manage preferences"
 msgstr "Gérer les préférences"
 
-#: src/Frontend/BannerConfig.php:125
+#: src/Frontend/BannerConfig.php:181
 msgid "Save preferences"
 msgstr "Enregistrer les préférences"
 
-#: src/Frontend/BannerConfig.php:126
+#: src/Frontend/BannerConfig.php:182
 msgid "Privacy settings"
 msgstr "Paramètres de confidentialité"
 
-#: src/Frontend/BannerConfig.php:127
+#: src/Frontend/BannerConfig.php:183
 msgid "Your privacy choices"
 msgstr "Vos choix de confidentialité"
 
-#: src/Frontend/BannerConfig.php:128
+#: src/Frontend/BannerConfig.php:184
 msgid "We and our partners process personal data for advertising, analytics and personalization. You can opt out at any time."
 msgstr "Nos partenaires et nous traitons des renseignements personnels à des fins de publicité, de mesure d'audience et de personnalisation. Vous pouvez vous y opposer en tout temps."
 
-#: src/Frontend/BannerConfig.php:129
+#: src/Frontend/BannerConfig.php:185
 msgid "Do Not Sell or Share My Personal Information"
 msgstr "Ne pas vendre ni communiquer mes renseignements personnels"
 
-#: src/Frontend/BannerConfig.php:130
+#: src/Frontend/BannerConfig.php:186
 msgid "Close"
 msgstr "Fermer"
 
-#: src/Frontend/BannerConfig.php:134
+#: src/Frontend/BannerConfig.php:190
 msgid "Strictly necessary"
 msgstr "Strictement nécessaires"
 
-#: src/Frontend/BannerConfig.php:135
+#: src/Frontend/BannerConfig.php:191
 msgid "Required for the site to function; always on and cannot be turned off."
 msgstr "Nécessaires au fonctionnement du site; toujours actifs et ne peuvent pas être désactivés."
 
-#: src/Frontend/BannerConfig.php:138
+#: src/Admin/Admin.php:633
+#: src/Frontend/BannerConfig.php:194
 msgid "Functional"
 msgstr "Fonctionnels"
 
-#: src/Frontend/BannerConfig.php:139
+#: src/Frontend/BannerConfig.php:195
 msgid "Remembers your choices and preferences to improve your experience."
 msgstr "Mémorise vos choix et vos préférences afin d'améliorer votre expérience."
 
-#: src/Frontend/BannerConfig.php:143
+#: src/Frontend/BannerConfig.php:199
 msgid "Measures how the site is used so we can improve it."
 msgstr "Mesure la façon dont le site est utilisé afin que nous puissions l'améliorer."
 
-#: src/Frontend/BannerConfig.php:146
+#: src/Admin/Admin.php:635
+#: src/Frontend/BannerConfig.php:202
 msgid "Marketing"
 msgstr "Marketing"
 
-#: src/Frontend/BannerConfig.php:147
+#: src/Frontend/BannerConfig.php:203
 msgid "Used to deliver and measure advertising relevant to you."
 msgstr "Sert à diffuser et à mesurer des publicités pertinentes pour vous."
 
-#: src/Frontend/BannerConfig.php:150
+#: src/Admin/Admin.php:212
+#: src/Admin/Admin.php:636
+#: src/Frontend/BannerConfig.php:206
 msgid "Personalization"
 msgstr "Personnalisation"
 
-#: src/Frontend/BannerConfig.php:151
+#: src/Frontend/BannerConfig.php:207
 msgid "Tailors content and recommendations to your interests."
 msgstr "Adapte le contenu et les recommandations à vos centres d'intérêt."
 
-#: src/Admin/Admin.php:124
-msgid "Customize the consent banner shown to your visitors. Your developer controls which tags are gated and may lock some of the settings below. Banner wording is translated through the language files."
-msgstr "Personnalisez la bannière de consentement affichée à vos visiteurs. Votre développeur détermine quelles balises sont bloquées et peut verrouiller certains des réglages ci-dessous. Le texte de la bannière est traduit au moyen des fichiers de langue."
-
-#: src/Admin/Admin.php:143
+#: src/Admin/Admin.php:144
 msgid "Show the consent banner to visitors."
 msgstr "Afficher la bannière de consentement aux visiteurs."
 
@@ -245,42 +233,185 @@ msgstr "Afficher la bannière de consentement aux visiteurs."
 msgid "The bottom bar blocks no interaction (recommended for strict opt-in regimes such as Loi 25 / GDPR). A centered modal covers the page until a choice is made, which some regulators treat as a cookie wall."
 msgstr "La barre inférieure ne bloque aucune interaction (recommandée pour les régimes de consentement préalable stricts comme la Loi 25 ou le RGPD). La fenêtre modale centrée couvre la page jusqu'à ce qu'un choix soit fait, ce que certains régulateurs considèrent comme un mur de témoins."
 
-#: src/Admin/Admin.php:163
+#: src/Admin/Admin.php:161
 msgid "Used for the primary button and links. The button text color is chosen automatically for contrast."
 msgstr "Utilisée pour le bouton principal et les liens. La couleur du texte du bouton est choisie automatiquement pour assurer le contraste."
 
-#: src/Admin/Admin.php:170
+#: src/Admin/Admin.php:167
 msgid "0 = square, 32 = pill."
 msgstr "0 = carré, 32 = pilule."
 
-#: src/Admin/Admin.php:177
+#: src/Admin/Admin.php:173
 msgid "Leave blank to use the privacy page configured in WordPress."
 msgstr "Laissez vide pour utiliser la page de confidentialité configurée dans WordPress."
 
-#: src/Admin/Admin.php:200
-msgid "Turn off a pre-approved tag to stop it loading for visitors."
-msgstr "Désactivez une balise pré-approuvée pour cesser de la charger pour les visiteurs."
-
-#: src/Admin/Admin.php:365
+#: src/Admin/Admin.php:594
 msgid "Bottom bar (full width)"
 msgstr "Barre inférieure (pleine largeur)"
 
-#: src/Admin/Admin.php:366
+#: src/Admin/Admin.php:595
 msgid "Floating card (bottom corner)"
 msgstr "Carte flottante (coin inférieur)"
 
-#: src/Admin/Admin.php:367
+#: src/Admin/Admin.php:596
 msgid "Centered modal"
 msgstr "Fenêtre modale centrée"
 
-#: src/Admin/Admin.php:378
+#: src/Admin/Admin.php:607
 msgid "Auto (match the visitor's system)"
 msgstr "Automatique (selon le système du visiteur)"
 
-#: src/Admin/Admin.php:379
+#: src/Admin/Admin.php:608
 msgid "Light"
 msgstr "Clair"
 
-#: src/Admin/Admin.php:380
+#: src/Admin/Admin.php:609
 msgid "Dark"
 msgstr "Sombre"
+
+#. Description of the plugin
+#: consentful.php
+msgid "An open-source, universal consent layer that gates all non-essential third-party tags behind visitor consent, adapts to the visitor's jurisdiction, and keeps demonstrable proof of consent."
+msgstr "Une couche de consentement universelle et à code source ouvert qui conditionne toutes les balises tierces non essentielles au consentement du visiteur, s'adapte à la juridiction du visiteur et conserve une preuve démontrable du consentement."
+
+#: src/Admin/Admin.php:122
+msgid "Configure the consent banner, purposes, tags and jurisdiction posture for your site. Banner wording is translated through the language files."
+msgstr "Configurez la bannière de consentement, les finalités, les balises et la posture de juridiction de votre site. Le texte de la bannière est traduit au moyen des fichiers de langue."
+
+#: src/Admin/Admin.php:138
+msgid "Banner appearance"
+msgstr "Apparence de la bannière"
+
+#: src/Admin/Admin.php:188
+msgid "Override the label and description shown for each consent category. Leave a field blank to use the translated default."
+msgstr "Remplacez l'étiquette et la description affichées pour chaque catégorie de consentement. Laissez un champ vide pour utiliser la valeur traduite par défaut."
+
+#: src/Admin/Admin.php:197
+msgid "Label"
+msgstr "Étiquette"
+
+#: src/Admin/Admin.php:202
+msgid "Description"
+msgstr "Description"
+
+#: src/Admin/Admin.php:214
+msgid "Add a Personalization category (tailors content and recommendations to the visitor)."
+msgstr "Ajouter une catégorie Personnalisation (adapte le contenu et les recommandations au visiteur)."
+
+#: src/Admin/Admin.php:229
+msgid "Enable the integrations you use. Consentful gates each one behind the selected purposes."
+msgstr "Activez les intégrations que vous utilisez. Consentful conditionne chacune d'elles aux finalités sélectionnées."
+
+#: src/Admin/Admin.php:260
+msgid "Load this integration for consenting visitors."
+msgstr "Charger cette intégration pour les visiteurs consentants."
+
+#: src/Admin/Admin.php:264
+msgid "Consent-push only: your site already loads the GTM container. Consentful drives its Consent Mode v2 signals from the visitor's choices."
+msgstr "Transmission du consentement seulement : votre site charge déjà le conteneur GTM. Consentful pilote ses signaux Consent Mode v2 à partir des choix du visiteur."
+
+#: src/Admin/Admin.php:288
+msgid "Custom snippets"
+msgstr "Extraits personnalisés"
+
+#: src/Admin/Admin.php:289
+msgid "Paste a script or snippet to gate behind consent. It is injected by Consentful only when its purposes are granted — never printed directly."
+msgstr "Collez un script ou un extrait à conditionner au consentement. Il est injecté par Consentful uniquement lorsque ses finalités sont accordées — jamais inséré directement."
+
+#: src/Admin/Admin.php:322
+msgid "Name"
+msgstr "Nom"
+
+#: src/Admin/Admin.php:324
+msgid "e.g. Hotjar"
+msgstr "p. ex. Hotjar"
+
+#: src/Admin/Admin.php:327
+#: src/Catalog/Catalog.php:89
+msgid "Snippet"
+msgstr "Extrait"
+
+#: src/Admin/Admin.php:332
+#: src/Catalog/Catalog.php:94
+msgid "Script URL"
+msgstr "URL du script"
+
+#: src/Admin/Admin.php:335
+msgid "Use either a snippet above or a script URL."
+msgstr "Utilisez soit un extrait ci-dessus, soit une URL de script."
+
+#: src/Admin/Admin.php:350
+msgid "By default Consentful adapts to each visitor's region — opt-in where required (Loi 25 / GDPR), opt-out in US states, and the strictest posture until the region is known. Turn this off to apply one posture everywhere."
+msgstr "Par défaut, Consentful s'adapte à la région de chaque visiteur — consentement préalable (opt-in) là où c'est exigé (Loi 25 / RGPD), retrait du consentement (opt-out) dans les États américains, et la posture la plus stricte tant que la région n'est pas connue. Désactivez cette option pour appliquer une seule posture partout."
+
+#: src/Admin/Admin.php:354
+msgid "Region"
+msgstr "Région"
+
+#: src/Admin/Admin.php:356
+msgid "Adapt to the visitor's region (recommended)."
+msgstr "S'adapter à la région du visiteur (recommandé)."
+
+#: src/Admin/Admin.php:359
+msgid "Global posture"
+msgstr "Posture globale"
+
+#: src/Admin/Admin.php:362
+msgid "Applied to all visitors when region adaptation is off."
+msgstr "Appliquée à tous les visiteurs lorsque l'adaptation à la région est désactivée."
+
+#: src/Admin/Admin.php:620
+msgid "Opt-in (deny by default, show banner)"
+msgstr "Consentement préalable (opt-in : refus par défaut, bannière affichée)"
+
+#: src/Admin/Admin.php:621
+msgid "Opt-out (allow by default, offer opt-out)"
+msgstr "Retrait du consentement (opt-out : autorisation par défaut, retrait proposé)"
+
+#: src/Admin/Admin.php:622
+msgid "Notice only"
+msgstr "Avis seulement"
+
+#: src/Catalog/Catalog.php:33
+msgid "Google Analytics 4"
+msgstr ""
+
+#: src/Catalog/Catalog.php:39
+msgid "Measurement ID"
+msgstr "Identifiant de mesure"
+
+#: src/Catalog/Catalog.php:47
+msgid "Google Ads"
+msgstr ""
+
+#: src/Catalog/Catalog.php:53
+msgid "Conversion ID"
+msgstr "Identifiant de conversion"
+
+#: src/Catalog/Catalog.php:61
+msgid "Google Tag Manager"
+msgstr ""
+
+#: src/Catalog/Catalog.php:69
+msgid "Meta Pixel"
+msgstr ""
+
+#: src/Catalog/Catalog.php:75
+msgid "Pixel ID"
+msgstr "Identifiant du pixel"
+
+#: src/Catalog/Catalog.php:83
+msgid "Custom HTML / snippet"
+msgstr "HTML / extrait personnalisé"
+
+#: src/Catalog/Catalog.php:99
+msgid "Attributes"
+msgstr "Attributs"
+
+#: src/Frontend/SettingsHydrator.php:193
+msgid "Google"
+msgstr ""
+
+#: src/Frontend/SettingsHydrator.php:305
+msgid "All visitors"
+msgstr "Tous les visiteurs"

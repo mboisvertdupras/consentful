@@ -3,28 +3,29 @@ declare( strict_types = 1 );
 
 namespace Consentful\Admin;
 
-use Consentful\Container\Container;
+use Consentful\Catalog\Catalog;
+use Consentful\Catalog\CatalogEntry;
 use Consentful\Consent\ConsentLogExporter;
 use Consentful\Frontend\BannerConfig;
-use Consentful\Tag\Tag;
-use Consentful\Tag\TagRegistry;
 
 /**
- * The Site-owner admin surface (the only admin-context WP coupling). A deliberately small
- * two-tier UI: the Integrator's code/config is the source of truth (Layer 1), the Site
- * owner edits only unlocked fields of the `consentful_settings` option (Layer 2). The
- * trust boundary is enforced here — `manage_options` on every screen and the export
- * action, a nonce on save + export, sanitize on input, escape on output.
+ * The Administrator admin surface (the only admin-context WP coupling) — the canonical,
+ * sufficient config UI for the `consentful_settings` option. Install + activate yields a
+ * compliant baseline; this page lets the Administrator tune the banner, purpose copy,
+ * tags (a catalog + custom snippets) and the jurisdiction posture with no code.
  *
  * The form is the WordPress-native Settings layout (`form-table`, the Iris color picker,
- * help text). Banner *copy* is deliberately NOT editable here: it comes from the gettext
- * defaults (English source, French shipped via the bundled `.mo` files), so the Site owner
- * tunes appearance while translation stays in the language files.
+ * help text). `manage_options` on every screen and the export action, a nonce on save +
+ * export, `Settings::sanitize` on input, escape on output. Banner *copy* is deliberately
+ * NOT editable here: it ships as gettext (English source, French via the bundled `.mo`),
+ * so translation stays in the language files; only purpose label/description are
+ * overridable.
  *
- * Logic lives in pure, unit-tested classes (Settings, ConsentLogReader, the
- * ConsentLogExporter); this shell only registers hooks and renders escaped markup. The
- * export body is built by `export_csv_body()` (tested) so the header-send / `wp_die`
- * stays out of the tested core.
+ * Logic lives in pure, unit-tested classes (Settings, the Catalog, ConsentLogReader, the
+ * ConsentLogExporter); this shell only registers hooks and renders escaped markup. A
+ * custom snippet's `code` is stored raw (admin `unfiltered_html` trust) but only ever
+ * rendered into a `<textarea>` (escaped with `esc_textarea`) for editing — never echoed
+ * as a literal `<script>`.
  */
 final class Admin {
 
@@ -35,17 +36,16 @@ final class Admin {
 	private const NONCE_EXPORT  = 'consentful_export';
 	private const PER_PAGE      = 50;
 
+	/** Blank custom-snippet rows rendered below the saved ones for adding more (JS-free). */
+	private const BLANK_CUSTOM_ROWS = 2;
+
 	/** The settings-page hook suffix, captured at menu registration; gates the asset enqueue. */
 	private string $settings_hook = '';
 
 	public function __construct(
-		private readonly Container $container,
+		private readonly Catalog $catalog,
+		private readonly ConsentLogReader $reader,
 	) {}
-
-	/** Build from a plugin container. */
-	public static function for_container( Container $container ): self {
-		return new self( $container );
-	}
 
 	/** Wire the admin menu, settings registration, asset enqueue and the export handler. */
 	public function register(): void {
@@ -103,77 +103,73 @@ final class Admin {
 			CONSENTFUL_OPTION,
 			array(
 				'type'              => 'array',
-				'sanitize_callback' => static fn ( $raw ): array => Settings::sanitize( is_array( $raw ) ? $raw : array(), Settings::locked_fields() ),
+				'sanitize_callback' => static fn ( $raw ): array => Settings::sanitize( is_array( $raw ) ? $raw : array() ),
 				'default'           => array(),
 			)
 		);
 	}
 
-	/** Render the constrained settings form. Capability is checked before any output. */
+	/** Render the settings form. Capability is checked before any output. */
 	public function render_settings_page(): void {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
 			return;
 		}
 
 		$settings = Settings::from_wp();
-		$base     = $this->banner_config();
-		$tags     = $this->toggleable_tags();
 
 		echo '<div class="wrap consentful">';
 		echo '<h1>' . esc_html__( 'Consentful settings', 'consentful' ) . '</h1>';
-		echo '<p>' . esc_html__( 'Customize the consent banner shown to your visitors. Your developer controls which tags are gated and may lock some of the settings below. Banner wording is translated through the language files.', 'consentful' ) . '</p>';
+		echo '<p>' . esc_html__( 'Configure the consent banner, purposes, tags and jurisdiction posture for your site. Banner wording is translated through the language files.', 'consentful' ) . '</p>';
 		echo '<form action="options.php" method="post">';
 		settings_fields( self::OPTION_GROUP );
-		$this->render_appearance_fields( $settings, $base );
-		$this->render_tag_fields( $settings, $tags );
+		$this->render_appearance_fields( $settings );
+		$this->render_purpose_fields( $settings );
+		$this->render_tag_fields( $settings );
+		$this->render_geo_fields( $settings );
 		submit_button();
 		echo '</form>';
 		echo '</div>';
 	}
 
-	/** Render the appearance fields (banner toggle, position, theme, color, radius, privacy URL). */
-	private function render_appearance_fields( Settings $settings, BannerConfig $base ): void {
-		echo '<h2 class="title">' . esc_html__( 'Appearance', 'consentful' ) . '</h2>';
+	/** The banner appearance fields (toggle, position, theme, color, radius, privacy URL). */
+	private function render_appearance_fields( Settings $settings ): void {
+		$banner = $settings->banner();
+
+		echo '<h2 class="title">' . esc_html__( 'Banner appearance', 'consentful' ) . '</h2>';
 		echo '<table class="form-table" role="presentation"><tbody>';
 
 		$this->row(
 			__( 'Banner', 'consentful' ),
-			'enabled',
-			$settings,
-			fn () => $this->checkbox_field( 'enabled', $this->effective_bool( $settings, 'enabled', $base->enabled ), $settings->is_locked( 'enabled' ), __( 'Show the consent banner to visitors.', 'consentful' ) )
+			'banner][enabled',
+			fn () => $this->checkbox_field( 'banner][enabled', $this->bool( $banner, 'enabled' ), __( 'Show the consent banner to visitors.', 'consentful' ) )
 		);
 		$this->row(
 			__( 'Position', 'consentful' ),
-			'position',
-			$settings,
-			fn () => $this->select_field( 'position', $this->position_choices(), $this->effective_string( $settings, 'position', $base->position ), $settings->is_locked( 'position' ) ),
+			'banner][position',
+			fn () => $this->select_field( 'banner][position', $this->position_choices(), $this->str( $banner, 'position' ) ),
 			__( 'The bottom bar blocks no interaction (recommended for strict opt-in regimes such as Loi 25 / GDPR). A centered modal covers the page until a choice is made, which some regulators treat as a cookie wall.', 'consentful' )
 		);
 		$this->row(
 			__( 'Theme', 'consentful' ),
-			'theme',
-			$settings,
-			fn () => $this->select_field( 'theme', $this->theme_choices(), $this->effective_string( $settings, 'theme', $base->theme ), $settings->is_locked( 'theme' ) )
+			'banner][theme',
+			fn () => $this->select_field( 'banner][theme', $this->theme_choices(), $this->str( $banner, 'theme' ) )
 		);
 		$this->row(
 			__( 'Primary color', 'consentful' ),
-			'primaryColor',
-			$settings,
-			fn () => $this->color_field( 'primaryColor', $this->effective_string( $settings, 'primaryColor', $base->primary_color ), $base->primary_color, $settings->is_locked( 'primaryColor' ) ),
+			'banner][primaryColor',
+			fn () => $this->color_field( 'banner][primaryColor', $this->str( $banner, 'primaryColor' ) ),
 			__( 'Used for the primary button and links. The button text color is chosen automatically for contrast.', 'consentful' )
 		);
 		$this->row(
 			__( 'Corner radius (px)', 'consentful' ),
-			'radius',
-			$settings,
-			fn () => $this->number_field( 'radius', $this->effective_int( $settings, 'radius', $base->radius ), $settings->is_locked( 'radius' ) ),
+			'banner][radius',
+			fn () => $this->number_field( 'banner][radius', $this->int( $banner, 'radius' ) ),
 			__( '0 = square, 32 = pill.', 'consentful' )
 		);
 		$this->row(
 			__( 'Privacy policy URL', 'consentful' ),
-			'privacyUrl',
-			$settings,
-			fn () => $this->url_field( 'privacyUrl', $this->effective_string( $settings, 'privacyUrl', $base->privacy_url ), $settings->is_locked( 'privacyUrl' ), $this->privacy_placeholder() ),
+			'banner][privacyUrl',
+			fn () => $this->url_field( 'banner][privacyUrl', $this->str( $banner, 'privacyUrl' ), get_privacy_policy_url() ),
 			__( 'Leave blank to use the privacy page configured in WordPress.', 'consentful' )
 		);
 
@@ -181,38 +177,191 @@ final class Admin {
 	}
 
 	/**
-	 * Render one checkbox per toggleable Tag. A Site owner can disable a pre-approved Tag;
-	 * the whole list is read-only when `tags` is locked.
-	 *
-	 * @param list<Tag> $tags
+	 * Per-purpose copy overrides (blank = gettext default) + the Personalization toggle.
+	 * Categories are fixed (compliance guardrails) — none can be added or removed.
 	 */
-	private function render_tag_fields( Settings $settings, array $tags ): void {
-		if ( array() === $tags ) {
-			return;
+	private function render_purpose_fields( Settings $settings ): void {
+		$stored   = $settings->purposes();
+		$defaults = BannerConfig::defaults()->purposes;
+
+		echo '<h2 class="title">' . esc_html__( 'Purposes', 'consentful' ) . '</h2>';
+		echo '<p class="description">' . esc_html__( 'Override the label and description shown for each consent category. Leave a field blank to use the translated default.', 'consentful' ) . '</p>';
+
+		foreach ( array( 'necessary', 'functional', 'analytics', 'marketing' ) as $key ) {
+			$default = is_array( $defaults[ $key ] ?? null ) ? $defaults[ $key ] : array();
+			$entry   = is_array( $stored[ $key ] ?? null ) ? $stored[ $key ] : array();
+
+			echo '<h3>' . esc_html( $this->str( $default, 'label' ) ) . '</h3>';
+			echo '<table class="form-table" role="presentation"><tbody>';
+			$this->row(
+				__( 'Label', 'consentful' ),
+				'purposes][' . $key . '][label',
+				fn () => $this->text_field( 'purposes][' . $key . '][label', $this->str( $entry, 'label' ), $this->str( $default, 'label' ) )
+			);
+			$this->row(
+				__( 'Description', 'consentful' ),
+				'purposes][' . $key . '][description',
+				fn () => $this->text_field( 'purposes][' . $key . '][description', $this->str( $entry, 'description' ), $this->str( $default, 'description' ) )
+			);
+			echo '</tbody></table>';
 		}
+
+		$personalization = is_array( $stored['personalization'] ?? null ) ? $stored['personalization'] : array();
+		echo '<table class="form-table" role="presentation"><tbody>';
+		$this->row(
+			__( 'Personalization', 'consentful' ),
+			'purposes][personalization][enabled',
+			fn () => $this->checkbox_field( 'purposes][personalization][enabled', $this->bool( $personalization, 'enabled' ), __( 'Add a Personalization category (tailors content and recommendations to the visitor).', 'consentful' ) )
+		);
+		echo '</tbody></table>';
+	}
+
+	/**
+	 * The tag manager: each catalog integration (enable + fields + purposes) plus a custom
+	 * snippets repeater. All persist into `consentful_settings[tags]` as the §3 ordered list
+	 * (outer keys are the catalog key / `custom-N` for stable round-tripping; the sanitizer
+	 * reads the inner `id`/`catalog`).
+	 */
+	private function render_tag_fields( Settings $settings ): void {
+		$stored = $this->tags_by_id( $settings );
 
 		echo '<h2 class="title">' . esc_html__( 'Tags', 'consentful' ) . '</h2>';
+		echo '<p class="description">' . esc_html__( 'Enable the integrations you use. Consentful gates each one behind the selected purposes.', 'consentful' ) . '</p>';
 
-		$locked = $settings->is_locked( 'tags' );
-		if ( $locked ) {
-			echo '<p class="description">' . esc_html__( 'Tag visibility is locked by your developer.', 'consentful' ) . '</p>';
-		} else {
-			echo '<p class="description">' . esc_html__( 'Turn off a pre-approved tag to stop it loading for visitors.', 'consentful' ) . '</p>';
+		foreach ( $this->catalog->entries() as $entry ) {
+			if ( 'custom' === $entry->key() ) {
+				continue;
+			}
+			$this->render_catalog_entry( $entry, $stored[ $entry->key() ] ?? array() );
 		}
 
-		$stored = $settings->stored( 'tags' );
-		$stored = is_array( $stored ) ? $stored : array();
+		$this->render_custom_tags( $stored );
+	}
+
+	/**
+	 * One catalog integration: an enable checkbox, its field inputs and a purpose checkbox
+	 * group. GTM additionally shows consent-push-only help text.
+	 *
+	 * @param array<string, mixed> $tag The stored entry for this catalog key (empty if none).
+	 */
+	private function render_catalog_entry( CatalogEntry $entry, array $tag ): void {
+		$key    = $entry->key();
+		$prefix = 'tags][' . $key;
+
+		echo '<h3>' . esc_html( $entry->label() ) . '</h3>';
+		$this->hidden_field( $prefix . '][id', $key );
+		$this->hidden_field( $prefix . '][catalog', $key );
 
 		echo '<table class="form-table" role="presentation"><tbody>';
-		foreach ( $tags as $tag ) {
-			$enabled = ! array_key_exists( $tag->id, $stored ) || false !== $stored[ $tag->id ];
-			$name    = CONSENTFUL_OPTION . '[tags][' . $tag->id . ']';
 
-			echo '<tr><th scope="row">' . esc_html( $tag->label ) . '</th><td>';
-			echo '<input type="hidden" name="' . esc_attr( $name ) . '" value="0" />';
-			echo '<label><input type="checkbox" name="' . esc_attr( $name ) . '" value="1"' . checked( $enabled, true, false ) . esc_attr( $this->disabled_attr( $locked ) ) . ' /> ' . esc_html__( 'Enabled', 'consentful' ) . '</label>';
-			echo '</td></tr>';
+		$this->row(
+			__( 'Enabled', 'consentful' ),
+			$prefix . '][enabled',
+			fn () => $this->checkbox_field( $prefix . '][enabled', $this->bool( $tag, 'enabled' ), __( 'Load this integration for consenting visitors.', 'consentful' ) )
+		);
+
+		if ( 'gtm' === $key ) {
+			echo '<tr><td colspan="2"><p class="description">' . esc_html__( 'Consent-push only: your site already loads the GTM container. Consentful drives its Consent Mode v2 signals from the visitor\'s choices.', 'consentful' ) . '</p></td></tr>';
 		}
+
+		$fields = is_array( $tag['fields'] ?? null ) ? $tag['fields'] : array();
+		foreach ( $entry->fields() as $field => $schema ) {
+			$this->render_tag_field( $prefix . '][fields][' . $field, $field, $schema, $fields );
+		}
+
+		$this->row(
+			__( 'Purposes', 'consentful' ),
+			$prefix . '][purposes',
+			fn () => $this->purpose_checkboxes( $prefix, $this->tag_purposes( $tag, $entry->default_purposes() ) )
+		);
+
+		echo '</tbody></table>';
+	}
+
+	/**
+	 * The custom-snippet repeater: each saved custom row, then blank rows for adding more.
+	 * Blank rows get a stable, unused `custom-N` id so a filled-in row persists.
+	 *
+	 * @param array<string, array<string, mixed>> $stored Stored tags keyed by id.
+	 */
+	private function render_custom_tags( array $stored ): void {
+		echo '<h3>' . esc_html__( 'Custom snippets', 'consentful' ) . '</h3>';
+		echo '<p class="description">' . esc_html__( 'Paste a script or snippet to gate behind consent. It is injected by Consentful only when its purposes are granted — never printed directly.', 'consentful' ) . '</p>';
+
+		$index = 1;
+		foreach ( $stored as $tag ) {
+			if ( 'custom' !== ( $tag['catalog'] ?? '' ) ) {
+				continue;
+			}
+			$id = $this->str( $tag, 'id' );
+			$this->render_custom_row( $id, $tag );
+			$index = max( $index, $this->custom_index( $id ) + 1 );
+		}
+
+		for ( $i = 0; $i < self::BLANK_CUSTOM_ROWS; $i++ ) {
+			$id = 'custom-' . ( $index + $i );
+			$this->render_custom_row( $id, array() );
+		}
+	}
+
+	/**
+	 * One custom-snippet row: hidden id/catalog, label, code textarea, src URL and purpose
+	 * checkboxes. The `code` is rendered with `esc_textarea`, never as a literal `<script>`.
+	 *
+	 * @param array<string, mixed> $tag
+	 */
+	private function render_custom_row( string $id, array $tag ): void {
+		$prefix = 'tags][' . $id;
+		$fields = is_array( $tag['fields'] ?? null ) ? $tag['fields'] : array();
+
+		$this->hidden_field( $prefix . '][id', $id );
+		$this->hidden_field( $prefix . '][catalog', 'custom' );
+
+		echo '<table class="form-table" role="presentation"><tbody>';
+		$this->row(
+			__( 'Name', 'consentful' ),
+			$prefix . '][label',
+			fn () => $this->text_field( $prefix . '][label', $this->str( $tag, 'label' ), __( 'e.g. Hotjar', 'consentful' ) )
+		);
+		$this->row(
+			__( 'Snippet', 'consentful' ),
+			$prefix . '][fields][code',
+			fn () => $this->textarea_field( $prefix . '][fields][code', $this->str( $fields, 'code' ), '<script>…</script>' )
+		);
+		$this->row(
+			__( 'Script URL', 'consentful' ),
+			$prefix . '][fields][src',
+			fn () => $this->url_field( $prefix . '][fields][src', $this->str( $fields, 'src' ), 'https://example.com/tag.js' ),
+			__( 'Use either a snippet above or a script URL.', 'consentful' )
+		);
+		$this->row(
+			__( 'Purposes', 'consentful' ),
+			$prefix . '][purposes',
+			fn () => $this->purpose_checkboxes( $prefix, $this->tag_purposes( $tag, array() ) )
+		);
+		echo '</tbody></table>';
+	}
+
+	/** The simple geo posture toggle (adaptive on/off; a global posture when off). */
+	private function render_geo_fields( Settings $settings ): void {
+		$geo = $settings->geo();
+
+		echo '<h2 class="title">' . esc_html__( 'Jurisdiction', 'consentful' ) . '</h2>';
+		echo '<p class="description">' . esc_html__( 'By default Consentful adapts to each visitor\'s region — opt-in where required (Loi 25 / GDPR), opt-out in US states, and the strictest posture until the region is known. Turn this off to apply one posture everywhere.', 'consentful' ) . '</p>';
+		echo '<table class="form-table" role="presentation"><tbody>';
+
+		$this->row(
+			__( 'Region', 'consentful' ),
+			'geo][adaptive',
+			fn () => $this->checkbox_field( 'geo][adaptive', $this->bool( $geo, 'adaptive' ), __( 'Adapt to the visitor\'s region (recommended).', 'consentful' ) )
+		);
+		$this->row(
+			__( 'Global posture', 'consentful' ),
+			'geo][globalPolicy',
+			fn () => $this->select_field( 'geo][globalPolicy', $this->policy_choices(), $this->str( $geo, 'globalPolicy' ) ),
+			__( 'Applied to all visitors when region adaptation is off.', 'consentful' )
+		);
+
 		echo '</tbody></table>';
 	}
 
@@ -222,10 +371,9 @@ final class Admin {
 			return;
 		}
 
-		$reader = $this->reader();
-		$page   = $this->current_page();
-		$total  = $reader->count();
-		$rows   = $reader->recent( self::PER_PAGE, ( $page - 1 ) * self::PER_PAGE );
+		$page  = $this->current_page();
+		$total = $this->reader->count();
+		$rows  = $this->reader->recent( self::PER_PAGE, ( $page - 1 ) * self::PER_PAGE );
 
 		echo '<div class="wrap consentful">';
 		echo '<h1>' . esc_html__( 'Consent log', 'consentful' ) . '</h1>';
@@ -283,50 +431,64 @@ final class Admin {
 
 	/** The CSV body for the whole Consent log — the pure, tested export data path. */
 	public function export_csv_body(): string {
-		return ConsentLogExporter::to_csv( $this->reader()->all_export_rows() );
+		return ConsentLogExporter::to_csv( $this->reader->all_export_rows() );
 	}
 
 	/**
 	 * Render a labeled form row, invoking `$control` to print the (inline-escaped) control,
-	 * then any help text, then a lock note when the field is locked.
+	 * then any help text. `$field` is the control's field path so `for` matches the control id.
 	 *
 	 * @param string          $label       The field label.
-	 * @param string          $field       The top-level field key (also drives the control id).
+	 * @param string          $field       The control's field path (drives the matched id).
 	 * @param callable():void $control     Prints the control markup, escaping inline.
 	 * @param string          $description Optional help text shown under the control.
 	 */
-	private function row( string $label, string $field, Settings $settings, callable $control, string $description = '' ): void {
-		$id = 'consentful-' . $field;
-		echo '<tr><th scope="row"><label for="' . esc_attr( $id ) . '">' . esc_html( $label ) . '</label></th><td>';
+	private function row( string $label, string $field, callable $control, string $description = '' ): void {
+		echo '<tr><th scope="row"><label for="' . esc_attr( $this->control_id( $field ) ) . '">' . esc_html( $label ) . '</label></th><td>';
 		$control();
 		if ( '' !== $description ) {
 			echo '<p class="description">' . esc_html( $description ) . '</p>';
 		}
-		if ( $settings->is_locked( $field ) ) {
-			echo '<p class="description">' . esc_html__( 'Locked by your developer.', 'consentful' ) . '</p>';
-		}
 		echo '</td></tr>';
 	}
 
-	/** The ` disabled` attribute fragment when locked, else empty. */
-	private function disabled_attr( bool $locked ): string {
-		return $locked ? ' disabled' : '';
+	/** A DOM id for a field path (`banner][enabled` → `consentful-banner-enabled`). */
+	private function control_id( string $field ): string {
+		return 'consentful-' . trim( str_replace( array( '][', '[', ']' ), '-', $field ), '-' );
 	}
 
-	private function checkbox_field( string $field, bool $value, bool $locked, string $label = '' ): void {
-		$id   = 'consentful-' . $field;
+	/** One field of a catalog entry, rendered per its schema `type`. */
+	private function render_tag_field( string $name, string $field, mixed $schema, mixed $fields ): void {
+		$schema      = is_array( $schema ) ? $schema : array();
+		$fields      = is_array( $fields ) ? $fields : array();
+		$value       = $this->str( $fields, $field );
+		$label       = $this->str( $schema, 'label' );
+		$placeholder = $this->str( $schema, 'placeholder' );
+		$type        = $this->str( $schema, 'type' );
+
+		$this->row(
+			$label,
+			$name,
+			fn () => 'url' === $type
+				? $this->url_field( $name, $value, $placeholder )
+				: $this->text_field( $name, $value, $placeholder )
+		);
+	}
+
+	private function checkbox_field( string $field, bool $value, string $label = '' ): void {
+		$id   = $this->control_id( $field );
 		$name = CONSENTFUL_OPTION . '[' . $field . ']';
 		echo '<input type="hidden" name="' . esc_attr( $name ) . '" value="0" />';
-		echo '<label><input type="checkbox" id="' . esc_attr( $id ) . '" name="' . esc_attr( $name ) . '" value="1"' . checked( $value, true, false ) . esc_attr( $this->disabled_attr( $locked ) ) . ' /> ' . esc_html( $label ) . '</label>';
+		echo '<label><input type="checkbox" id="' . esc_attr( $id ) . '" name="' . esc_attr( $name ) . '" value="1"' . checked( $value, true, false ) . ' /> ' . esc_html( $label ) . '</label>';
 	}
 
 	/**
 	 * @param array<string, string> $choices Option value => visible (translated) label.
 	 */
-	private function select_field( string $field, array $choices, string $value, bool $locked ): void {
-		$id   = 'consentful-' . $field;
+	private function select_field( string $field, array $choices, string $value ): void {
+		$id   = $this->control_id( $field );
 		$name = CONSENTFUL_OPTION . '[' . $field . ']';
-		echo '<select id="' . esc_attr( $id ) . '" name="' . esc_attr( $name ) . '"' . esc_attr( $this->disabled_attr( $locked ) ) . '>';
+		echo '<select id="' . esc_attr( $id ) . '" name="' . esc_attr( $name ) . '">';
 		foreach ( $choices as $option => $label ) {
 			echo '<option value="' . esc_attr( $option ) . '"' . selected( $value, $option, false ) . '>' . esc_html( $label ) . '</option>';
 		}
@@ -335,29 +497,91 @@ final class Admin {
 
 	/**
 	 * The native WordPress (Iris) color control: a text input the enqueued `wp-color-picker`
-	 * upgrades. `data-default-color` is the integrator's base so the picker's reset matches.
+	 * upgrades. `data-default-color` is the shipped base so the picker's reset matches.
 	 */
-	private function color_field( string $field, string $value, string $default_color, bool $locked ): void {
-		$id   = 'consentful-' . $field;
-		$name = CONSENTFUL_OPTION . '[' . $field . ']';
-		echo '<input type="text" id="' . esc_attr( $id ) . '" class="consentful-color" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '" data-default-color="' . esc_attr( $default_color ) . '"' . esc_attr( $this->disabled_attr( $locked ) ) . ' />';
+	private function color_field( string $field, string $value ): void {
+		$id      = $this->control_id( $field );
+		$name    = CONSENTFUL_OPTION . '[' . $field . ']';
+		$default = $this->str( Settings::defaults()['banner'] ?? array(), 'primaryColor' );
+		echo '<input type="text" id="' . esc_attr( $id ) . '" class="consentful-color" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '" data-default-color="' . esc_attr( $default ) . '" />';
 	}
 
-	private function number_field( string $field, int $value, bool $locked ): void {
-		$id   = 'consentful-' . $field;
+	private function number_field( string $field, int $value ): void {
+		$id   = $this->control_id( $field );
 		$name = CONSENTFUL_OPTION . '[' . $field . ']';
-		echo '<input type="number" id="' . esc_attr( $id ) . '" class="small-text" min="0" max="32" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '"' . esc_attr( $this->disabled_attr( $locked ) ) . ' />';
+		echo '<input type="number" id="' . esc_attr( $id ) . '" class="small-text" min="0" max="32" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '" />';
 	}
 
-	private function url_field( string $field, string $value, bool $locked, string $placeholder = '' ): void {
-		$id   = 'consentful-' . $field;
+	private function text_field( string $field, string $value, string $placeholder = '' ): void {
+		$id   = $this->control_id( $field );
 		$name = CONSENTFUL_OPTION . '[' . $field . ']';
-		echo '<input type="url" id="' . esc_attr( $id ) . '" class="regular-text" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '" placeholder="' . esc_attr( $placeholder ) . '"' . esc_attr( $this->disabled_attr( $locked ) ) . ' />';
+		echo '<input type="text" id="' . esc_attr( $id ) . '" class="regular-text" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '" placeholder="' . esc_attr( $placeholder ) . '" />';
 	}
 
-	/** The WordPress-configured privacy page URL, shown as the privacy-URL field placeholder. */
-	private function privacy_placeholder(): string {
-		return get_privacy_policy_url();
+	private function url_field( string $field, string $value, string $placeholder = '' ): void {
+		$id   = $this->control_id( $field );
+		$name = CONSENTFUL_OPTION . '[' . $field . ']';
+		echo '<input type="url" id="' . esc_attr( $id ) . '" class="regular-text" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '" placeholder="' . esc_attr( $placeholder ) . '" />';
+	}
+
+	private function textarea_field( string $field, string $value, string $placeholder = '' ): void {
+		$id   = $this->control_id( $field );
+		$name = CONSENTFUL_OPTION . '[' . $field . ']';
+		echo '<textarea id="' . esc_attr( $id ) . '" class="large-text code" rows="4" name="' . esc_attr( $name ) . '" placeholder="' . esc_attr( $placeholder ) . '">' . esc_textarea( $value ) . '</textarea>';
+	}
+
+	/** A hidden input (printed outside a `form-table` row, e.g. a tag's id/catalog). */
+	private function hidden_field( string $field, string $value ): void {
+		$name = CONSENTFUL_OPTION . '[' . $field . ']';
+		echo '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '" />';
+	}
+
+	/**
+	 * A purpose checkbox group for a tag (`<prefix>[purposes][]`), the given keys pre-checked.
+	 *
+	 * @param list<string> $checked
+	 */
+	private function purpose_checkboxes( string $prefix, array $checked ): void {
+		$name = CONSENTFUL_OPTION . '[' . $prefix . '][purposes][]';
+		foreach ( $this->purpose_choices() as $key => $label ) {
+			echo '<label style="margin-right:1em;"><input type="checkbox" name="' . esc_attr( $name ) . '" value="' . esc_attr( $key ) . '"' . checked( in_array( $key, $checked, true ), true, false ) . ' /> ' . esc_html( $label ) . '</label>';
+		}
+	}
+
+	/**
+	 * A tag's stored purpose keys, falling back to `$fallback` when none are stored.
+	 *
+	 * @param array<string, mixed> $tag
+	 * @param list<string>         $fallback
+	 * @return list<string>
+	 */
+	private function tag_purposes( array $tag, array $fallback ): array {
+		$stored = $tag['purposes'] ?? null;
+		if ( ! is_array( $stored ) || array() === $stored ) {
+			return $fallback;
+		}
+		return array_values( array_filter( $stored, 'is_string' ) );
+	}
+
+	/**
+	 * The stored tag entries keyed by id (for round-tripping into the form).
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	private function tags_by_id( Settings $settings ): array {
+		$out = array();
+		foreach ( $settings->tags() as $tag ) {
+			$id = $this->str( $tag, 'id' );
+			if ( '' !== $id ) {
+				$out[ $id ] = $tag;
+			}
+		}
+		return $out;
+	}
+
+	/** The numeric suffix of a `custom-N` id (0 when it has none). */
+	private function custom_index( string $id ): int {
+		return 1 === preg_match( '/^custom-(\d+)$/', $id, $m ) ? (int) $m[1] : 0;
 	}
 
 	/**
@@ -387,33 +611,56 @@ final class Admin {
 	}
 
 	/**
-	 * The effective string value for a field: the stored override (when unlocked, scalar)
-	 * else the integrator's base.
+	 * The global-posture choices (value => translated label).
+	 *
+	 * @return array<string, string>
 	 */
-	private function effective_string( Settings $settings, string $field, string $base ): string {
-		if ( $settings->is_locked( $field ) ) {
-			return $base;
-		}
-		$stored = $settings->stored( $field );
-		return is_scalar( $stored ) ? (string) $stored : $base;
+	private function policy_choices(): array {
+		return array(
+			'opt_in'      => __( 'Opt-in (deny by default, show banner)', 'consentful' ),
+			'opt_out'     => __( 'Opt-out (allow by default, offer opt-out)', 'consentful' ),
+			'notice_only' => __( 'Notice only', 'consentful' ),
+		);
 	}
 
-	/** The effective int value for a field (number controls need a definite int). */
-	private function effective_int( Settings $settings, string $field, int $base ): int {
-		if ( $settings->is_locked( $field ) ) {
-			return $base;
-		}
-		$stored = $settings->stored( $field );
-		return is_numeric( $stored ) ? (int) $stored : $base;
+	/**
+	 * The gateable purpose choices for tag assignment (value => translated label).
+	 *
+	 * @return array<string, string>
+	 */
+	private function purpose_choices(): array {
+		return array(
+			'functional'      => __( 'Functional', 'consentful' ),
+			'analytics'       => __( 'Analytics', 'consentful' ),
+			'marketing'       => __( 'Marketing', 'consentful' ),
+			'personalization' => __( 'Personalization', 'consentful' ),
+		);
 	}
 
-	/** The effective boolean for a field (checkboxes need a definite bool). */
-	private function effective_bool( Settings $settings, string $field, bool $base ): bool {
-		if ( $settings->is_locked( $field ) ) {
-			return $base;
+	/** A scalar string read of a map key ('' when absent or non-scalar). */
+	private function str( mixed $map, string $key ): string {
+		if ( ! is_array( $map ) ) {
+			return '';
 		}
-		$stored = $settings->stored( $field );
-		return null === $stored ? $base : (bool) $stored;
+		$value = $map[ $key ] ?? '';
+		return is_scalar( $value ) ? (string) $value : '';
+	}
+
+	/** A scalar int read of a map key (0 when absent or non-numeric). */
+	private function int( mixed $map, string $key ): int {
+		if ( ! is_array( $map ) ) {
+			return 0;
+		}
+		$value = $map[ $key ] ?? 0;
+		return is_numeric( $value ) ? (int) $value : 0;
+	}
+
+	/**
+	 * A boolean read of a map key. Callers pass EFFECTIVE settings (merged over defaults),
+	 * so the key is present with the correct default; an absent key reads as false.
+	 */
+	private function bool( mixed $map, string $key ): bool {
+		return is_array( $map ) && (bool) ( $map[ $key ] ?? false );
 	}
 
 	/** Truncate a pseudonymous hash for compact display (full value is in the export). */
@@ -426,35 +673,5 @@ final class Admin {
 		$raw  = isset( $_GET['paged'] ) ? wp_unslash( $_GET['paged'] ) : '1';
 		$page = absint( is_scalar( $raw ) ? $raw : 1 );
 		return max( 1, $page );
-	}
-
-	/**
-	 * The toggleable Tags (only these appear in the admin Tag list).
-	 *
-	 * @return list<Tag>
-	 */
-	private function toggleable_tags(): array {
-		/** @var TagRegistry $registry */
-		$registry = $this->container->get( TagRegistry::class );
-
-		$toggleable = array();
-		foreach ( $registry->all() as $tag ) {
-			if ( $tag->site_toggleable ) {
-				$toggleable[] = $tag;
-			}
-		}
-		return $toggleable;
-	}
-
-	private function banner_config(): BannerConfig {
-		/** @var BannerConfig $banner */
-		$banner = $this->container->get( BannerConfig::class );
-		return $banner;
-	}
-
-	private function reader(): ConsentLogReader {
-		/** @var ConsentLogReader $reader */
-		$reader = $this->container->get( ConsentLogReader::class );
-		return $reader;
 	}
 }

@@ -1,6 +1,6 @@
 {
 	"name": "tamarak/consentful",
-	"description": "A white-label, open-source WordPress universal consent layer that gates all non-essential third-party tags behind visitor consent.",
+	"description": "An open-source WordPress universal consent layer that gates all non-essential third-party tags behind visitor consent.",
 	"type": "wordpress-plugin",
 	"license": "GPL-2.0-or-later",
 	"homepage": "https://tamarak.dev",
@@ -29,7 +29,7 @@
 	"scripts": {
 		"lint:php": "phpcs",
 		"lint:php:fix": "phpcbf",
-		"analyze": "phpstan analyse",
+		"analyze": "phpstan analyse --memory-limit=1G",
 		"test": "phpunit"
 	},
 	"config": {

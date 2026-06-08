@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Consentful
  * Plugin URI:        https://github.com/tamarak/consentful
- * Description:        A white-label, universal consent layer that gates all non-essential third-party tags behind visitor consent, adapts to the visitor's jurisdiction, and keeps demonstrable proof of consent.
+ * Description:        An open-source, universal consent layer that gates all non-essential third-party tags behind visitor consent, adapts to the visitor's jurisdiction, and keeps demonstrable proof of consent.
  * Version:           1.0.0
  * Requires at least: 6.5
  * Requires PHP:      8.1
@@ -51,8 +51,8 @@ if ( class_exists( \Consentful\Deactivator::class ) ) {
 	register_deactivation_hook( CONSENTFUL_FILE, array( '\\Consentful\\Deactivator', 'deactivate' ) );
 }
 
-// Defer boot to plugins_loaded so integrator listeners on consentful_register
-// (added at their own plugin's include time) exist when the hook fires.
+// Defer boot to plugins_loaded so any developer hook callbacks (consentful_purposes,
+// _adapters, _tags, _sink) added at their own plugin's include time are in place.
 add_action(
 	'plugins_loaded',
 	static function (): void {

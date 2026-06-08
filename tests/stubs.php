@@ -47,8 +47,8 @@ if ( ! function_exists( 'add_action' ) ) {
 	}
 }
 
-// A minimal filter registry so tests can exercise filter-driven code (e.g. the
-// consentful_locked_settings lock list). Callbacks live in a per-process global.
+// A minimal filter registry so tests can exercise filter-driven code (e.g. the dev hooks
+// consentful_purposes / _adapters / _tags / _sink). Callbacks live in a per-process global.
 if ( ! function_exists( 'add_filter' ) ) {
 	function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
 		if ( ! isset( $GLOBALS['consentful_test_filters'] ) || ! is_array( $GLOBALS['consentful_test_filters'] ) ) {

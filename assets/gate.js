@@ -93,11 +93,14 @@ export function init( rawConfig, { win, doc } ) {
 
 	function applyAll() {
 		for ( const tag of config.tags ) {
-			const handler = handlers[ tag.adapter ];
+			// Resolve the handler by the adapter config's `handler` field, so several
+			// instances (e.g. multiple custom snippets) can share one handler; fall back
+			// to the adapter id. The decider already resolves Google this way.
+			const adapterConfig = config.adapters[ tag.adapter ] || {};
+			const handler = handlers[ adapterConfig.handler || tag.adapter ];
 			if ( ! handler || typeof handler.apply !== 'function' ) {
 				continue;
 			}
-			const adapterConfig = config.adapters[ tag.adapter ] || {};
 			handler.apply( {
 				tag,
 				adapterConfig,

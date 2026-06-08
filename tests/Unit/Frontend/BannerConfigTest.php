@@ -98,15 +98,14 @@ final class BannerConfigTest extends TestCase {
 		);
 	}
 
-	public function test_with_overrides_applies_unlocked_fields(): void {
+	public function test_with_overrides_applies_the_appearance_fields(): void {
 		$out = BannerConfig::defaults()->with_overrides(
 			array(
 				'position'     => 'corner',
 				'theme'        => 'dark',
 				'primaryColor' => '#ff0000',
 				'privacyUrl'   => 'https://example.test/p',
-			),
-			array()
+			)
 		);
 
 		$this->assertSame( 'corner', $out->position );
@@ -115,27 +114,12 @@ final class BannerConfigTest extends TestCase {
 		$this->assertSame( 'https://example.test/p', $out->privacy_url );
 	}
 
-	public function test_with_overrides_ignores_locked_fields_so_base_wins(): void {
-		$out = BannerConfig::defaults()->with_overrides(
-			array(
-				'position'     => 'corner',
-				'primaryColor' => '#ff0000',
-			),
-			array( 'primaryColor' )
-		);
-
-		$this->assertSame( 'corner', $out->position );
-		// primaryColor is locked: the integrator's Layer-1 default wins.
-		$this->assertSame( '#2563eb', $out->primary_color );
-	}
-
 	public function test_with_overrides_falls_back_to_base_on_invalid_position_or_theme(): void {
 		$out = BannerConfig::defaults()->with_overrides(
 			array(
 				'position' => 'floating',
 				'theme'    => 'neon',
-			),
-			array()
+			)
 		);
 
 		$this->assertSame( 'bar', $out->position );
@@ -143,14 +127,13 @@ final class BannerConfigTest extends TestCase {
 	}
 
 	public function test_with_overrides_never_overrides_copy(): void {
-		// Copy is gettext-translated, not Site-owner editable: a posted `copy` map is ignored
-		// and the base (integrator/gettext) copy is preserved verbatim.
+		// Copy is gettext-translated, not Administrator editable: a posted `copy` map is
+		// ignored and the base (gettext) copy is preserved verbatim.
 		$out = BannerConfig::defaults()->with_overrides(
 			array(
 				'position' => 'corner',
 				'copy'     => array( 'title' => 'Hacked' ),
-			),
-			array()
+			)
 		);
 
 		$this->assertSame( 'corner', $out->position );
@@ -162,8 +145,7 @@ final class BannerConfigTest extends TestCase {
 			array(
 				'radius'  => '12',
 				'enabled' => '',
-			),
-			array()
+			)
 		);
 
 		$this->assertSame( 12, $out->radius );
@@ -172,7 +154,7 @@ final class BannerConfigTest extends TestCase {
 
 	public function test_with_overrides_keeps_version_and_purposes(): void {
 		$base = BannerConfig::defaults();
-		$out  = $base->with_overrides( array( 'position' => 'modal' ), array() );
+		$out  = $base->with_overrides( array( 'position' => 'modal' ) );
 
 		$this->assertSame( $base->version, $out->version );
 		$this->assertSame( $base->purposes, $out->purposes );
@@ -180,9 +162,47 @@ final class BannerConfigTest extends TestCase {
 
 	public function test_empty_overrides_yield_an_identical_config(): void {
 		$base = BannerConfig::defaults();
-		$out  = $base->with_overrides( array(), array() );
+		$out  = $base->with_overrides( array() );
 
 		$this->assertSame( $base->to_array(), $out->to_array() );
+	}
+
+	public function test_with_purpose_overrides_replaces_label_and_description(): void {
+		$out = BannerConfig::defaults()->with_purpose_overrides(
+			array(
+				'analytics' => array(
+					'label'       => 'Site stats',
+					'description' => 'We measure usage.',
+				),
+			)
+		);
+
+		$this->assertSame( 'Site stats', $out->purposes['analytics']['label'] );
+		$this->assertSame( 'We measure usage.', $out->purposes['analytics']['description'] );
+	}
+
+	public function test_with_purpose_overrides_keeps_base_for_blank_override(): void {
+		$base = BannerConfig::defaults();
+		$out  = $base->with_purpose_overrides(
+			array(
+				'marketing' => array(
+					'label'       => '',
+					'description' => '',
+				),
+			)
+		);
+
+		$this->assertSame( $base->purposes['marketing'], $out->purposes['marketing'] );
+	}
+
+	public function test_with_purpose_overrides_ignores_unknown_keys(): void {
+		$base = BannerConfig::defaults();
+		$out  = $base->with_purpose_overrides(
+			array( 'bogus' => array( 'label' => 'Nope' ) )
+		);
+
+		$this->assertSame( $base->purposes, $out->purposes );
+		$this->assertArrayNotHasKey( 'bogus', $out->purposes );
 	}
 
 	public function test_with_privacy_fallback_fills_an_empty_url(): void {

@@ -24,9 +24,6 @@ use Consentful\Tag\TagRegistry;
  */
 final class ClientConfig {
 
-	/**
-	 * @param list<string> $hidden_tags Tag ids the Site owner disabled — omitted from the emitted `tags`.
-	 */
 	public function __construct(
 		private readonly PurposeRegistry $purposes,
 		private readonly TagRegistry $tags,
@@ -41,7 +38,6 @@ final class ClientConfig {
 		private readonly int $policy_version = 1,
 		private readonly int $max_age_days = 180,
 		private readonly string $cookie = 'consentful',
-		private readonly array $hidden_tags = array(),
 	) {}
 
 	/**
@@ -135,9 +131,6 @@ final class ClientConfig {
 	private function tags_array(): array {
 		$out = array();
 		foreach ( $this->tags->all() as $tag ) {
-			if ( in_array( $tag->id, $this->hidden_tags, true ) ) {
-				continue;
-			}
 			$out[] = array(
 				'id'       => $tag->id,
 				'purposes' => $this->purpose_keys( $tag ),
