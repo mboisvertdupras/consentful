@@ -8,6 +8,7 @@ use Consentful\Admin\Admin;
 use Consentful\Admin\ConsentLogReader;
 use Consentful\Admin\Settings;
 use Consentful\Consent\ConsentLogPurger;
+use Consentful\Consent\ConsentLogSchema;
 use Consentful\Consent\DatabaseSink;
 use Consentful\Consent\ProofConfig;
 use Consentful\Consent\PurposeRegistry;
@@ -100,7 +101,7 @@ final class Plugin {
 		/** @var ProofConfig $proof */
 		$proof = $this->container->get( ProofConfig::class );
 
-		$purger = new ConsentLogPurger( $wpdb, DatabaseSink::table_name( $wpdb ) );
+		$purger = new ConsentLogPurger( $wpdb, ConsentLogSchema::table( $wpdb ) );
 		$purger->purge( $proof->retention_days, time() );
 	}
 
@@ -182,7 +183,7 @@ final class Plugin {
 			static function (): DatabaseSink {
 				global $wpdb;
 				/** @var \wpdb $wpdb */
-				return new DatabaseSink( $wpdb, DatabaseSink::table_name( $wpdb ) );
+				return new DatabaseSink( $wpdb, ConsentLogSchema::table( $wpdb ) );
 			}
 		);
 		// Proof on by default; an Integrator overrides this binding to disable it.

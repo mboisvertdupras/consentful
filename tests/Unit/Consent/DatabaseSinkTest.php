@@ -3,6 +3,7 @@ declare( strict_types = 1 );
 
 namespace Consentful\Tests\Unit\Consent;
 
+use Consentful\Consent\ConsentLogSchema;
 use Consentful\Consent\ConsentRecord;
 use Consentful\Consent\DatabaseSink;
 use Consentful\Tests\Unit\Support\FakeWpdb;
@@ -43,6 +44,8 @@ final class DatabaseSinkTest extends TestCase {
 			array( '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s' ),
 			$insert['format']
 		);
+		// The formats are derived from the single column-contract owner, not re-listed here.
+		$this->assertSame( ConsentLogSchema::insert_formats(), $insert['format'] );
 	}
 
 	public function test_format_count_matches_the_row_column_count(): void {
@@ -54,11 +57,5 @@ final class DatabaseSinkTest extends TestCase {
 		$insert = $db->recorded_inserts[0];
 		$this->assertIsArray( $insert['format'] );
 		$this->assertCount( count( $insert['data'] ), $insert['format'] );
-	}
-
-	public function test_table_name_uses_the_wpdb_prefix(): void {
-		$db = FakeWpdb::create( 'site7_' );
-
-		$this->assertSame( 'site7_consentful_consent_log', DatabaseSink::table_name( $db ) );
 	}
 }

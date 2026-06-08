@@ -63,26 +63,14 @@ final class ConsentRecord {
 	public function to_export_row(): array {
 		return array(
 			'consent_id'     => $this->consent_id,
-			'created_at'     => gmdate( 'c', $this->created_at ),
+			'created_at'     => ConsentLogSchema::export_timestamp( $this->created_at ),
 			'jurisdiction'   => $this->jurisdiction,
 			'policy_version' => $this->policy_version,
 			'schema_version' => $this->schema_version,
 			'banner_version' => $this->banner_version,
-			'purposes'       => $this->purposes_string(),
+			'purposes'       => ConsentLogSchema::purposes_to_export( $this->purposes ),
 			'ip_hash'        => $this->ip_hash ?? '',
 			'ua_hash'        => $this->ua_hash ?? '',
 		);
-	}
-
-	/** Stable `key=0/1;…` purposes encoding, sorted by key for deterministic export. */
-	private function purposes_string(): string {
-		$purposes = $this->purposes;
-		ksort( $purposes );
-
-		$parts = array();
-		foreach ( $purposes as $key => $granted ) {
-			$parts[] = $key . '=' . ( $granted ? '1' : '0' );
-		}
-		return implode( ';', $parts );
 	}
 }

@@ -3,6 +3,8 @@ declare( strict_types = 1 );
 
 namespace Consentful\Admin;
 
+use Consentful\Consent\ConsentLogSchema;
+
 /**
  * Reads the bundled Consent log table for the admin screen and the CSV export — the thin
  * `$wpdb` shell of the auditor surface. The injected wpdb is the only WordPress coupling;
@@ -24,7 +26,7 @@ final class ConsentLogReader {
 	public static function for_wp(): self {
 		global $wpdb;
 		/** @var \wpdb $wpdb */
-		return new self( $wpdb, $wpdb->prefix . 'consentful_consent_log' );
+		return new self( $wpdb, ConsentLogSchema::table( $wpdb ) );
 	}
 
 	/** Total record count. The table is bound as a `%i` identifier. */
@@ -130,24 +132,15 @@ final class ConsentLogReader {
 		return is_numeric( $value ) ? (int) $value : 0;
 	}
 
-	/** Convert a stored DATETIME to an ISO-8601 UTC timestamp; pass through if unparseable. */
+	/** Convert a stored DATETIME to the schema's ISO-8601 UTC export format; pass through if unparseable. */
 	private static function iso8601( string $datetime ): string {
 		$timestamp = strtotime( $datetime . ' UTC' );
-		return false === $timestamp ? $datetime : gmdate( 'c', $timestamp );
+		return false === $timestamp ? $datetime : ConsentLogSchema::export_timestamp( $timestamp );
 	}
 
-	/** Decode the stored purposes JSON into the stable `key=0/1;…` string (sorted by key). */
+	/** Decode the stored purposes JSON, then encode it via the schema's shared export codec. */
 	private static function purposes_string( string $json ): string {
 		$decoded = json_decode( $json, true );
-		if ( ! is_array( $decoded ) ) {
-			return '';
-		}
-
-		ksort( $decoded );
-		$parts = array();
-		foreach ( $decoded as $key => $granted ) {
-			$parts[] = $key . '=' . ( $granted ? '1' : '0' );
-		}
-		return implode( ';', $parts );
+		return is_array( $decoded ) ? ConsentLogSchema::purposes_to_export( $decoded ) : '';
 	}
 }

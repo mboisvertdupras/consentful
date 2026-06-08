@@ -3,6 +3,7 @@ declare( strict_types = 1 );
 
 namespace Consentful\Tests\Unit\Consent;
 
+use Consentful\Consent\ConsentLogSchema;
 use Consentful\Consent\ConsentRecord;
 use PHPUnit\Framework\TestCase;
 
@@ -97,5 +98,13 @@ final class ConsentRecordTest extends TestCase {
 			),
 			array_keys( $row )
 		);
+	}
+
+	public function test_row_shapes_follow_the_schema_column_order(): void {
+		$record = $this->record();
+
+		// Both row shapes derive their column order from the single contract owner.
+		$this->assertSame( ConsentLogSchema::column_names(), array_keys( $record->to_row() ) );
+		$this->assertSame( ConsentLogSchema::column_names(), array_keys( $record->to_export_row() ) );
 	}
 }

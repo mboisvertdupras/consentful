@@ -13,30 +13,14 @@ namespace Consentful\Consent;
 final class ConsentLogExporter {
 
 	/**
-	 * The fixed export header, matching ConsentRecord::to_export_row() key order.
-	 *
-	 * @var list<string>
-	 */
-	private const HEADER = array(
-		'consent_id',
-		'created_at',
-		'jurisdiction',
-		'policy_version',
-		'schema_version',
-		'banner_version',
-		'purposes',
-		'ip_hash',
-		'ua_hash',
-	);
-
-	/**
-	 * A header row plus one row per record, CRLF-terminated per RFC-4180. Accepts
-	 * ConsentRecords or pre-built export rows.
+	 * A header row plus one row per record, CRLF-terminated per RFC-4180. The header and
+	 * the per-row column order both come from ConsentLogSchema::column_names() (the single
+	 * owner of the column contract). Accepts ConsentRecords or pre-built export rows.
 	 *
 	 * @param iterable<ConsentRecord|array<string, scalar>> $records
 	 */
 	public static function to_csv( iterable $records ): string {
-		$lines = array( self::line( self::HEADER ) );
+		$lines = array( self::line( ConsentLogSchema::column_names() ) );
 		foreach ( $records as $record ) {
 			$row     = $record instanceof ConsentRecord ? $record->to_export_row() : $record;
 			$lines[] = self::line( self::row_values( $row ) );
@@ -45,14 +29,14 @@ final class ConsentLogExporter {
 	}
 
 	/**
-	 * The export-row values in header order, each coerced to string.
+	 * The export-row values in column order, each coerced to string.
 	 *
 	 * @param array<string, scalar> $row
 	 * @return list<string>
 	 */
 	private static function row_values( array $row ): array {
 		$values = array();
-		foreach ( self::HEADER as $column ) {
+		foreach ( ConsentLogSchema::column_names() as $column ) {
 			$values[] = (string) ( $row[ $column ] ?? '' );
 		}
 		return $values;

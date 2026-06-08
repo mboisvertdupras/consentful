@@ -4,6 +4,7 @@ declare( strict_types = 1 );
 namespace Consentful\Tests\Unit\Consent;
 
 use Consentful\Consent\ConsentLogExporter;
+use Consentful\Consent\ConsentLogSchema;
 use Consentful\Consent\ConsentRecord;
 use PHPUnit\Framework\TestCase;
 
@@ -48,6 +49,8 @@ final class ConsentLogExporterTest extends TestCase {
 			),
 			$rows[0]
 		);
+		// The header is the schema's column order, not a re-listed copy.
+		$this->assertSame( ConsentLogSchema::column_names(), $rows[0] );
 	}
 
 	public function test_one_row_per_record(): void {

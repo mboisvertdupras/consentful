@@ -4,6 +4,7 @@ declare( strict_types = 1 );
 namespace Consentful\Tests\Unit\Admin;
 
 use Consentful\Admin\ConsentLogReader;
+use Consentful\Consent\ConsentLogSchema;
 use Consentful\Tests\Unit\Support\FakeWpdb;
 use PHPUnit\Framework\TestCase;
 
@@ -116,5 +117,12 @@ final class ConsentLogReaderTest extends TestCase {
 		$this->assertSame( 'not-a-date', $export['created_at'] );
 		$this->assertSame( '', $export['purposes'] );
 		$this->assertSame( 0, $export['policy_version'] );
+	}
+
+	public function test_export_row_keys_match_the_schema_columns(): void {
+		$export = ConsentLogReader::to_export_row( $this->row() );
+
+		// The from-DB mapper follows the single column-contract owner's order.
+		$this->assertSame( ConsentLogSchema::column_names(), array_keys( $export ) );
 	}
 }

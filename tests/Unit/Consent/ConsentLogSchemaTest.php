@@ -4,6 +4,7 @@ declare( strict_types = 1 );
 namespace Consentful\Tests\Unit\Consent;
 
 use Consentful\Consent\ConsentLogSchema;
+use Consentful\Tests\Unit\Support\FakeWpdb;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -47,5 +48,30 @@ final class ConsentLogSchemaTest extends TestCase {
 		$this->assertStringContainsString( 'PRIMARY KEY', $sql );
 		$this->assertStringContainsString( 'KEY consent_id (consent_id)', $sql );
 		$this->assertStringContainsString( 'KEY created_at (created_at)', $sql );
+	}
+
+	public function test_ddl_declares_every_record_column(): void {
+		$sql = $this->sql();
+
+		// The DDL column lines are generated from the one column contract — assert the tie.
+		foreach ( ConsentLogSchema::column_names() as $column ) {
+			$this->assertStringContainsString( $column, $sql );
+		}
+	}
+
+	public function test_table_uses_the_wpdb_prefix(): void {
+		$this->assertSame(
+			'site7_consentful_consent_log',
+			ConsentLogSchema::table( FakeWpdb::create( 'site7_' ) )
+		);
+	}
+
+	public function test_uninstall_script_drops_the_same_table_name(): void {
+		// uninstall.php runs standalone (no autoloader), so it inlines the table name; pin that
+		// literal to the schema's single owner so the two cannot drift.
+		$bare      = ConsentLogSchema::table( FakeWpdb::create( '' ) );
+		$uninstall = (string) file_get_contents( dirname( __DIR__, 3 ) . '/uninstall.php' );
+
+		$this->assertStringContainsString( $bare, $uninstall );
 	}
 }
