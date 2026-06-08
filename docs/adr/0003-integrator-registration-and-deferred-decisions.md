@@ -3,7 +3,11 @@
 ## Status
 
 accepted — refines ADR 0001 / 0002 after the resolver, banner-variant, proof-of-consent
-and admin-UI increments shipped
+and admin-UI increments shipped. **Decision 1 ("Integrator registration is the DI
+container") is superseded by ADR 0004** — the audience is no longer technical
+integrators, so the container is an internal detail, not the public configuration
+surface. Decisions 2–3 (Personalization as an opt-in default; Notice/None's explicit
+`default_granted`) still stand.
 
 ## Context
 

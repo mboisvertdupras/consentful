@@ -1,19 +1,25 @@
 # Consentful — universal consent layer
 
-A white-label, open-source WordPress **universal consent layer**. It gates **all**
-non-essential third-party tags behind visitor consent, adapts to the visitor's
-jurisdiction, and keeps demonstrable proof of consent — so the **site** (not merely
-one vendor's tag) meets Québec Loi 25 / GDPR / US opt-out laws. Reusable across
-client sites: no brand-specific code, prefix `consentful_`, fully themeable. Google
-Consent Mode is the first integration, not the boundary.
+An open-source, **general-purpose** WordPress **universal consent layer** for the
+WordPress.org plugin directory. It gates **all** non-essential third-party tags behind
+visitor consent, adapts to the visitor's jurisdiction, and keeps demonstrable proof of
+consent — so the **site** (not merely one vendor's tag) meets Québec Loi 25 / GDPR / US
+opt-out laws. **Anyone can install it and be compliant from the admin UI — no code, no
+prior consent-management knowledge.** Neutral, fully themeable branding (prefix
+`consentful_`). Google Consent Mode is the first integration, not the boundary.
 
-> **Status.** `1.0.0` implements the full architecture of ADR 0001/0002/0003: the PSR-4
+> **Status.** The domain core and front-end gate are built per ADR 0001/0002: the PSR-4
 > OOP domain core (container, Purpose model, Signal, Consent, Tag, Adapter,
 > Jurisdiction/Policy registries), the cache-safe client gate + Google Consent Mode v2
 > adapter, the geo-adaptive jurisdiction resolver (edge signal → non-cached endpoint,
-> fail-closed), the opt-in / opt-out (Do Not Sell/Share) / notice banner variants,
-> durable proof of consent (record + log table + Sink + REST), and the constrained
-> site-owner admin UI.
+> fail-closed), the opt-in / opt-out (Do Not Sell/Share) / notice banner variants, and
+> durable proof of consent (record + log table + Sink + REST).
+>
+> **In flux (ADR 0004).** The original integrator / code-config operator model is being
+> replaced by a **self-serve admin UI**: anyone installs and configures from wp-admin,
+> and code becomes an *optional developer layer*. The admin UI is being built out to
+> this spec; the code registration shown under *Extending in code* below is the
+> developer-only path, not the primary one.
 
 ## What it does
 
@@ -33,22 +39,36 @@ Consent Mode is the first integration, not the boundary.
   `ads_data_redaction`, `url_passthrough`) to preserve conversion modeling.
 - **Proof of consent.** Each decision is recorded (consent id, timestamp, purposes,
   jurisdiction, policy/schema/banner version) to a built-in consent log, exportable
-  for an auditor; a Sink interface lets integrators redirect records to their store.
+  for an auditor; a Sink interface lets developers redirect records to their store.
   Records are pseudonymous (server-side salted IP/UA hashes) and retention-limited — a
   daily cron purges entries past the configured window.
 - **Translation-ready.** English source + bundled French (fr_CA / fr_FR); `.pot`
   template included. Language (locale) is a separate axis from jurisdiction (geo).
 
-The audience is **integrators** (agencies/devs): adapters, tags, purpose mappings,
-jurisdiction policy and banner defaults are declared in code/config — the source of
-truth — and any setting can be locked. The site owner gets a deliberately constrained
-admin UI. See `readme.txt` for the WordPress.org-format user readme.
+The audience is **every WordPress site owner**: tags, purpose copy, jurisdiction policy
+and banner appearance are configured in the **admin UI** — the source of truth — with no
+code required. **Developers** are an optional second audience served by extension hooks
+(below). See `readme.txt` for the WordPress.org-format user readme.
 
-## Integration (in code)
+## Configuration (admin UI)
 
-Integrators wire everything through the `consentful_register` action, which hands over
-the DI container — the single registration surface (ADR 0003). Register from your theme
-or a companion plugin:
+Install, activate, and open **Settings → Consentful**. A compliant baseline is active
+from activation (geo-adaptive defaults, strictest-until-known, banner shown); the UI
+*refines* it. Add tags from the built-in catalog (GA4, GTM, Google Ads, Meta Pixel, …)
+or paste a custom HTML/script snippet, assign each to purposes, edit the purpose copy,
+choose the banner appearance, and review the geo → policy mapping. No code, no prior
+consent-management knowledge.
+
+> The admin UI is being built out to this spec — see ADR 0004. Until then, the code path
+> below is the working configuration surface.
+
+## Extending in code (optional, for developers)
+
+Developers can register a custom adapter, add a purpose, or redirect consent records to
+their own store via documented hooks — never required, and never overriding the admin
+UI. Today this runs through the `consentful_register` action, which hands over the DI
+container (this surface is being reworked into an internal detail per ADR 0004).
+Register from your theme or a companion plugin:
 
 ```php
 add_action(
@@ -59,7 +79,7 @@ add_action(
 			->add( new \Consentful\Adapter\GoogleAdapter( array( 'G-XXXXXXXX' ) ) );
 
 		// 2. Gate a tag on the 'analytics' purpose; the Google adapter fires it (Direct).
-		//    site_toggleable: true lets the site owner switch it off in the admin UI.
+		//    site_toggleable controls whether the tag appears as a toggle in the admin UI.
 		$c->get( \Consentful\Tag\TagRegistry::class )->add(
 			new \Consentful\Tag\Tag(
 				id: 'ga4',
@@ -80,9 +100,6 @@ add_action(
 		//    $c->singleton( \Consentful\Frontend\GeoConfig::class, fn() => /* your GeoConfig */ );
 	}
 );
-
-// Lock fields so the site owner cannot change them in the constrained admin UI.
-add_filter( 'consentful_locked_settings', fn( array $locked ) => array( 'position', 'theme' ) );
 ```
 
 ## Local development (symlink into a WP install)

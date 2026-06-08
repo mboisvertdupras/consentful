@@ -2,7 +2,9 @@
 
 ## Status
 
-accepted — supersedes the original v2.0.0 single-file design
+accepted — supersedes the original v2.0.0 single-file design. **The "Operator model:
+two-tier" paragraph below is superseded by ADR 0004** (self-serve admin UI; the
+integrator-as-source-of-truth tier is dropped). Everything else stands.
 
 ## Context
 

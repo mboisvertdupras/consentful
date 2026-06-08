@@ -2,7 +2,12 @@
 
 ## Status
 
-accepted — builds on ADR 0001
+accepted — builds on ADR 0001. **Operator-model terminology refined by ADR 0004:**
+"Integrator" is superseded by the Administrator (UI source of truth) + optional Developer
+model, and the "integrator-extensible purpose taxonomy (add/rename/remove in code)"
+decision below is narrowed to a **fixed** default set with UI-editable copy and an
+optional developer add-purpose hook. The jurisdiction, geo-resolution and
+proof-of-consent decisions below stand unchanged.
 
 ## Context
 
