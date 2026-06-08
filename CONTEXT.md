@@ -88,7 +88,11 @@ _Avoid_: Reject, withdraw (those are the Opt-in Policy's actions).
 **Consent**:
 A visitor's decision across all purposes, with schema + policy version and a
 timestamp. The **cookie** is the runtime source of truth (cache-safe, fast);
-expires after a re-consent window, after which the visitor is re-prompted.
+expires after a re-consent window, after which the visitor is re-prompted. A
+**client-runtime** concept: the JS lib is its sole owner — `assets/lib/cookie.js`
+reads/writes the cookie, `grants.js` decides gating. PHP carries no Consent
+runtime (it emits the config the client gates on, and records proof via the
+separate **Consent record**); don't re-add a PHP Consent twin for symmetry.
 _Avoid_: Preferences (use for the in-banner UI state only), choice.
 
 **Consent record**:

@@ -3,7 +3,6 @@ declare( strict_types = 1 );
 
 namespace Consentful\Tag;
 
-use Consentful\Consent\Consent;
 use Consentful\Consent\Purpose;
 
 /**
@@ -26,20 +25,4 @@ final class Tag {
 		public readonly string $adapter_id,
 		public readonly bool $site_toggleable = false
 	) {}
-
-	/**
-	 * Fail-closed: no purposes means never granted; otherwise every Purpose must
-	 * be granted for the Tag to fire.
-	 */
-	public function is_granted( Consent $consent ): bool {
-		if ( array() === $this->purposes ) {
-			return false;
-		}
-		foreach ( $this->purposes as $purpose ) {
-			if ( ! $consent->granted( $purpose ) ) {
-				return false;
-			}
-		}
-		return true;
-	}
 }
