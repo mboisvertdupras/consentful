@@ -184,4 +184,31 @@ final class BannerConfigTest extends TestCase {
 
 		$this->assertSame( $base->to_array(), $out->to_array() );
 	}
+
+	public function test_with_privacy_fallback_fills_an_empty_url(): void {
+		$base = BannerConfig::defaults(); // privacyUrl defaults to ''.
+		$out  = $base->with_privacy_fallback( 'https://example.test/privacy' );
+
+		$this->assertSame( 'https://example.test/privacy', $out->privacy_url );
+		// Everything else is preserved.
+		$this->assertSame( $base->position, $out->position );
+		$this->assertSame( $base->copy, $out->copy );
+	}
+
+	public function test_with_privacy_fallback_keeps_an_explicit_url(): void {
+		$base = new BannerConfig( true, 'bar', 'auto', '#2563eb', 8, 1, 'https://example.test/custom', array(), array() );
+		$out  = $base->with_privacy_fallback( 'https://example.test/wp-privacy' );
+
+		// An explicit URL wins; the no-op path returns the same instance.
+		$this->assertSame( 'https://example.test/custom', $out->privacy_url );
+		$this->assertSame( $base, $out );
+	}
+
+	public function test_with_privacy_fallback_is_a_noop_for_an_empty_fallback(): void {
+		$base = BannerConfig::defaults();
+		$out  = $base->with_privacy_fallback( '' );
+
+		$this->assertSame( '', $out->privacy_url );
+		$this->assertSame( $base, $out );
+	}
 }

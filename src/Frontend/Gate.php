@@ -118,6 +118,10 @@ final class Gate {
 		// today — and identical for every Visitor (settings are global, not per-visitor).
 		$banner = $banner->with_overrides( $settings->banner_overrides(), Settings::locked_fields() );
 
+		// When no explicit privacy URL is set, fall back to the site's configured WordPress
+		// privacy page so the banner's privacy link still resolves. Site-global, so cache-safe.
+		$banner = $banner->with_privacy_fallback( $this->privacy_policy_url() );
+
 		return new ClientConfig(
 			$purposes,
 			$tags,
@@ -156,6 +160,11 @@ final class Gate {
 				static fn ( string $id ): bool => isset( $toggleable[ $id ] )
 			)
 		);
+	}
+
+	/** The site's configured WordPress privacy-policy page URL ('' when none is set). */
+	private function privacy_policy_url(): string {
+		return get_privacy_policy_url();
 	}
 
 	/** The built decider's source, inlined verbatim. Null when the file is absent. */

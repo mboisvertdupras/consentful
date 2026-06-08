@@ -387,6 +387,13 @@ if ( ! function_exists( 'admin_url' ) ) {
 	}
 }
 
+if ( ! function_exists( 'get_privacy_policy_url' ) ) {
+	function get_privacy_policy_url() {
+		$url = $GLOBALS['consentful_test_privacy_url'] ?? '';
+		return is_string( $url ) ? $url : '';
+	}
+}
+
 if ( ! function_exists( 'wp_unslash' ) ) {
 	function wp_unslash( $value ) {
 		return is_string( $value ) ? stripslashes( $value ) : $value;

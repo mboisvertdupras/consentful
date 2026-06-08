@@ -83,6 +83,31 @@ final class BannerConfig {
 	}
 
 	/**
+	 * Resolve an empty privacy URL to `$fallback` (e.g. the site's configured WordPress
+	 * privacy page) so the banner can always link to a privacy policy. An explicit URL —
+	 * the integrator's base or the Site owner's override — is left untouched, and an empty
+	 * fallback is a no-op. Pure: the caller supplies the resolved fallback (no WordPress
+	 * call here), keeping this value object framework-free.
+	 */
+	public function with_privacy_fallback( string $fallback ): self {
+		if ( '' !== $this->privacy_url || '' === $fallback ) {
+			return $this;
+		}
+
+		return new self(
+			$this->enabled,
+			$this->position,
+			$this->theme,
+			$this->primary_color,
+			$this->radius,
+			$this->version,
+			$fallback,
+			$this->copy,
+			$this->purposes,
+		);
+	}
+
+	/**
 	 * Return `$value` when it is in the allowlist, otherwise the `$fallback`.
 	 *
 	 * @param list<string> $allowed

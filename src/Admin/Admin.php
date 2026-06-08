@@ -173,7 +173,7 @@ final class Admin {
 			__( 'Privacy policy URL', 'consentful' ),
 			'privacyUrl',
 			$settings,
-			fn () => $this->url_field( 'privacyUrl', $this->effective_string( $settings, 'privacyUrl', $base->privacy_url ), $settings->is_locked( 'privacyUrl' ) ),
+			fn () => $this->url_field( 'privacyUrl', $this->effective_string( $settings, 'privacyUrl', $base->privacy_url ), $settings->is_locked( 'privacyUrl' ), $this->privacy_placeholder() ),
 			__( 'Leave blank to use the privacy page configured in WordPress.', 'consentful' )
 		);
 
@@ -349,10 +349,15 @@ final class Admin {
 		echo '<input type="number" id="' . esc_attr( $id ) . '" class="small-text" min="0" max="32" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '"' . esc_attr( $this->disabled_attr( $locked ) ) . ' />';
 	}
 
-	private function url_field( string $field, string $value, bool $locked ): void {
+	private function url_field( string $field, string $value, bool $locked, string $placeholder = '' ): void {
 		$id   = 'consentful-' . $field;
 		$name = CONSENTFUL_OPTION . '[' . $field . ']';
-		echo '<input type="url" id="' . esc_attr( $id ) . '" class="regular-text" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '"' . esc_attr( $this->disabled_attr( $locked ) ) . ' />';
+		echo '<input type="url" id="' . esc_attr( $id ) . '" class="regular-text" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '" placeholder="' . esc_attr( $placeholder ) . '"' . esc_attr( $this->disabled_attr( $locked ) ) . ' />';
+	}
+
+	/** The WordPress-configured privacy page URL, shown as the privacy-URL field placeholder. */
+	private function privacy_placeholder(): string {
+		return get_privacy_policy_url();
 	}
 
 	/**

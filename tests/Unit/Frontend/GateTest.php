@@ -53,7 +53,7 @@ final class GateTest extends TestCase {
 			}
 		}
 		$this->temp_paths = array();
-		unset( $GLOBALS['consentful_test_actions'], $GLOBALS['consentful_test_enqueues'], $GLOBALS['consentful_test_styles'] );
+		unset( $GLOBALS['consentful_test_actions'], $GLOBALS['consentful_test_enqueues'], $GLOBALS['consentful_test_styles'], $GLOBALS['consentful_test_privacy_url'] );
 		parent::tearDown();
 	}
 
@@ -351,6 +351,33 @@ final class GateTest extends TestCase {
 
 		$this->assertSame( $first, $second );
 		$this->assertStringContainsString( '"theme":"dark"', $first );
+	}
+
+	public function test_print_head_falls_back_to_the_site_privacy_page_when_blank(): void {
+		// No explicit privacy URL (integrator base + no override): the banner uses the site's
+		// configured WordPress privacy page. Site-global, so identical for every Visitor.
+		$GLOBALS['consentful_test_privacy_url'] = 'https://example.test/privacy';
+		$dir = $this->build_dir();
+
+		ob_start();
+		$this->gate( $dir, $dir . '/.vite/manifest.json' )->print_head();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( '"privacyUrl":"https:\/\/example.test\/privacy"', $output );
+	}
+
+	public function test_print_head_keeps_an_explicit_privacy_url_over_the_site_default(): void {
+		// An explicit Site-owner URL must win over the WordPress privacy-page fallback.
+		$GLOBALS['consentful_test_privacy_url'] = 'https://example.test/wp-privacy';
+		$dir      = $this->build_dir();
+		$settings = new Settings( array( 'privacyUrl' => 'https://example.test/custom' ), array() );
+
+		ob_start();
+		$this->gate( $dir, $dir . '/.vite/manifest.json', $settings )->print_head();
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( '"privacyUrl":"https:\/\/example.test\/custom"', $output );
+		$this->assertStringNotContainsString( 'wp-privacy', $output );
 	}
 
 	public function test_print_head_degrades_to_today_with_no_saved_settings(): void {
