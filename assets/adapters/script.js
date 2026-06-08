@@ -1,9 +1,10 @@
 /**
- * Generic script handler (Direct) — proves vendor-neutrality. Injects a snippet's HTML
- * (one or more tags) at a chosen location (head/body/footer) when its tag is granted.
- * The HTML is parsed in an inert <template>, then each <script> is re-created so it
- * executes (a parsed script never runs on its own) and other elements are imported as-is.
- * Idempotent (injects once per tag); never uses document.write.
+ * Generic script handler (Direct) — proves vendor-neutrality. A tag's adapter config is a
+ * list of `{ code, location }` fragments; when the tag is granted, each fragment's HTML
+ * (one or more tags) is injected at its own location (head/body/footer). The HTML is parsed
+ * in an inert <template>, then each <script> is re-created so it executes (a parsed script
+ * never runs on its own) and other elements are imported as-is. Idempotent (the whole tag
+ * injects once); never uses document.write.
  */
 
 const injected = new Set();
@@ -37,11 +38,42 @@ function recreateScript( node, doc ) {
 	return el;
 }
 
+/** Parse one fragment's HTML and inject its element nodes at the fragment's location. */
+function injectFragment( fragment, doc ) {
+	const code = fragment && fragment.code ? String( fragment.code ) : '';
+	if ( ! code ) {
+		return;
+	}
+	const { parent, before } = target( fragment && fragment.location, doc );
+	if ( ! parent ) {
+		return;
+	}
+
+	const tpl = doc.createElement( 'template' );
+	tpl.innerHTML = code;
+
+	const frag = doc.createDocumentFragment();
+	for ( const node of Array.prototype.slice.call( tpl.content.childNodes ) ) {
+		if ( node.nodeType !== 1 ) {
+			continue;
+		}
+		frag.appendChild(
+			'SCRIPT' === node.nodeName ? recreateScript( node, doc ) : doc.importNode( node, true )
+		);
+	}
+
+	if ( before ) {
+		parent.insertBefore( frag, before );
+	} else {
+		parent.appendChild( frag );
+	}
+}
+
 export const script = {
 	/**
 	 * @param {object}   ctx
 	 * @param {object}   ctx.tag           The gated tag (its id keys idempotency).
-	 * @param {object}   ctx.adapterConfig { code?, location? }.
+	 * @param {object}   ctx.adapterConfig { fragments: [{ code, location }, …] }.
 	 * @param {boolean}  ctx.granted
 	 * @param {Document} ctx.doc
 	 */
@@ -57,33 +89,9 @@ export const script = {
 		injected.add( key );
 
 		const cfg = adapterConfig || {};
-		const code = cfg.code ? String( cfg.code ) : '';
-		if ( ! code ) {
-			return;
-		}
-
-		const { parent, before } = target( cfg.location, doc );
-		if ( ! parent ) {
-			return;
-		}
-
-		const tpl = doc.createElement( 'template' );
-		tpl.innerHTML = code;
-
-		const frag = doc.createDocumentFragment();
-		for ( const node of Array.prototype.slice.call( tpl.content.childNodes ) ) {
-			if ( node.nodeType !== 1 ) {
-				continue;
-			}
-			frag.appendChild(
-				'SCRIPT' === node.nodeName ? recreateScript( node, doc ) : doc.importNode( node, true )
-			);
-		}
-
-		if ( before ) {
-			parent.insertBefore( frag, before );
-		} else {
-			parent.appendChild( frag );
+		const fragments = Array.isArray( cfg.fragments ) ? cfg.fragments : [];
+		for ( const fragment of fragments ) {
+			injectFragment( fragment, doc );
 		}
 	},
 };

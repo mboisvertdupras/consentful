@@ -83,8 +83,9 @@ final class Admin {
 	/**
 	 * Enqueue, on our settings screen only: the WordPress color picker (the native Iris
 	 * picker the appearance form's `.consentful-color` input upgrades to) and the small
-	 * vanilla custom-snippet repeater (add/remove rows; the form degrades to one row without
-	 * it). The repeater rides an inline-only registered handle — no build artifact.
+	 * vanilla custom-snippet repeater (add/remove snippets and per-snippet scripts; the form
+	 * degrades to one snippet + one script without it) and its layout CSS. Both ride an
+	 * inline-only registered handle — no build artifact.
 	 */
 	public function enqueue_assets( string $hook ): void {
 		if ( '' === $this->settings_hook || $this->settings_hook !== $hook ) {
@@ -97,6 +98,10 @@ final class Admin {
 		wp_register_script( 'consentful-admin', false, array(), CONSENTFUL_VERSION, true );
 		wp_enqueue_script( 'consentful-admin' );
 		wp_add_inline_script( 'consentful-admin', self::repeater_js() );
+
+		wp_register_style( 'consentful-admin', false, array(), CONSENTFUL_VERSION );
+		wp_enqueue_style( 'consentful-admin' );
+		wp_add_inline_style( 'consentful-admin', self::admin_css() );
 	}
 
 	/** Register the single option with the pure `Settings::sanitize` as its callback. */
@@ -278,17 +283,16 @@ final class Admin {
 	}
 
 	/**
-	 * The custom-snippet repeater: every saved custom row plus one blank row (so it works
-	 * without JavaScript), an "Add snippet" button, and a `<template>` blank row the small
-	 * enqueued repeater script clones on demand. `data-next-index` seeds the next unused
-	 * `custom-N` id; a row whose code is cleared (or that is removed client-side) is dropped
-	 * on save by the sanitizer.
+	 * The custom-snippet repeater: every saved snippet plus one blank snippet (so it works
+	 * without JavaScript), an "Add snippet" button, and a `<template>` blank snippet the
+	 * enqueued repeater clones on demand. `data-next-index` seeds the next unused `custom-N`
+	 * id; a snippet with no non-empty script (or one removed client-side) is dropped on save.
 	 *
 	 * @param array<string, array<string, mixed>> $stored Stored tags keyed by id.
 	 */
 	private function render_custom_tags( array $stored ): void {
 		echo '<h3>' . esc_html__( 'Custom snippets', 'consentful' ) . '</h3>';
-		echo '<p class="description">' . esc_html__( 'Paste a script or snippet to gate behind consent. It is injected by Consentful only when its purposes are granted — never printed directly. A snippet may contain more than one tag.', 'consentful' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'Group one or more scripts under a name and gate them behind consent. Each script is injected only when the snippet\'s purposes are granted — never printed directly — at the head, body, or footer you choose.', 'consentful' ) . '</p>';
 
 		$next = 1;
 		foreach ( $stored as $tag ) {
@@ -314,19 +318,23 @@ final class Admin {
 	}
 
 	/**
-	 * One custom-snippet row: hidden id/catalog, name, code textarea, injection location and
-	 * purpose checkboxes, wrapped so it can be added/removed as a unit. The `code` is rendered
-	 * with `esc_textarea`, never as a literal `<script>`.
+	 * One snippet card: hidden id/catalog, a remove control, name + purposes, and a nested
+	 * repeater of scripts (each `{ code, location }`). Renders the stored scripts plus one
+	 * blank script (the JS-free fallback) and a `<template>` blank script the repeater clones.
 	 *
 	 * @param array<string, mixed> $tag
 	 */
 	private function render_custom_row( string $id, array $tag ): void {
-		$prefix = 'tags][' . $id;
-		$fields = is_array( $tag['fields'] ?? null ) ? $tag['fields'] : array();
+		$prefix    = 'tags][' . $id;
+		$fields    = is_array( $tag['fields'] ?? null ) ? $tag['fields'] : array();
+		$fragments = is_array( $fields['fragments'] ?? null ) ? array_values( $fields['fragments'] ) : array();
 
-		echo '<div class="consentful-custom-row">';
+		echo '<div class="consentful-snippet">';
 		$this->hidden_field( $prefix . '][id', $id );
 		$this->hidden_field( $prefix . '][catalog', 'custom' );
+
+		echo '<div class="consentful-snippet-head"><strong>' . esc_html__( 'Custom snippet', 'consentful' ) . '</strong>';
+		echo '<button type="button" class="button-link button-link-delete consentful-remove-snippet">' . esc_html__( 'Remove snippet', 'consentful' ) . '</button></div>';
 
 		echo '<table class="form-table" role="presentation"><tbody>';
 		$this->row(
@@ -335,60 +343,126 @@ final class Admin {
 			fn () => $this->text_field( $prefix . '][label', $this->str( $tag, 'label' ), __( 'e.g. Hotjar', 'consentful' ) )
 		);
 		$this->row(
-			__( 'Snippet', 'consentful' ),
-			$prefix . '][fields][code',
-			fn () => $this->textarea_field( $prefix . '][fields][code', $this->str( $fields, 'code' ), '<script>…</script>' ),
-			__( 'One or more tags. Any <script> runs when the snippet is injected.', 'consentful' )
-		);
-		$this->row(
-			__( 'Location', 'consentful' ),
-			$prefix . '][fields][location',
-			fn () => $this->select_field( $prefix . '][fields][location', $this->location_choices(), $this->snippet_location( $fields ) ),
-			__( 'Where the snippet is injected into the page.', 'consentful' )
-		);
-		$this->row(
 			__( 'Purposes', 'consentful' ),
 			$prefix . '][purposes',
 			fn () => $this->purpose_checkboxes( $prefix, $this->tag_purposes( $tag, array() ) )
 		);
 		echo '</tbody></table>';
-		echo '<p><button type="button" class="button-link-delete consentful-remove-snippet">' . esc_html__( 'Remove snippet', 'consentful' ) . '</button></p>';
+
+		echo '<p class="consentful-scripts-label"><strong>' . esc_html__( 'Scripts', 'consentful' ) . '</strong></p>';
+		echo '<div class="consentful-fragments" data-next-frag="' . esc_attr( (string) ( count( $fragments ) + 1 ) ) . '">';
+		foreach ( $fragments as $index => $fragment ) {
+			$this->render_fragment_row( $prefix, (string) $index, is_array( $fragment ) ? $fragment : array() );
+		}
+		$this->render_fragment_row( $prefix, (string) count( $fragments ), array() );
+		echo '</div>';
+
+		echo '<p><button type="button" class="button consentful-add-fragment">' . esc_html__( 'Add script', 'consentful' ) . '</button></p>';
+
+		echo '<template class="consentful-fragment-template">';
+		$this->render_fragment_row( $prefix, '__FRAG__', array() );
+		echo '</template>';
+
 		echo '</div>';
 	}
 
-	/** The small vanilla repeater: clone the template row on "Add", drop a row on "Remove". */
+	/**
+	 * One script row inside a snippet: a code textarea, an injection-location select, and a
+	 * remove control. `code` is rendered with `esc_textarea`, never as a literal `<script>`.
+	 *
+	 * @param array<array-key, mixed> $fragment
+	 */
+	private function render_fragment_row( string $prefix, string $index, array $fragment ): void {
+		$base = $prefix . '][fields][fragments][' . $index;
+
+		echo '<div class="consentful-fragment">';
+		$this->textarea_field( $base . '][code', $this->str( $fragment, 'code' ), '<script>…</script>' );
+		echo '<div class="consentful-fragment-meta"><label>' . esc_html__( 'Location', 'consentful' ) . ' ';
+		$this->select_field( $base . '][location', $this->location_choices(), $this->snippet_location( $fragment ) );
+		echo '</label>';
+		echo '<button type="button" class="button-link button-link-delete consentful-remove-fragment">' . esc_html__( 'Remove script', 'consentful' ) . '</button>';
+		echo '</div></div>';
+	}
+
+	/**
+	 * The nested vanilla repeater: add/remove snippets and per-snippet scripts. Click-delegated
+	 * on the document so dynamically-added rows work; clones the matching `<template>`,
+	 * substituting the snippet (`__INDEX__`) or script (`__FRAG__`) index into field names.
+	 */
 	private static function repeater_js(): string {
 		return <<<'JS'
 ( function () {
 	var list = document.getElementById( 'consentful-custom-rows' );
-	var tpl = document.getElementById( 'consentful-custom-template' );
-	var add = document.querySelector( '.consentful-add-snippet' );
-	if ( ! list || ! tpl || ! add ) {
+	var snippetTpl = document.getElementById( 'consentful-custom-template' );
+	if ( ! list || ! snippetTpl ) {
 		return;
 	}
-	add.addEventListener( 'click', function () {
-		var next = parseInt( list.getAttribute( 'data-next-index' ), 10 ) || 1;
-		list.setAttribute( 'data-next-index', String( next + 1 ) );
+	function appendClone( container, html ) {
 		var holder = document.createElement( 'div' );
-		holder.innerHTML = tpl.innerHTML.replace( /__INDEX__/g, String( next ) );
-		var row = holder.firstElementChild;
-		if ( row ) {
-			list.appendChild( row );
+		holder.innerHTML = html;
+		var node = holder.firstElementChild;
+		if ( node ) {
+			container.appendChild( node );
 		}
-	} );
-	list.addEventListener( 'click', function ( event ) {
-		var btn = event.target.closest( '.consentful-remove-snippet' );
-		if ( ! btn ) {
+	}
+	document.addEventListener( 'click', function ( event ) {
+		var el = event.target;
+		if ( ! el || ! el.closest ) {
 			return;
 		}
-		event.preventDefault();
-		var row = btn.closest( '.consentful-custom-row' );
-		if ( row && row.parentNode ) {
-			row.parentNode.removeChild( row );
+		if ( el.closest( '.consentful-add-snippet' ) ) {
+			event.preventDefault();
+			var next = parseInt( list.getAttribute( 'data-next-index' ), 10 ) || 1;
+			list.setAttribute( 'data-next-index', String( next + 1 ) );
+			appendClone( list, snippetTpl.innerHTML.replace( /__INDEX__/g, String( next ) ) );
+			return;
+		}
+		var removeSnippet = el.closest( '.consentful-remove-snippet' );
+		if ( removeSnippet ) {
+			event.preventDefault();
+			var snippet = removeSnippet.closest( '.consentful-snippet' );
+			if ( snippet && snippet.parentNode ) {
+				snippet.parentNode.removeChild( snippet );
+			}
+			return;
+		}
+		var addFragment = el.closest( '.consentful-add-fragment' );
+		if ( addFragment ) {
+			event.preventDefault();
+			var owner = addFragment.closest( '.consentful-snippet' );
+			var frags = owner && owner.querySelector( '.consentful-fragments' );
+			var fragTpl = owner && owner.querySelector( '.consentful-fragment-template' );
+			if ( ! frags || ! fragTpl ) {
+				return;
+			}
+			var fnext = parseInt( frags.getAttribute( 'data-next-frag' ), 10 ) || 0;
+			frags.setAttribute( 'data-next-frag', String( fnext + 1 ) );
+			appendClone( frags, fragTpl.innerHTML.replace( /__FRAG__/g, String( fnext ) ) );
+			return;
+		}
+		var removeFragment = el.closest( '.consentful-remove-fragment' );
+		if ( removeFragment ) {
+			event.preventDefault();
+			var fragment = removeFragment.closest( '.consentful-fragment' );
+			if ( fragment && fragment.parentNode ) {
+				fragment.parentNode.removeChild( fragment );
+			}
 		}
 	} );
 } )();
 JS;
+	}
+
+	/** Layout CSS for the snippet cards + script rows (inline; no build artifact). */
+	private static function admin_css(): string {
+		return '.consentful-snippet{border:1px solid #c3c4c7;background:#fff;border-radius:4px;'
+			. 'padding:0 16px 12px;margin:0 0 16px;max-width:820px}'
+			. '.consentful-snippet-head{display:flex;align-items:center;justify-content:space-between;'
+			. 'gap:12px;border-bottom:1px solid #f0f0f1;padding:10px 0;margin-bottom:4px}'
+			. '.consentful-scripts-label{margin:12px 0 4px}'
+			. '.consentful-fragment{border-left:3px solid #dcdcde;padding:8px 0 8px 12px;margin:8px 0}'
+			. '.consentful-fragment textarea{width:100%}'
+			. '.consentful-fragment-meta{display:flex;align-items:center;gap:12px;margin-top:6px;flex-wrap:wrap}';
 	}
 
 	/** The simple geo posture toggle (adaptive on/off; a global posture when off). */

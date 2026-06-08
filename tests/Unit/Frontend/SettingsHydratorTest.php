@@ -159,7 +159,7 @@ final class SettingsHydratorTest extends TestCase {
 		$this->assertSame( array( 'analytics', 'marketing' ), $tag['purposes'] );
 	}
 
-	public function test_meta_pixel_emits_a_script_adapter_with_templated_code(): void {
+	public function test_meta_pixel_emits_a_single_head_script_fragment(): void {
 		$out = $this->build(
 			array(
 				'tags' => array(
@@ -174,15 +174,18 @@ final class SettingsHydratorTest extends TestCase {
 
 		$pixel = $this->sub( $this->sub( $out, 'adapters' ), 'meta-pixel' );
 		$this->assertSame( 'script', $pixel['handler'] );
-		$this->assertSame( 'head', $pixel['location'] );
-		$code = $pixel['code'];
+		$fragments = $this->sub( $pixel, 'fragments' );
+		$this->assertCount( 1, $fragments );
+		$fragment = $this->sub( $fragments, 0 );
+		$this->assertSame( 'head', $fragment['location'] );
+		$code = $fragment['code'];
 		$this->assertIsString( $code );
 		$this->assertStringContainsString( "fbq('init','123456')", $code );
 		$this->assertStringNotContainsString( 'document.write', $code );
 		$this->assertSame( array( 'marketing' ), $this->sub( $this->sub( $out, 'tags' ), 0 )['purposes'] );
 	}
 
-	public function test_two_custom_snippets_become_two_script_instances(): void {
+	public function test_custom_snippet_carries_its_script_fragments(): void {
 		$out = $this->build(
 			array(
 				'tags' => array(
@@ -190,34 +193,33 @@ final class SettingsHydratorTest extends TestCase {
 						'id'       => 'custom-a',
 						'catalog'  => 'custom',
 						'purposes' => array( 'analytics' ),
-						'fields'   => array( 'code' => 'A();' ),
-					),
-					array(
-						'id'       => 'custom-b',
-						'catalog'  => 'custom',
-						'purposes' => array( 'marketing' ),
-						'fields'   => array( 'code' => '<script src="https://example.test/b.js"></script>', 'location' => 'footer' ),
+						'fields'   => array(
+							'fragments' => array(
+								array( 'code' => '<script>head();</script>', 'location' => 'head' ),
+								array( 'code' => '<script src="https://example.test/b.js"></script>', 'location' => 'footer' ),
+							),
+						),
 					),
 				),
 			)
 		);
 
 		$adapters = $this->sub( $out, 'adapters' );
-		$this->assertSame( array( 'custom-a', 'custom-b' ), array_keys( $adapters ) );
+		$this->assertSame( array( 'custom-a' ), array_keys( $adapters ) );
 		$a = $this->sub( $adapters, 'custom-a' );
-		$b = $this->sub( $adapters, 'custom-b' );
 		$this->assertSame( 'script', $a['handler'] );
-		$this->assertSame( 'A();', $a['code'] );
-		// An unspecified location defaults to head.
-		$this->assertSame( 'head', $a['location'] );
-		$this->assertSame( 'script', $b['handler'] );
-		$this->assertSame( '<script src="https://example.test/b.js"></script>', $b['code'] );
-		$this->assertSame( 'footer', $b['location'] );
 
-		// Two tags, each pointing at its own adapter instance.
+		$fragments = $this->sub( $a, 'fragments' );
+		$this->assertCount( 2, $fragments );
+		$this->assertSame( '<script>head();</script>', $this->sub( $fragments, 0 )['code'] );
+		$this->assertSame( 'head', $this->sub( $fragments, 0 )['location'] );
+		$this->assertSame( '<script src="https://example.test/b.js"></script>', $this->sub( $fragments, 1 )['code'] );
+		$this->assertSame( 'footer', $this->sub( $fragments, 1 )['location'] );
+
+		// One tag pointing at its own adapter instance.
 		$tags = $this->sub( $out, 'tags' );
-		$this->assertSame( array( 'custom-a', 'custom-b' ), array_column( $tags, 'id' ) );
-		$this->assertSame( array( 'custom-a', 'custom-b' ), array_column( $tags, 'adapter' ) );
+		$this->assertSame( array( 'custom-a' ), array_column( $tags, 'id' ) );
+		$this->assertSame( array( 'custom-a' ), array_column( $tags, 'adapter' ) );
 	}
 
 	public function test_disabled_tag_is_omitted(): void {

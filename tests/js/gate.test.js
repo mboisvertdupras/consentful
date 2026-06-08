@@ -155,8 +155,8 @@ describe( 'gate', () => {
 				{ id: 'b', purposes: [ 'necessary' ], delivery: 'direct', adapter: 'cnf-b' },
 			],
 			adapters: {
-				'cnf-a': { handler: 'script', code: '<script src="https://example.test/a.js"></script>' },
-				'cnf-b': { handler: 'script', code: '<script>window.__cnfB = 1;</script>' },
+				'cnf-a': { handler: 'script', fragments: [ { code: '<script src="https://example.test/a.js"></script>', location: 'head' } ] },
+				'cnf-b': { handler: 'script', fragments: [ { code: '<script>window.__cnfB = 1;</script>', location: 'head' } ] },
 			},
 		} );
 		bootGate( cfg );

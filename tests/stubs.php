@@ -173,6 +173,21 @@ if ( ! function_exists( 'wp_add_inline_script' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_register_style' ) ) {
+	function wp_register_style( ...$args ) {
+		return true;
+	}
+}
+
+if ( ! function_exists( 'wp_add_inline_style' ) ) {
+	function wp_add_inline_style( ...$args ) {
+		if ( isset( $GLOBALS['consentful_test_inline_styles'] ) && is_array( $GLOBALS['consentful_test_inline_styles'] ) ) {
+			$GLOBALS['consentful_test_inline_styles'][] = $args;
+		}
+		return true;
+	}
+}
+
 if ( ! function_exists( 'plugins_url' ) ) {
 	function plugins_url( $path = '', $plugin = '' ) {
 		return 'http://example.test/wp-content/plugins/consentful/' . ltrim( (string) $path, '/' );

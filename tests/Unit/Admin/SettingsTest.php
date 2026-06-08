@@ -252,8 +252,9 @@ final class SettingsTest extends TestCase {
 		$this->assertSame( 'GTM-ABC', $this->sub( $this->sub( $out, 'tags' ), 0 )['id'] );
 	}
 
-	public function test_sanitize_tags_keeps_custom_code_raw_and_allowlists_location(): void {
-		$code = '<script>document.title = "x";</script><noscript><img src="https://example.test/p.gif"></noscript>';
+	public function test_sanitize_tags_keeps_custom_fragments_raw_and_allowlists_location(): void {
+		$head = '<script>document.title = "x";</script>';
+		$body = '<noscript><img src="https://example.test/p.gif"></noscript>';
 		$out  = Settings::sanitize(
 			array(
 				'tags' => array(
@@ -262,26 +263,28 @@ final class SettingsTest extends TestCase {
 						'catalog' => 'custom',
 						'label'   => 'Hotjar',
 						'fields'  => array(
-							'code'     => $code,
-							'location' => 'footer',
-							'src'      => 'https://example.test/h.js',
+							'fragments' => array(
+								array( 'code' => $head, 'location' => 'head' ),
+								array( 'code' => $body, 'location' => 'footer' ),
+							),
 						),
 					),
 				),
 			)
 		);
 
-		$tag    = $this->sub( $this->sub( $out, 'tags' ), 0 );
-		$fields = $this->sub( $tag, 'fields' );
-		// code is stored verbatim — never escaped (injected by JS) — and may hold many tags.
-		$this->assertSame( $code, $fields['code'] );
-		$this->assertSame( 'footer', $fields['location'] );
-		// The dropped Script URL / attributes fields are not in the schema anymore.
-		$this->assertArrayNotHasKey( 'src', $fields );
+		$tag       = $this->sub( $this->sub( $out, 'tags' ), 0 );
+		$fragments = $this->sub( $this->sub( $tag, 'fields' ), 'fragments' );
+		$this->assertCount( 2, $fragments );
+		// code is stored verbatim — never escaped (injected by JS) — one per script row.
+		$this->assertSame( $head, $this->sub( $fragments, 0 )['code'] );
+		$this->assertSame( 'head', $this->sub( $fragments, 0 )['location'] );
+		$this->assertSame( $body, $this->sub( $fragments, 1 )['code'] );
+		$this->assertSame( 'footer', $this->sub( $fragments, 1 )['location'] );
 		$this->assertSame( 'Hotjar', $tag['label'] );
 	}
 
-	public function test_sanitize_tags_defaults_invalid_location_to_head(): void {
+	public function test_sanitize_tags_defaults_invalid_fragment_location_to_head(): void {
 		$out = Settings::sanitize(
 			array(
 				'tags' => array(
@@ -289,32 +292,39 @@ final class SettingsTest extends TestCase {
 						'id'      => 'custom-1',
 						'catalog' => 'custom',
 						'fields'  => array(
-							'code'     => 'A();',
-							'location' => 'sidebar',
+							'fragments' => array(
+								array( 'code' => 'A();', 'location' => 'sidebar' ),
+							),
 						),
 					),
 				),
 			)
 		);
 
-		$this->assertSame( 'head', $this->sub( $this->sub( $this->sub( $out, 'tags' ), 0 ), 'fields' )['location'] );
+		$fragments = $this->sub( $this->sub( $this->sub( $this->sub( $out, 'tags' ), 0 ), 'fields' ), 'fragments' );
+		$this->assertSame( 'head', $this->sub( $fragments, 0 )['location'] );
 	}
 
-	public function test_sanitize_tags_drops_empty_custom_row_but_keeps_one_with_code(): void {
+	public function test_sanitize_tags_drops_empty_fragments_and_empty_snippets(): void {
 		$out = Settings::sanitize(
 			array(
 				'tags' => array(
-					// An untouched "add another" / template row: no code — drop it.
+					// A snippet whose only script row has no code (template / untouched) — dropped.
 					array(
 						'id'      => 'custom-1',
 						'catalog' => 'custom',
-						'fields'  => array( 'code' => '' ),
+						'fields'  => array( 'fragments' => array( array( 'code' => '', 'location' => 'head' ) ) ),
 					),
-					// A filled-in custom snippet: keep it.
+					// A snippet with one empty + one filled script: the empty row is dropped, kept.
 					array(
 						'id'      => 'custom-2',
 						'catalog' => 'custom',
-						'fields'  => array( 'code' => 'A();' ),
+						'fields'  => array(
+							'fragments' => array(
+								array( 'code' => '', 'location' => 'head' ),
+								array( 'code' => 'A();', 'location' => 'footer' ),
+							),
+						),
 					),
 				),
 			)
@@ -322,7 +332,10 @@ final class SettingsTest extends TestCase {
 
 		$tags = $this->sub( $out, 'tags' );
 		$this->assertSame( array( 'custom-2' ), array_column( $tags, 'id' ) );
-		$this->assertSame( 'A();', $this->sub( $this->sub( $tags, 0 ), 'fields' )['code'] );
+		$fragments = $this->sub( $this->sub( $this->sub( $tags, 0 ), 'fields' ), 'fragments' );
+		$this->assertCount( 1, $fragments );
+		$this->assertSame( 'A();', $this->sub( $fragments, 0 )['code'] );
+		$this->assertSame( 'footer', $this->sub( $fragments, 0 )['location'] );
 	}
 
 	public function test_sanitize_tags_drops_fields_outside_catalog_schema(): void {

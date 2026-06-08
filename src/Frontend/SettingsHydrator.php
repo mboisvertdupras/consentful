@@ -225,9 +225,10 @@ final class SettingsHydrator {
 	}
 
 	/**
-	 * The client-config fragment for a `script` catalog entry (a built-in templated snippet
-	 * like the Meta Pixel, or a custom snippet). `location` defaults to `head`. Google-handler
-	 * entries (GA4 / Ads / GTM) never reach here — they merge in `add_google`.
+	 * The client-config for a `script` catalog entry: a list of `{ code, location }`
+	 * fragments the gate injects in order, each at its own location. A built-in templated
+	 * snippet (e.g. the Meta Pixel) is a single head fragment; a custom snippet is its stored
+	 * fragments. Google-handler entries (GA4 / Ads / GTM) never reach here — see `add_google`.
 	 *
 	 * @param array<string, mixed> $tag
 	 * @return array<string, mixed>
@@ -236,20 +237,50 @@ final class SettingsHydrator {
 		$fields = $this->fields( $tag );
 		if ( 'meta-pixel' === $entry->key() ) {
 			return array(
-				'handler'  => 'script',
-				'code'     => self::meta_pixel_code( $this->str( $fields, 'pixelId' ) ),
-				'location' => 'head',
+				'handler'   => 'script',
+				'fragments' => array(
+					array(
+						'code'     => self::meta_pixel_code( $this->str( $fields, 'pixelId' ) ),
+						'location' => 'head',
+					),
+				),
 			);
 		}
 
-		$config = array( 'handler' => 'script' );
-		$code   = $this->str( $fields, 'code' );
-		if ( '' !== $code ) {
-			$config['code'] = $code;
+		return array(
+			'handler'   => 'script',
+			'fragments' => $this->custom_fragments( $fields ),
+		);
+	}
+
+	/**
+	 * A custom snippet's stored fragments, narrowed to the gate's `{ code, location }` shape
+	 * (empty-code entries dropped, location defaulting to `head`). The settings are already
+	 * sanitized; this just narrows the untyped merged array.
+	 *
+	 * @param array<string, mixed> $fields
+	 * @return list<array{code: string, location: string}>
+	 */
+	private function custom_fragments( array $fields ): array {
+		$raw = $fields['fragments'] ?? null;
+		if ( ! is_array( $raw ) ) {
+			return array();
 		}
-		$location           = $this->str( $fields, 'location' );
-		$config['location'] = '' !== $location ? $location : 'head';
-		return $config;
+
+		$out = array();
+		foreach ( $raw as $fragment ) {
+			$fragment = self::map( $fragment );
+			$code     = $this->str( $fragment, 'code' );
+			if ( '' === $code ) {
+				continue;
+			}
+			$location = $this->str( $fragment, 'location' );
+			$out[]    = array(
+				'code'     => $code,
+				'location' => '' !== $location ? $location : 'head',
+			);
+		}
+		return $out;
 	}
 
 	/**

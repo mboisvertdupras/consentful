@@ -41,13 +41,17 @@ final class Settings {
 	/** @var list<string> Allowed custom-snippet injection locations. */
 	private const SNIPPET_LOCATIONS = array( 'head', 'body', 'footer' );
 
-	/** @var array<string, list<string>> Catalog keys → their allowed field keys. */
+	/**
+	 * @var array<string, list<string>> Catalog keys → their allowed flat field keys. `custom`
+	 * is special: its fields are a `fragments` list (see `sanitize_custom_fields`), so it has
+	 * no flat keys here — the empty list just registers `custom` as a known catalog.
+	 */
 	private const CATALOG_FIELDS = array(
 		'ga4'        => array( 'measurementId' ),
 		'google-ads' => array( 'conversionId' ),
 		'gtm'        => array( 'containerId' ),
 		'meta-pixel' => array( 'pixelId' ),
-		'custom'     => array( 'code', 'location' ),
+		'custom'     => array(),
 	);
 
 	/**
@@ -333,9 +337,9 @@ final class Settings {
 			}
 
 			$fields = self::sanitize_fields( $catalog, $tag['fields'] ?? null );
-			// A custom snippet with no code is empty — an untouched "add another" row, the
-			// JS-free template seed, or one the Administrator cleared to remove it — so drop it.
-			if ( 'custom' === $catalog && '' === ( $fields['code'] ?? '' ) ) {
+			// A custom snippet with no non-empty script is empty — an untouched "add another"
+			// row, the JS-free template seed, or one the Administrator cleared — so drop it.
+			if ( 'custom' === $catalog && array() === ( $fields['fragments'] ?? array() ) ) {
 				continue;
 			}
 			$seen[ $id ] = true;
@@ -375,13 +379,16 @@ final class Settings {
 	}
 
 	/**
-	 * The stored field values for a tag, per the catalog entry's field schema. For `custom`,
-	 * `code` is stored RAW (only `wp_unslash`, never escaped) — it is injected by JS, gated
-	 * by admin `unfiltered_html` trust; `location` is allowlisted (defaulting to `head`).
+	 * The stored field values for a tag, per the catalog entry's field schema. `custom` is
+	 * special — its fields are a list of script fragments (see `sanitize_custom_fields`).
 	 *
 	 * @return array<string, mixed>
 	 */
 	private static function sanitize_fields( string $catalog, mixed $value ): array {
+		if ( 'custom' === $catalog ) {
+			return self::sanitize_custom_fields( $value );
+		}
+
 		$allowed = self::CATALOG_FIELDS[ $catalog ];
 		if ( ! is_array( $value ) ) {
 			return array();
@@ -392,13 +399,41 @@ final class Settings {
 			if ( ! array_key_exists( $field, $value ) ) {
 				continue;
 			}
-			$out[ $field ] = match ( $field ) {
-				'code'     => (string) wp_unslash( self::to_string( $value['code'] ) ),
-				'location' => self::in_list( self::to_string( $value['location'] ), self::SNIPPET_LOCATIONS ) ?? 'head',
-				default    => sanitize_text_field( self::to_string( $value[ $field ] ) ),
-			};
+			$out[ $field ] = sanitize_text_field( self::to_string( $value[ $field ] ) );
 		}
 		return $out;
+	}
+
+	/**
+	 * A custom snippet's fields: an ordered `fragments` list of `{ code, location }`. Each
+	 * `code` is stored RAW (only `wp_unslash`, never escaped) — it is injected by JS, gated
+	 * by admin `unfiltered_html` trust; `location` is allowlisted (defaulting to `head`).
+	 * Empty-code fragments (untouched/template rows) are dropped and the list is re-indexed;
+	 * no non-empty fragment yields an empty array (so the snippet itself is dropped upstream).
+	 *
+	 * @return array{fragments?: list<array{code: string, location: string}>}
+	 */
+	private static function sanitize_custom_fields( mixed $value ): array {
+		if ( ! is_array( $value ) || ! is_array( $value['fragments'] ?? null ) ) {
+			return array();
+		}
+
+		$fragments = array();
+		foreach ( $value['fragments'] as $fragment ) {
+			if ( ! is_array( $fragment ) ) {
+				continue;
+			}
+			$code = (string) wp_unslash( self::to_string( $fragment['code'] ?? '' ) );
+			if ( '' === $code ) {
+				continue;
+			}
+			$fragments[] = array(
+				'code'     => $code,
+				'location' => self::in_list( self::to_string( $fragment['location'] ?? '' ), self::SNIPPET_LOCATIONS ) ?? 'head',
+			);
+		}
+
+		return array() === $fragments ? array() : array( 'fragments' => $fragments );
 	}
 
 	/**
