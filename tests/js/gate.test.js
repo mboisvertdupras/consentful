@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { init } from '../../assets/gate.js';
 import { reset as resetGoogle } from '../../assets/adapters/google.js';
 import { reset as resetScript } from '../../assets/adapters/script.js';
-import { reset as resetGtm } from '../../assets/adapters/gtm.js';
 import {
 	parseConsent,
 	validateConsent,
@@ -27,7 +26,6 @@ describe( 'gate', () => {
 		resetGlobals();
 		resetGoogle();
 		resetScript();
-		resetGtm();
 	} );
 
 	it( 'exposes the public API on window.consentful', () => {
@@ -157,14 +155,14 @@ describe( 'gate', () => {
 				{ id: 'b', purposes: [ 'necessary' ], delivery: 'direct', adapter: 'cnf-b' },
 			],
 			adapters: {
-				'cnf-a': { handler: 'script', src: 'https://example.test/a.js' },
-				'cnf-b': { handler: 'script', code: 'window.__cnfB = 1;' },
+				'cnf-a': { handler: 'script', code: '<script src="https://example.test/a.js"></script>' },
+				'cnf-b': { handler: 'script', code: '<script>window.__cnfB = 1;</script>' },
 			},
 		} );
 		bootGate( cfg );
 
 		const scripts = [ ...document.head.querySelectorAll( 'script' ) ];
-		expect( scripts.some( ( s ) => s.src === 'https://example.test/a.js' ) ).toBe( true );
+		expect( scripts.some( ( s ) => s.getAttribute( 'src' ) === 'https://example.test/a.js' ) ).toBe( true );
 		expect( scripts.some( ( s ) => s.textContent === 'window.__cnfB = 1;' ) ).toBe( true );
 	} );
 
@@ -218,7 +216,6 @@ describe( 'gate async geo fallback', () => {
 		resetGlobals();
 		resetGoogle();
 		resetScript();
-		resetGtm();
 	} );
 
 	afterEach( () => {
@@ -313,7 +310,6 @@ describe( 'gate proof of consent', () => {
 		resetGlobals();
 		resetGoogle();
 		resetScript();
-		resetGtm();
 	} );
 
 	afterEach( () => {

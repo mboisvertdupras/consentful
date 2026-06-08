@@ -10,16 +10,19 @@ use Consentful\Tag\Tag;
 /**
  * The first-class Google integration. Owns the Purpose→Signal mapping and emits the
  * Consent Mode v2 client config (default-deny, wait_for_update, ads_data_redaction,
- * url_passthrough). Core stays vendor-neutral: the hydrator constructs this from the
- * Administrator's catalog selections (the Google merge rule), not code.
+ * url_passthrough). Loads gtag.js for measurement ids and the gtm.js container for any
+ * Tag Manager ids — all gated behind consent under one shared Consent Mode default/update.
+ * Core stays vendor-neutral: the hydrator constructs this from the Administrator's catalog
+ * selections (the Google merge rule), not code.
  */
 final class GoogleAdapter implements Adapter {
 
 	public const ID = 'google';
 
 	/**
-	 * @param list<string>                  $measurement_ids
+	 * @param list<string>                  $measurement_ids GA4 / Ads ids loaded via gtag.js.
 	 * @param array<string, list<Signal>>   $purpose_signals Purpose key → Signals; empty uses the default map.
+	 * @param list<string>                  $container_ids   GTM container ids loaded via gtm.js.
 	 */
 	public function __construct(
 		private readonly array $measurement_ids,
@@ -27,6 +30,7 @@ final class GoogleAdapter implements Adapter {
 		private readonly bool $ads_data_redaction = true,
 		private readonly bool $url_passthrough = true,
 		private readonly int $wait_for_update = 500,
+		private readonly array $container_ids = array(),
 	) {}
 
 	public function id(): string {
@@ -52,6 +56,7 @@ final class GoogleAdapter implements Adapter {
 		return array(
 			'handler'          => self::ID,
 			'measurementIds'   => $this->measurement_ids,
+			'containerIds'     => $this->container_ids,
 			'purposeSignals'   => $signals,
 			'adsDataRedaction' => $this->ads_data_redaction,
 			'urlPassthrough'   => $this->url_passthrough,

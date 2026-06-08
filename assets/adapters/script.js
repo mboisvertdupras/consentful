@@ -1,6 +1,8 @@
 /**
- * Generic script handler (Direct) — proves vendor-neutrality. Injects a <script> by
- * `src` (async) or inline `code` when its tag is granted; applies any attributes.
+ * Generic script handler (Direct) — proves vendor-neutrality. Injects a snippet's HTML
+ * (one or more tags) at a chosen location (head/body/footer) when its tag is granted.
+ * The HTML is parsed in an inert <template>, then each <script> is re-created so it
+ * executes (a parsed script never runs on its own) and other elements are imported as-is.
  * Idempotent (injects once per tag); never uses document.write.
  */
 
@@ -11,12 +13,36 @@ export function reset() {
 	injected.clear();
 }
 
+/** The { parent, before } insertion point for a location ('head' by default). */
+function target( location, doc ) {
+	const body = doc.body;
+	if ( 'body' === location ) {
+		return { parent: body, before: body ? body.firstChild : null };
+	}
+	if ( 'footer' === location ) {
+		return { parent: body, before: null };
+	}
+	return { parent: doc.head || doc.documentElement, before: null };
+}
+
+/** A fresh, executable copy of a parsed <script> (attributes + inline code preserved). */
+function recreateScript( node, doc ) {
+	const el = doc.createElement( 'script' );
+	for ( const attr of Array.prototype.slice.call( node.attributes ) ) {
+		el.setAttribute( attr.name, attr.value );
+	}
+	if ( node.textContent ) {
+		el.textContent = node.textContent;
+	}
+	return el;
+}
+
 export const script = {
 	/**
-	 * @param {object}  ctx
-	 * @param {object}  ctx.tag           The gated tag (its id keys idempotency).
-	 * @param {object}  ctx.adapterConfig { src?, code?, attributes? }.
-	 * @param {boolean} ctx.granted
+	 * @param {object}   ctx
+	 * @param {object}   ctx.tag           The gated tag (its id keys idempotency).
+	 * @param {object}   ctx.adapterConfig { code?, location? }.
+	 * @param {boolean}  ctx.granted
 	 * @param {Document} ctx.doc
 	 */
 	apply( ctx ) {
@@ -31,17 +57,33 @@ export const script = {
 		injected.add( key );
 
 		const cfg = adapterConfig || {};
-		const el = doc.createElement( 'script' );
-		if ( cfg.src ) {
-			el.async = true;
-			el.src = String( cfg.src );
-		} else if ( cfg.code ) {
-			el.textContent = String( cfg.code );
+		const code = cfg.code ? String( cfg.code ) : '';
+		if ( ! code ) {
+			return;
 		}
-		const attrs = cfg.attributes && typeof cfg.attributes === 'object' ? cfg.attributes : {};
-		for ( const name of Object.keys( attrs ) ) {
-			el.setAttribute( name, String( attrs[ name ] ) );
+
+		const { parent, before } = target( cfg.location, doc );
+		if ( ! parent ) {
+			return;
 		}
-		( doc.head || doc.documentElement ).appendChild( el );
+
+		const tpl = doc.createElement( 'template' );
+		tpl.innerHTML = code;
+
+		const frag = doc.createDocumentFragment();
+		for ( const node of Array.prototype.slice.call( tpl.content.childNodes ) ) {
+			if ( node.nodeType !== 1 ) {
+				continue;
+			}
+			frag.appendChild(
+				'SCRIPT' === node.nodeName ? recreateScript( node, doc ) : doc.importNode( node, true )
+			);
+		}
+
+		if ( before ) {
+			parent.insertBefore( frag, before );
+		} else {
+			parent.appendChild( frag );
+		}
 	},
 };

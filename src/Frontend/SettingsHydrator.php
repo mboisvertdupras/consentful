@@ -13,7 +13,6 @@ use Consentful\Consent\DefaultPurpose;
 use Consentful\Consent\ProofConfig;
 use Consentful\Consent\Purpose;
 use Consentful\Consent\PurposeRegistry;
-use Consentful\Consent\Signal;
 use Consentful\Jurisdiction\Jurisdiction;
 use Consentful\Jurisdiction\JurisdictionRegistry;
 use Consentful\Jurisdiction\Policy;
@@ -165,18 +164,27 @@ final class SettingsHydrator {
 
 	/**
 	 * Merge every google-handler tag into ONE `google` adapter (measurementIds = union of
-	 * id fields, in tag order) + ONE Direct `google` Tag (purposes = union).
+	 * GA4/Ads id fields; containerIds = union of GTM container ids, in tag order) + ONE
+	 * Direct `google` Tag (purposes = union). GTM rides the same Consent Mode default/update.
 	 *
 	 * @param list<array{0: CatalogEntry, 1: array<string, mixed>}> $google
 	 * @param list<string>                                          $active_keys
 	 */
 	private function add_google( PurposeRegistry $purposes, TagRegistry $tags, AdapterRegistry $adapters, array $google, array $active_keys ): void {
 		$ids           = array();
+		$container_ids = array();
 		$purpose_union = array();
 		foreach ( $google as list( $entry, $tag ) ) {
-			foreach ( $this->google_ids( $tag ) as $id ) {
-				if ( '' !== $id && ! in_array( $id, $ids, true ) ) {
-					$ids[] = $id;
+			if ( 'gtm' === $entry->key() ) {
+				$container_id = $this->str( $this->fields( $tag ), 'containerId' );
+				if ( '' !== $container_id && ! in_array( $container_id, $container_ids, true ) ) {
+					$container_ids[] = $container_id;
+				}
+			} else {
+				foreach ( $this->google_ids( $tag ) as $id ) {
+					if ( '' !== $id && ! in_array( $id, $ids, true ) ) {
+						$ids[] = $id;
+					}
 				}
 			}
 			foreach ( $this->tag_purpose_keys( $entry, $tag, $active_keys ) as $key ) {
@@ -186,7 +194,7 @@ final class SettingsHydrator {
 			}
 		}
 
-		$adapters->add( new GoogleAdapter( $ids ) );
+		$adapters->add( new GoogleAdapter( $ids, container_ids: $container_ids ) );
 		$tags->add(
 			new Tag(
 				GoogleAdapter::ID,
@@ -217,41 +225,30 @@ final class SettingsHydrator {
 	}
 
 	/**
-	 * The client-config fragment for a non-google catalog entry (gtm consent-push, or a
-	 * script instance from a built-in template / custom snippet).
+	 * The client-config fragment for a `script` catalog entry (a built-in templated snippet
+	 * like the Meta Pixel, or a custom snippet). `location` defaults to `head`. Google-handler
+	 * entries (GA4 / Ads / GTM) never reach here — they merge in `add_google`.
 	 *
 	 * @param array<string, mixed> $tag
 	 * @return array<string, mixed>
 	 */
 	private function adapter_config( CatalogEntry $entry, array $tag ): array {
-		if ( 'gtm' === $entry->handler() ) {
-			return array(
-				'handler'        => 'gtm',
-				'purposeSignals' => self::signal_string_map(),
-			);
-		}
-
 		$fields = $this->fields( $tag );
 		if ( 'meta-pixel' === $entry->key() ) {
 			return array(
-				'handler' => 'script',
-				'code'    => self::meta_pixel_code( $this->str( $fields, 'pixelId' ) ),
+				'handler'  => 'script',
+				'code'     => self::meta_pixel_code( $this->str( $fields, 'pixelId' ) ),
+				'location' => 'head',
 			);
 		}
 
 		$config = array( 'handler' => 'script' );
-		$src    = $this->str( $fields, 'src' );
 		$code   = $this->str( $fields, 'code' );
-		if ( '' !== $src ) {
-			$config['src'] = $src;
-		}
 		if ( '' !== $code ) {
 			$config['code'] = $code;
 		}
-		$attributes = $fields['attributes'] ?? null;
-		if ( is_array( $attributes ) && array() !== $attributes ) {
-			$config['attributes'] = $attributes;
-		}
+		$location           = $this->str( $fields, 'location' );
+		$config['location'] = '' !== $location ? $location : 'head';
 		return $config;
 	}
 
@@ -265,20 +262,6 @@ final class SettingsHydrator {
 			. 't.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}'
 			. "(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');"
 			. "fbq('init','" . $pixel_id . "');fbq('track','PageView');";
-	}
-
-	/**
-	 * `GoogleAdapter::default_signal_map()` flattened to the gate's `{purposeKey:[signal,..]}`
-	 * string shape — the single Signal source, shared by the gtm adapter.
-	 *
-	 * @return array<string, list<string>>
-	 */
-	private static function signal_string_map(): array {
-		$out = array();
-		foreach ( GoogleAdapter::default_signal_map() as $key => $signals ) {
-			$out[ $key ] = array_map( static fn ( Signal $signal ): string => $signal->value, $signals );
-		}
-		return $out;
 	}
 
 	/** The default geo→policy jurisdictions, or a single '*' built from the global posture. */

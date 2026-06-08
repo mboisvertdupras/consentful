@@ -252,8 +252,8 @@ final class SettingsTest extends TestCase {
 		$this->assertSame( 'GTM-ABC', $this->sub( $this->sub( $out, 'tags' ), 0 )['id'] );
 	}
 
-	public function test_sanitize_tags_keeps_custom_code_raw_and_escapes_src(): void {
-		$code = '<script>document.title = "x";</script>';
+	public function test_sanitize_tags_keeps_custom_code_raw_and_allowlists_location(): void {
+		$code = '<script>document.title = "x";</script><noscript><img src="https://example.test/p.gif"></noscript>';
 		$out  = Settings::sanitize(
 			array(
 				'tags' => array(
@@ -262,9 +262,9 @@ final class SettingsTest extends TestCase {
 						'catalog' => 'custom',
 						'label'   => 'Hotjar',
 						'fields'  => array(
-							'code'       => $code,
-							'src'        => 'https://example.test/h.js',
-							'attributes' => array( 'data-id' => '123' ),
+							'code'     => $code,
+							'location' => 'footer',
+							'src'      => 'https://example.test/h.js',
 						),
 					),
 				),
@@ -273,25 +273,42 @@ final class SettingsTest extends TestCase {
 
 		$tag    = $this->sub( $this->sub( $out, 'tags' ), 0 );
 		$fields = $this->sub( $tag, 'fields' );
-		// code is stored verbatim — never escaped (injected by JS).
+		// code is stored verbatim — never escaped (injected by JS) — and may hold many tags.
 		$this->assertSame( $code, $fields['code'] );
-		$this->assertSame( 'https://example.test/h.js', $fields['src'] );
-		$this->assertSame( array( 'data-id' => '123' ), $fields['attributes'] );
+		$this->assertSame( 'footer', $fields['location'] );
+		// The dropped Script URL / attributes fields are not in the schema anymore.
+		$this->assertArrayNotHasKey( 'src', $fields );
 		$this->assertSame( 'Hotjar', $tag['label'] );
+	}
+
+	public function test_sanitize_tags_defaults_invalid_location_to_head(): void {
+		$out = Settings::sanitize(
+			array(
+				'tags' => array(
+					array(
+						'id'      => 'custom-1',
+						'catalog' => 'custom',
+						'fields'  => array(
+							'code'     => 'A();',
+							'location' => 'sidebar',
+						),
+					),
+				),
+			)
+		);
+
+		$this->assertSame( 'head', $this->sub( $this->sub( $this->sub( $out, 'tags' ), 0 ), 'fields' )['location'] );
 	}
 
 	public function test_sanitize_tags_drops_empty_custom_row_but_keeps_one_with_code(): void {
 		$out = Settings::sanitize(
 			array(
 				'tags' => array(
-					// An untouched "add another" row: no code, no src — drop it.
+					// An untouched "add another" / template row: no code — drop it.
 					array(
 						'id'      => 'custom-1',
 						'catalog' => 'custom',
-						'fields'  => array(
-							'code' => '',
-							'src'  => '',
-						),
+						'fields'  => array( 'code' => '' ),
 					),
 					// A filled-in custom snippet: keep it.
 					array(

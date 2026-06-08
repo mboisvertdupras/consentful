@@ -22,15 +22,15 @@ Consentful is an open-source, general-purpose universal consent layer that anyon
 * **Proof of consent.** Each decision is recorded (consent id, timestamp, purposes, jurisdiction, policy/schema/banner version) to a built-in consent log, exportable for an auditor; a Sink interface lets developers redirect records to their own store.
 * **Translation-ready.** Ships English (source) and French (fr_CA / fr_FR) strings; `.pot` template included. Language (locale) is a separate axis from jurisdiction (geo).
 
-== Foundation release ==
+== What's in 1.0.0 ==
 
-This 1.0.0 is the first increment of a ground-up rewrite: it stands up the PSR-4 OOP domain core (container, Purpose model, Signal, Consent, Tag, Adapter, Jurisdiction/Policy registries) and the rebranded build/packaging surface. The front-end gate, the Google adapter, jurisdiction geo-resolution, the consent log, and the admin UI land in later increments.
+Consentful 1.0.0 is a complete, self-serve consent layer: the cache-safe client gate (an inline `<head>` decider plus a footer gate bundle), the geo-adaptive multi-jurisdiction policy engine (opt-in / opt-out / notice, strictest-until-known, GPC honored), the built-in tag catalog (Google Analytics 4, Google Ads, Google Tag Manager, Meta Pixel) plus multi-tag custom snippets, the Google Consent Mode v2 adapter, the proof-of-consent log with CSV export and retention purge, and the native admin settings UI — all configurable without code.
 
 == Installation ==
 
 1. Upload the `consentful` folder to `/wp-content/plugins/`.
 2. Activate the plugin.
-3. Open Settings -> Consentful, add your tags (GA4, Meta Pixel, or a custom snippet), and review the banner. A compliant baseline is active from activation; configuration just refines it.
+3. Open Settings -> Consentful, add your tags (GA4, Google Tag Manager, Meta Pixel, or a custom snippet), and review the banner. A compliant baseline is active from activation; configuration just refines it.
 
 == Frequently Asked Questions ==
 
@@ -46,6 +46,11 @@ Anyone running a WordPress site. Tags, purposes, jurisdiction policy, and the ba
 == Changelog ==
 
 = 1.0.0 =
-* Foundation release of the Consentful rewrite.
-* PSR-4 OOP domain core: container, Purpose model, Signal, Consent value object, Tag/Adapter/Jurisdiction/Policy and their registries, and the Plugin bootstrap.
-* Rebranded the build, packaging, and tooling surface to the `consentful` slug.
+* Initial release.
+* Self-serve admin UI: configure tags, purpose copy, banner appearance, and jurisdiction posture with no code.
+* Cache-safe client gate: identical HTML for every visitor; the consent cookie is read at runtime and only granted tags are injected.
+* Built-in tag catalog (GA4, Google Ads, Google Tag Manager, Meta Pixel) plus multi-tag custom snippets with a head / body / footer injection location.
+* Google Consent Mode v2 signals (default-deny, wait_for_update, ads_data_redaction, url_passthrough); GTM containers are loaded behind consent.
+* Geo-adaptive, multi-jurisdiction policy engine (Loi 25 / GDPR opt-in, US opt-out, notice-only) with fail-closed strictest-until-known resolution and instant GPC.
+* Proof-of-consent log with CSV export, a daily retention purge, and a Sink hook for a custom record store.
+* English source plus bundled French (fr_CA / fr_FR).

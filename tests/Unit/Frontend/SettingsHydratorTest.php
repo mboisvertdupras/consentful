@@ -10,9 +10,10 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * The hydrator turns the EFFECTIVE settings + Catalog into a ClientConfig: the compliant
- * default baseline from an empty option, the Google merge rule (ga4 + google-ads → one
- * `google` adapter/tag), gtm/script instances, the personalization toggle, the simple geo
- * toggle, and purpose-copy overrides flowing into the banner.
+ * default baseline from an empty option, the Google merge rule (ga4 + google-ads + gtm →
+ * one `google` adapter/tag), script instances (Meta Pixel, custom snippets), the
+ * personalization toggle, the simple geo toggle, and purpose-copy overrides flowing into
+ * the banner.
  */
 final class SettingsHydratorTest extends TestCase {
 
@@ -114,6 +115,7 @@ final class SettingsHydratorTest extends TestCase {
 		$google = $this->sub( $adapters, 'google' );
 		$this->assertSame( 'google', $google['handler'] );
 		$this->assertSame( array( 'G-AAA', 'AW-BBB' ), $google['measurementIds'] );
+		$this->assertSame( array(), $google['containerIds'] );
 		$this->assertTrue( $google['adsDataRedaction'] );
 		$this->assertSame( 500, $google['waitForUpdate'] );
 
@@ -127,30 +129,33 @@ final class SettingsHydratorTest extends TestCase {
 		$this->assertSame( array( 'analytics', 'marketing' ), $tag['purposes'] );
 	}
 
-	public function test_gtm_is_a_delegated_tag_with_a_gtm_adapter(): void {
+	public function test_gtm_loads_a_container_through_the_google_adapter(): void {
 		$out = $this->build(
 			array(
 				'tags' => array(
 					array(
 						'id'      => 'gtm',
 						'catalog' => 'gtm',
+						'fields'  => array( 'containerId' => 'GTM-ABCDEF' ),
 					),
 				),
 			)
 		);
 
+		// GTM rides the single Google adapter: no gtag ids, one container id, shared signals.
 		$adapters = $this->sub( $out, 'adapters' );
-		$this->assertSame( array( 'gtm' ), array_keys( $adapters ) );
-		$gtm = $this->sub( $adapters, 'gtm' );
-		$this->assertSame( 'gtm', $gtm['handler'] );
-		// purposeSignals are the flattened Google default map (string signals).
-		$this->assertSame( array( 'analytics_storage' ), $this->sub( $gtm, 'purposeSignals' )['analytics'] );
+		$this->assertSame( array( 'google' ), array_keys( $adapters ) );
+		$google = $this->sub( $adapters, 'google' );
+		$this->assertSame( 'google', $google['handler'] );
+		$this->assertSame( array(), $google['measurementIds'] );
+		$this->assertSame( array( 'GTM-ABCDEF' ), $google['containerIds'] );
+		$this->assertSame( array( 'analytics_storage' ), $this->sub( $google, 'purposeSignals' )['analytics'] );
 
 		$tags = $this->sub( $out, 'tags' );
 		$this->assertCount( 1, $tags );
 		$tag = $this->sub( $tags, 0 );
-		$this->assertSame( 'gtm', $tag['id'] );
-		$this->assertSame( 'delegated', $tag['delivery'] );
+		$this->assertSame( 'google', $tag['id'] );
+		$this->assertSame( 'direct', $tag['delivery'] );
 		$this->assertSame( array( 'analytics', 'marketing' ), $tag['purposes'] );
 	}
 
@@ -169,6 +174,7 @@ final class SettingsHydratorTest extends TestCase {
 
 		$pixel = $this->sub( $this->sub( $out, 'adapters' ), 'meta-pixel' );
 		$this->assertSame( 'script', $pixel['handler'] );
+		$this->assertSame( 'head', $pixel['location'] );
 		$code = $pixel['code'];
 		$this->assertIsString( $code );
 		$this->assertStringContainsString( "fbq('init','123456')", $code );
@@ -190,7 +196,7 @@ final class SettingsHydratorTest extends TestCase {
 						'id'       => 'custom-b',
 						'catalog'  => 'custom',
 						'purposes' => array( 'marketing' ),
-						'fields'   => array( 'src' => 'https://example.test/b.js' ),
+						'fields'   => array( 'code' => '<script src="https://example.test/b.js"></script>', 'location' => 'footer' ),
 					),
 				),
 			)
@@ -202,8 +208,11 @@ final class SettingsHydratorTest extends TestCase {
 		$b = $this->sub( $adapters, 'custom-b' );
 		$this->assertSame( 'script', $a['handler'] );
 		$this->assertSame( 'A();', $a['code'] );
+		// An unspecified location defaults to head.
+		$this->assertSame( 'head', $a['location'] );
 		$this->assertSame( 'script', $b['handler'] );
-		$this->assertSame( 'https://example.test/b.js', $b['src'] );
+		$this->assertSame( '<script src="https://example.test/b.js"></script>', $b['code'] );
+		$this->assertSame( 'footer', $b['location'] );
 
 		// Two tags, each pointing at its own adapter instance.
 		$tags = $this->sub( $out, 'tags' );

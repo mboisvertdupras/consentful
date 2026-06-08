@@ -9,15 +9,15 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-06-08T21:22:32+00:00\n"
+"POT-Creation-Date: 2026-06-08T22:19:01+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: consentful\n"
 
 #. Plugin Name of the plugin
 #: consentful.php
-#: src/Admin/Admin.php:61
-#: src/Admin/Admin.php:62
+#: src/Admin/Admin.php:58
+#: src/Admin/Admin.php:59
 msgid "Consentful"
 msgstr ""
 
@@ -41,259 +41,279 @@ msgstr ""
 msgid "https://tamarak.dev"
 msgstr ""
 
-#: src/Admin/Admin.php:70
-#: src/Admin/Admin.php:71
+#: src/Admin/Admin.php:67
+#: src/Admin/Admin.php:68
 msgid "Settings"
 msgstr ""
 
-#: src/Admin/Admin.php:78
-#: src/Admin/Admin.php:79
-#: src/Admin/Admin.php:379
+#: src/Admin/Admin.php:75
+#: src/Admin/Admin.php:76
+#: src/Admin/Admin.php:428
 msgid "Consent log"
 msgstr ""
 
-#: src/Admin/Admin.php:121
+#: src/Admin/Admin.php:124
 msgid "Consentful settings"
 msgstr ""
 
-#: src/Admin/Admin.php:122
+#: src/Admin/Admin.php:125
 msgid "Configure the consent banner, purposes, tags and jurisdiction posture for your site. Banner wording is translated through the language files."
 msgstr ""
 
-#: src/Admin/Admin.php:138
+#: src/Admin/Admin.php:141
 msgid "Banner appearance"
 msgstr ""
 
-#: src/Admin/Admin.php:142
-#: src/Admin/Admin.php:396
+#: src/Admin/Admin.php:145
+#: src/Admin/Admin.php:445
 msgid "Banner"
 msgstr ""
 
-#: src/Admin/Admin.php:144
+#: src/Admin/Admin.php:147
 msgid "Show the consent banner to visitors."
 msgstr ""
 
-#: src/Admin/Admin.php:147
+#: src/Admin/Admin.php:150
 msgid "Position"
 msgstr ""
 
-#: src/Admin/Admin.php:150
+#: src/Admin/Admin.php:153
 msgid "The bottom bar blocks no interaction (recommended for strict opt-in regimes such as Loi 25 / GDPR). A centered modal covers the page until a choice is made, which some regulators treat as a cookie wall."
 msgstr ""
 
-#: src/Admin/Admin.php:153
+#: src/Admin/Admin.php:156
 msgid "Theme"
 msgstr ""
 
-#: src/Admin/Admin.php:158
+#: src/Admin/Admin.php:161
 msgid "Primary color"
 msgstr ""
 
-#: src/Admin/Admin.php:161
+#: src/Admin/Admin.php:164
 msgid "Used for the primary button and links. The button text color is chosen automatically for contrast."
 msgstr ""
 
-#: src/Admin/Admin.php:164
+#: src/Admin/Admin.php:167
 msgid "Corner radius (px)"
 msgstr ""
 
-#: src/Admin/Admin.php:167
+#: src/Admin/Admin.php:170
 msgid "0 = square, 32 = pill."
 msgstr ""
 
-#: src/Admin/Admin.php:170
+#: src/Admin/Admin.php:173
 msgid "Privacy policy URL"
 msgstr ""
 
-#: src/Admin/Admin.php:173
+#: src/Admin/Admin.php:176
 msgid "Leave blank to use the privacy page configured in WordPress."
 msgstr ""
 
-#: src/Admin/Admin.php:187
-#: src/Admin/Admin.php:273
-#: src/Admin/Admin.php:338
-#: src/Admin/Admin.php:396
+#: src/Admin/Admin.php:190
+#: src/Admin/Admin.php:272
+#: src/Admin/Admin.php:350
+#: src/Admin/Admin.php:445
 msgid "Purposes"
 msgstr ""
 
-#: src/Admin/Admin.php:188
+#: src/Admin/Admin.php:191
 msgid "Override the label and description shown for each consent category. Leave a field blank to use the translated default."
 msgstr ""
 
-#: src/Admin/Admin.php:197
+#: src/Admin/Admin.php:200
 msgid "Label"
 msgstr ""
 
-#: src/Admin/Admin.php:202
+#: src/Admin/Admin.php:205
 msgid "Description"
 msgstr ""
 
-#: src/Admin/Admin.php:212
-#: src/Admin/Admin.php:636
+#: src/Admin/Admin.php:215
+#: src/Admin/Admin.php:704
 #: src/Frontend/BannerConfig.php:206
 msgid "Personalization"
 msgstr ""
 
-#: src/Admin/Admin.php:214
+#: src/Admin/Admin.php:217
 msgid "Add a Personalization category (tailors content and recommendations to the visitor)."
 msgstr ""
 
-#: src/Admin/Admin.php:228
+#: src/Admin/Admin.php:231
 msgid "Tags"
 msgstr ""
 
-#: src/Admin/Admin.php:229
+#: src/Admin/Admin.php:232
 msgid "Enable the integrations you use. Consentful gates each one behind the selected purposes."
 msgstr ""
 
-#: src/Admin/Admin.php:258
+#: src/Admin/Admin.php:261
 msgid "Enabled"
 msgstr ""
 
-#: src/Admin/Admin.php:260
+#: src/Admin/Admin.php:263
 msgid "Load this integration for consenting visitors."
 msgstr ""
 
-#: src/Admin/Admin.php:264
-msgid "Consent-push only: your site already loads the GTM container. Consentful drives its Consent Mode v2 signals from the visitor's choices."
-msgstr ""
-
-#: src/Admin/Admin.php:288
+#: src/Admin/Admin.php:290
 msgid "Custom snippets"
 msgstr ""
 
-#: src/Admin/Admin.php:289
-msgid "Paste a script or snippet to gate behind consent. It is injected by Consentful only when its purposes are granted — never printed directly."
+#: src/Admin/Admin.php:291
+msgid "Paste a script or snippet to gate behind consent. It is injected by Consentful only when its purposes are granted — never printed directly. A snippet may contain more than one tag."
 msgstr ""
 
-#: src/Admin/Admin.php:322
+#: src/Admin/Admin.php:309
+msgid "Add snippet"
+msgstr ""
+
+#: src/Admin/Admin.php:333
 msgid "Name"
 msgstr ""
 
-#: src/Admin/Admin.php:324
+#: src/Admin/Admin.php:335
 msgid "e.g. Hotjar"
 msgstr ""
 
-#: src/Admin/Admin.php:327
-#: src/Catalog/Catalog.php:89
+#: src/Admin/Admin.php:338
+#: src/Catalog/Catalog.php:95
 msgid "Snippet"
 msgstr ""
 
-#: src/Admin/Admin.php:332
-#: src/Catalog/Catalog.php:94
-msgid "Script URL"
+#: src/Admin/Admin.php:341
+msgid "One or more tags. Any <script> runs when the snippet is injected."
 msgstr ""
 
-#: src/Admin/Admin.php:335
-msgid "Use either a snippet above or a script URL."
+#: src/Admin/Admin.php:344
+#: src/Catalog/Catalog.php:100
+msgid "Location"
 msgstr ""
 
-#: src/Admin/Admin.php:349
-#: src/Admin/Admin.php:396
+#: src/Admin/Admin.php:347
+msgid "Where the snippet is injected into the page."
+msgstr ""
+
+#: src/Admin/Admin.php:355
+msgid "Remove snippet"
+msgstr ""
+
+#: src/Admin/Admin.php:398
+#: src/Admin/Admin.php:445
 msgid "Jurisdiction"
 msgstr ""
 
-#: src/Admin/Admin.php:350
+#: src/Admin/Admin.php:399
 msgid "By default Consentful adapts to each visitor's region — opt-in where required (Loi 25 / GDPR), opt-out in US states, and the strictest posture until the region is known. Turn this off to apply one posture everywhere."
 msgstr ""
 
-#: src/Admin/Admin.php:354
+#: src/Admin/Admin.php:403
 msgid "Region"
 msgstr ""
 
-#: src/Admin/Admin.php:356
+#: src/Admin/Admin.php:405
 msgid "Adapt to the visitor's region (recommended)."
 msgstr ""
 
-#: src/Admin/Admin.php:359
+#: src/Admin/Admin.php:408
 msgid "Global posture"
 msgstr ""
 
-#: src/Admin/Admin.php:362
+#: src/Admin/Admin.php:411
 msgid "Applied to all visitors when region adaptation is off."
 msgstr ""
 
-#: src/Admin/Admin.php:384
+#: src/Admin/Admin.php:433
 msgid "Export CSV"
 msgstr ""
 
 #. translators: %d: total number of consent records.
-#: src/Admin/Admin.php:390
+#: src/Admin/Admin.php:439
 #, php-format
 msgid "%d records"
 msgstr ""
 
-#: src/Admin/Admin.php:396
+#: src/Admin/Admin.php:445
 msgid "Recorded"
 msgstr ""
 
-#: src/Admin/Admin.php:396
+#: src/Admin/Admin.php:445
 msgid "Policy"
 msgstr ""
 
-#: src/Admin/Admin.php:396
+#: src/Admin/Admin.php:445
 msgid "Schema"
 msgstr ""
 
-#: src/Admin/Admin.php:396
+#: src/Admin/Admin.php:445
 msgid "IP hash"
 msgstr ""
 
-#: src/Admin/Admin.php:396
+#: src/Admin/Admin.php:445
 msgid "UA hash"
 msgstr ""
 
-#: src/Admin/Admin.php:425
+#: src/Admin/Admin.php:474
 msgid "You are not allowed to export the consent log."
 msgstr ""
 
-#: src/Admin/Admin.php:594
+#: src/Admin/Admin.php:643
 msgid "Bottom bar (full width)"
 msgstr ""
 
-#: src/Admin/Admin.php:595
+#: src/Admin/Admin.php:644
 msgid "Floating card (bottom corner)"
 msgstr ""
 
-#: src/Admin/Admin.php:596
+#: src/Admin/Admin.php:645
 msgid "Centered modal"
 msgstr ""
 
-#: src/Admin/Admin.php:607
+#: src/Admin/Admin.php:656
 msgid "Auto (match the visitor's system)"
 msgstr ""
 
-#: src/Admin/Admin.php:608
+#: src/Admin/Admin.php:657
 msgid "Light"
 msgstr ""
 
-#: src/Admin/Admin.php:609
+#: src/Admin/Admin.php:658
 msgid "Dark"
 msgstr ""
 
-#: src/Admin/Admin.php:620
+#: src/Admin/Admin.php:669
 msgid "Opt-in (deny by default, show banner)"
 msgstr ""
 
-#: src/Admin/Admin.php:621
+#: src/Admin/Admin.php:670
 msgid "Opt-out (allow by default, offer opt-out)"
 msgstr ""
 
-#: src/Admin/Admin.php:622
+#: src/Admin/Admin.php:671
 msgid "Notice only"
 msgstr ""
 
-#: src/Admin/Admin.php:633
+#: src/Admin/Admin.php:682
+msgid "Head"
+msgstr ""
+
+#: src/Admin/Admin.php:683
+msgid "Body (top)"
+msgstr ""
+
+#: src/Admin/Admin.php:684
+msgid "Footer (end of body)"
+msgstr ""
+
+#: src/Admin/Admin.php:701
 #: src/Frontend/BannerConfig.php:194
 msgid "Functional"
 msgstr ""
 
-#: src/Admin/Admin.php:634
+#: src/Admin/Admin.php:702
 #: src/Frontend/BannerConfig.php:198
 msgid "Analytics"
 msgstr ""
 
-#: src/Admin/Admin.php:635
+#: src/Admin/Admin.php:703
 #: src/Frontend/BannerConfig.php:202
 msgid "Marketing"
 msgstr ""
@@ -318,20 +338,20 @@ msgstr ""
 msgid "Google Tag Manager"
 msgstr ""
 
-#: src/Catalog/Catalog.php:69
-msgid "Meta Pixel"
+#: src/Catalog/Catalog.php:67
+msgid "Container ID"
 msgstr ""
 
 #: src/Catalog/Catalog.php:75
+msgid "Meta Pixel"
+msgstr ""
+
+#: src/Catalog/Catalog.php:81
 msgid "Pixel ID"
 msgstr ""
 
-#: src/Catalog/Catalog.php:83
+#: src/Catalog/Catalog.php:89
 msgid "Custom HTML / snippet"
-msgstr ""
-
-#: src/Catalog/Catalog.php:99
-msgid "Attributes"
 msgstr ""
 
 #: src/Frontend/BannerConfig.php:174
@@ -410,10 +430,10 @@ msgstr ""
 msgid "Tailors content and recommendations to your interests."
 msgstr ""
 
-#: src/Frontend/SettingsHydrator.php:193
+#: src/Frontend/SettingsHydrator.php:201
 msgid "Google"
 msgstr ""
 
-#: src/Frontend/SettingsHydrator.php:305
+#: src/Frontend/SettingsHydrator.php:288
 msgid "All visitors"
 msgstr ""

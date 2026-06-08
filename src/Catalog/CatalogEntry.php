@@ -37,7 +37,7 @@ final class CatalogEntry {
 		return $this->label;
 	}
 
-	/** JS handler: `google`, `gtm` or `script`. */
+	/** JS handler: `google` (incl. GTM containers) or `script`. */
 	public function handler(): string {
 		return $this->handler;
 	}

@@ -36,9 +36,6 @@ final class Admin {
 	private const NONCE_EXPORT  = 'consentful_export';
 	private const PER_PAGE      = 50;
 
-	/** Blank custom-snippet rows rendered below the saved ones for adding more (JS-free). */
-	private const BLANK_CUSTOM_ROWS = 2;
-
 	/** The settings-page hook suffix, captured at menu registration; gates the asset enqueue. */
 	private string $settings_hook = '';
 
@@ -84,8 +81,10 @@ final class Admin {
 	}
 
 	/**
-	 * Enqueue the WordPress color picker on our settings screen only — the native Iris
-	 * picker the appearance form's `.consentful-color` input upgrades to.
+	 * Enqueue, on our settings screen only: the WordPress color picker (the native Iris
+	 * picker the appearance form's `.consentful-color` input upgrades to) and the small
+	 * vanilla custom-snippet repeater (add/remove rows; the form degrades to one row without
+	 * it). The repeater rides an inline-only registered handle — no build artifact.
 	 */
 	public function enqueue_assets( string $hook ): void {
 		if ( '' === $this->settings_hook || $this->settings_hook !== $hook ) {
@@ -94,6 +93,10 @@ final class Admin {
 		wp_enqueue_style( 'wp-color-picker' );
 		wp_enqueue_script( 'wp-color-picker' );
 		wp_add_inline_script( 'wp-color-picker', 'jQuery(function($){$(".consentful-color").wpColorPicker();});' );
+
+		wp_register_script( 'consentful-admin', false, array(), CONSENTFUL_VERSION, true );
+		wp_enqueue_script( 'consentful-admin' );
+		wp_add_inline_script( 'consentful-admin', self::repeater_js() );
 	}
 
 	/** Register the single option with the pure `Settings::sanitize` as its callback. */
@@ -240,7 +243,7 @@ final class Admin {
 
 	/**
 	 * One catalog integration: an enable checkbox, its field inputs and a purpose checkbox
-	 * group. GTM additionally shows consent-push-only help text.
+	 * group.
 	 *
 	 * @param array<string, mixed> $tag The stored entry for this catalog key (empty if none).
 	 */
@@ -260,10 +263,6 @@ final class Admin {
 			fn () => $this->checkbox_field( $prefix . '][enabled', $this->bool( $tag, 'enabled' ), __( 'Load this integration for consenting visitors.', 'consentful' ) )
 		);
 
-		if ( 'gtm' === $key ) {
-			echo '<tr><td colspan="2"><p class="description">' . esc_html__( 'Consent-push only: your site already loads the GTM container. Consentful drives its Consent Mode v2 signals from the visitor\'s choices.', 'consentful' ) . '</p></td></tr>';
-		}
-
 		$fields = is_array( $tag['fields'] ?? null ) ? $tag['fields'] : array();
 		foreach ( $entry->fields() as $field => $schema ) {
 			$this->render_tag_field( $prefix . '][fields][' . $field, $field, $schema, $fields );
@@ -279,34 +278,45 @@ final class Admin {
 	}
 
 	/**
-	 * The custom-snippet repeater: each saved custom row, then blank rows for adding more.
-	 * Blank rows get a stable, unused `custom-N` id so a filled-in row persists.
+	 * The custom-snippet repeater: every saved custom row plus one blank row (so it works
+	 * without JavaScript), an "Add snippet" button, and a `<template>` blank row the small
+	 * enqueued repeater script clones on demand. `data-next-index` seeds the next unused
+	 * `custom-N` id; a row whose code is cleared (or that is removed client-side) is dropped
+	 * on save by the sanitizer.
 	 *
 	 * @param array<string, array<string, mixed>> $stored Stored tags keyed by id.
 	 */
 	private function render_custom_tags( array $stored ): void {
 		echo '<h3>' . esc_html__( 'Custom snippets', 'consentful' ) . '</h3>';
-		echo '<p class="description">' . esc_html__( 'Paste a script or snippet to gate behind consent. It is injected by Consentful only when its purposes are granted — never printed directly.', 'consentful' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'Paste a script or snippet to gate behind consent. It is injected by Consentful only when its purposes are granted — never printed directly. A snippet may contain more than one tag.', 'consentful' ) . '</p>';
 
-		$index = 1;
+		$next = 1;
 		foreach ( $stored as $tag ) {
-			if ( 'custom' !== ( $tag['catalog'] ?? '' ) ) {
-				continue;
+			if ( 'custom' === ( $tag['catalog'] ?? '' ) ) {
+				$next = max( $next, $this->custom_index( $this->str( $tag, 'id' ) ) + 1 );
 			}
-			$id = $this->str( $tag, 'id' );
-			$this->render_custom_row( $id, $tag );
-			$index = max( $index, $this->custom_index( $id ) + 1 );
 		}
 
-		for ( $i = 0; $i < self::BLANK_CUSTOM_ROWS; $i++ ) {
-			$id = 'custom-' . ( $index + $i );
-			$this->render_custom_row( $id, array() );
+		echo '<div id="consentful-custom-rows" data-next-index="' . esc_attr( (string) ( $next + 1 ) ) . '">';
+		foreach ( $stored as $tag ) {
+			if ( 'custom' === ( $tag['catalog'] ?? '' ) ) {
+				$this->render_custom_row( $this->str( $tag, 'id' ), $tag );
+			}
 		}
+		$this->render_custom_row( 'custom-' . $next, array() );
+		echo '</div>';
+
+		echo '<p><button type="button" class="button consentful-add-snippet">' . esc_html__( 'Add snippet', 'consentful' ) . '</button></p>';
+
+		echo '<template id="consentful-custom-template">';
+		$this->render_custom_row( 'custom-__INDEX__', array() );
+		echo '</template>';
 	}
 
 	/**
-	 * One custom-snippet row: hidden id/catalog, label, code textarea, src URL and purpose
-	 * checkboxes. The `code` is rendered with `esc_textarea`, never as a literal `<script>`.
+	 * One custom-snippet row: hidden id/catalog, name, code textarea, injection location and
+	 * purpose checkboxes, wrapped so it can be added/removed as a unit. The `code` is rendered
+	 * with `esc_textarea`, never as a literal `<script>`.
 	 *
 	 * @param array<string, mixed> $tag
 	 */
@@ -314,6 +324,7 @@ final class Admin {
 		$prefix = 'tags][' . $id;
 		$fields = is_array( $tag['fields'] ?? null ) ? $tag['fields'] : array();
 
+		echo '<div class="consentful-custom-row">';
 		$this->hidden_field( $prefix . '][id', $id );
 		$this->hidden_field( $prefix . '][catalog', 'custom' );
 
@@ -326,13 +337,14 @@ final class Admin {
 		$this->row(
 			__( 'Snippet', 'consentful' ),
 			$prefix . '][fields][code',
-			fn () => $this->textarea_field( $prefix . '][fields][code', $this->str( $fields, 'code' ), '<script>…</script>' )
+			fn () => $this->textarea_field( $prefix . '][fields][code', $this->str( $fields, 'code' ), '<script>…</script>' ),
+			__( 'One or more tags. Any <script> runs when the snippet is injected.', 'consentful' )
 		);
 		$this->row(
-			__( 'Script URL', 'consentful' ),
-			$prefix . '][fields][src',
-			fn () => $this->url_field( $prefix . '][fields][src', $this->str( $fields, 'src' ), 'https://example.com/tag.js' ),
-			__( 'Use either a snippet above or a script URL.', 'consentful' )
+			__( 'Location', 'consentful' ),
+			$prefix . '][fields][location',
+			fn () => $this->select_field( $prefix . '][fields][location', $this->location_choices(), $this->snippet_location( $fields ) ),
+			__( 'Where the snippet is injected into the page.', 'consentful' )
 		);
 		$this->row(
 			__( 'Purposes', 'consentful' ),
@@ -340,6 +352,43 @@ final class Admin {
 			fn () => $this->purpose_checkboxes( $prefix, $this->tag_purposes( $tag, array() ) )
 		);
 		echo '</tbody></table>';
+		echo '<p><button type="button" class="button-link-delete consentful-remove-snippet">' . esc_html__( 'Remove snippet', 'consentful' ) . '</button></p>';
+		echo '</div>';
+	}
+
+	/** The small vanilla repeater: clone the template row on "Add", drop a row on "Remove". */
+	private static function repeater_js(): string {
+		return <<<'JS'
+( function () {
+	var list = document.getElementById( 'consentful-custom-rows' );
+	var tpl = document.getElementById( 'consentful-custom-template' );
+	var add = document.querySelector( '.consentful-add-snippet' );
+	if ( ! list || ! tpl || ! add ) {
+		return;
+	}
+	add.addEventListener( 'click', function () {
+		var next = parseInt( list.getAttribute( 'data-next-index' ), 10 ) || 1;
+		list.setAttribute( 'data-next-index', String( next + 1 ) );
+		var holder = document.createElement( 'div' );
+		holder.innerHTML = tpl.innerHTML.replace( /__INDEX__/g, String( next ) );
+		var row = holder.firstElementChild;
+		if ( row ) {
+			list.appendChild( row );
+		}
+	} );
+	list.addEventListener( 'click', function ( event ) {
+		var btn = event.target.closest( '.consentful-remove-snippet' );
+		if ( ! btn ) {
+			return;
+		}
+		event.preventDefault();
+		var row = btn.closest( '.consentful-custom-row' );
+		if ( row && row.parentNode ) {
+			row.parentNode.removeChild( row );
+		}
+	} );
+} )();
+JS;
 	}
 
 	/** The simple geo posture toggle (adaptive on/off; a global posture when off). */
@@ -621,6 +670,25 @@ final class Admin {
 			'opt_out'     => __( 'Opt-out (allow by default, offer opt-out)', 'consentful' ),
 			'notice_only' => __( 'Notice only', 'consentful' ),
 		);
+	}
+
+	/**
+	 * The custom-snippet injection-location choices (value => translated label).
+	 *
+	 * @return array<string, string>
+	 */
+	private function location_choices(): array {
+		return array(
+			'head'   => __( 'Head', 'consentful' ),
+			'body'   => __( 'Body (top)', 'consentful' ),
+			'footer' => __( 'Footer (end of body)', 'consentful' ),
+		);
+	}
+
+	/** A custom snippet's stored injection location, defaulting to `head`. */
+	private function snippet_location( mixed $fields ): string {
+		$location = $this->str( $fields, 'location' );
+		return in_array( $location, array( 'head', 'body', 'footer' ), true ) ? $location : 'head';
 	}
 
 	/**

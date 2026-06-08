@@ -24,7 +24,6 @@ import {
 } from './lib/jurisdiction.js';
 import { google } from './adapters/google.js';
 import { script } from './adapters/script.js';
-import { gtm } from './adapters/gtm.js';
 
 /**
  * Initialize the gate against a window/document. Returns the public API (also assigned
@@ -37,7 +36,7 @@ import { gtm } from './adapters/gtm.js';
 export function init( rawConfig, { win, doc } ) {
 	const config = parseConfig( rawConfig );
 
-	const handlers = { google, script, gtm };
+	const handlers = { google, script };
 	const listeners = new Set();
 
 	// Drain any early-registered adapters the decider stub queued, then keep the

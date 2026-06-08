@@ -7,9 +7,10 @@ use Consentful\Tag\Tag;
 
 /**
  * A generic Adapter built from a pre-computed client-config array. The hydrator uses it
- * for `gtm` and each `script` instance (Google keeps its own GoogleAdapter so the
- * Signal map stays authoritative). The id is the instance id a Tag references; the
- * client config carries the `handler` field the gate resolves on.
+ * for each `script` instance — a built-in templated snippet (e.g. the Meta Pixel) or a
+ * custom snippet (Google, incl. GTM containers, keeps its own GoogleAdapter so the Signal
+ * map stays authoritative). The id is the instance id a Tag references; the client config
+ * carries the `handler` field the gate resolves on.
  */
 final class ConfiguredAdapter implements Adapter {
 

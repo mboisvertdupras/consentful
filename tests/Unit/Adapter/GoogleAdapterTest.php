@@ -52,6 +52,7 @@ final class GoogleAdapterTest extends TestCase {
 			array(
 				'handler'          => 'google',
 				'measurementIds'   => array( 'G-XXXXXXX', 'AW-1111' ),
+				'containerIds'     => array(),
 				'purposeSignals'   => array(
 					'necessary'       => array( 'security_storage' ),
 					'functional'      => array( 'functionality_storage' ),
@@ -65,6 +66,13 @@ final class GoogleAdapterTest extends TestCase {
 			),
 			$config
 		);
+	}
+
+	public function test_client_config_carries_gtm_container_ids(): void {
+		$config = ( new GoogleAdapter( array( 'G-XXXXXXX' ), array(), true, true, 500, array( 'GTM-ABC', 'GTM-DEF' ) ) )->client_config();
+
+		$this->assertSame( array( 'GTM-ABC', 'GTM-DEF' ), $config['containerIds'] );
+		$this->assertSame( array( 'G-XXXXXXX' ), $config['measurementIds'] );
 	}
 
 	public function test_security_storage_is_always_present_via_necessary(): void {

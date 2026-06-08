@@ -53,8 +53,10 @@ _Avoid_: Flag, permission.
 
 **Consent push**:
 Emitting consent state to the `dataLayer` (Consent Mode signals + consent events) so
-a Delegated tag manager (GTM) honors the visitor's choice — the gating mechanism for
-Delegated tags, as opposed to injecting a Direct tag.
+a Delegated tag manager honors the visitor's choice — the gating mechanism for
+Delegated tags, as opposed to injecting a Direct tag. (The built-in GTM integration is
+Direct: Consentful loads the container behind consent. Consent push stays available for
+developer-registered Delegated tags.)
 _Avoid_: Sync, broadcast, event (too generic).
 
 ### Jurisdiction & legal posture

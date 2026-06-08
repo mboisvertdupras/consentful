@@ -22,6 +22,9 @@ final class AdminTest extends TestCase {
 		if ( ! defined( 'CONSENTFUL_OPTION' ) ) {
 			define( 'CONSENTFUL_OPTION', 'consentful_settings' );
 		}
+		if ( ! defined( 'CONSENTFUL_VERSION' ) ) {
+			define( 'CONSENTFUL_VERSION', '1.0.0' );
+		}
 	}
 
 	protected function tearDown(): void {
@@ -87,11 +90,17 @@ final class AdminTest extends TestCase {
 		$this->assertSame( array(), $this->recorded( 'consentful_test_styles' ) );
 		$this->assertSame( array(), $this->recorded( 'consentful_test_inline_scripts' ) );
 
-		// Our settings screen loads the color-picker style + script and the Iris init.
+		// Our settings screen loads the color-picker style + script (the Iris init) and the
+		// inline-only custom-snippet repeater script.
 		$admin->enqueue_assets( 'consentful' );
 		$this->assertContains( array( 'wp-color-picker' ), $this->recorded( 'consentful_test_styles' ) );
 		$this->assertContains( array( 'wp-color-picker' ), $this->recorded( 'consentful_test_enqueues' ) );
-		$this->assertCount( 1, $this->recorded( 'consentful_test_inline_scripts' ) );
+
+		$inline  = $this->recorded( 'consentful_test_inline_scripts' );
+		$handles = array_column( $inline, 0 );
+		$this->assertCount( 2, $inline );
+		$this->assertContains( 'wp-color-picker', $handles );
+		$this->assertContains( 'consentful-admin', $handles );
 	}
 
 	public function test_register_menu_records_pages_with_manage_options(): void {

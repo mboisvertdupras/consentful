@@ -24,7 +24,7 @@ describe( 'adapters/google', () => {
 	beforeEach( () => {
 		resetGlobals();
 		reset();
-		document.querySelectorAll( 'script[src*="gtag/js"]' ).forEach( ( s ) => s.remove() );
+		document.querySelectorAll( 'script[src*="googletagmanager.com"]' ).forEach( ( s ) => s.remove() );
 	} );
 
 	it( 'pushes a consent update with the mapped signals', () => {
@@ -42,6 +42,19 @@ describe( 'adapters/google', () => {
 		const scripts = document.querySelectorAll( 'script[src*="gtag/js?id=G-ABC"]' );
 		expect( scripts.length ).toBe( 1 );
 		expect( scripts[ 0 ].async ).toBe( true );
+	} );
+
+	it( 'loads the GTM container once when a mapped purpose is granted', () => {
+		const calls = [];
+		const c = ctx( { necessary: true, analytics: true }, calls );
+		c.adapterConfig = { measurementIds: [], containerIds: [ 'GTM-XYZ' ], purposeSignals };
+		google.apply( c );
+		google.apply( c );
+		const containers = document.querySelectorAll( 'script[src*="gtm.js?id=GTM-XYZ"]' );
+		expect( containers.length ).toBe( 1 );
+		expect( containers[ 0 ].async ).toBe( true );
+		// No gtag.js when there are no measurement ids.
+		expect( document.querySelectorAll( 'script[src*="gtag/js"]' ).length ).toBe( 0 );
 	} );
 
 	it( 'does not load gtag.js when all signals denied', () => {

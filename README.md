@@ -8,18 +8,15 @@ opt-out laws. **Anyone can install it and be compliant from the admin UI — no 
 prior consent-management knowledge.** Neutral, fully themeable branding (prefix
 `consentful_`). Google Consent Mode is the first integration, not the boundary.
 
-> **Status.** The domain core and front-end gate are built per ADR 0001/0002: the PSR-4
-> OOP domain core (container, Purpose model, Signal, Consent, Tag, Adapter,
-> Jurisdiction/Policy registries), the cache-safe client gate + Google Consent Mode v2
-> adapter, the geo-adaptive jurisdiction resolver (edge signal → non-cached endpoint,
-> fail-closed), the opt-in / opt-out (Do Not Sell/Share) / notice banner variants, and
-> durable proof of consent (record + log table + Sink + REST).
->
-> **In flux (ADR 0004).** The original integrator / code-config operator model is being
-> replaced by a **self-serve admin UI**: anyone installs and configures from wp-admin,
-> and code becomes an *optional developer layer*. The admin UI is being built out to
-> this spec; the code registration shown under *Extending in code* below is the
-> developer-only path, not the primary one.
+> **Status.** Built per ADR 0001/0002/0004: the PSR-4 OOP domain core (Purpose model,
+> Signal, Consent, Tag, Adapter, Catalog, Jurisdiction/Policy registries), the cache-safe
+> client gate + Google Consent Mode v2 adapter (GA4, Google Ads and GTM containers loaded
+> behind consent), the geo-adaptive jurisdiction resolver (edge signal → non-cached
+> endpoint, fail-closed), the opt-in / opt-out (Do Not Sell/Share) / notice banner
+> variants, durable proof of consent (record + log table + Sink + REST), and the
+> **self-serve admin UI** — the canonical configuration surface (ADR 0004). Code is an
+> *optional developer layer* (the *Extending in code* hooks below), never required and
+> never overriding the UI.
 
 ## What it does
 
@@ -54,52 +51,63 @@ code required. **Developers** are an optional second audience served by extensio
 
 Install, activate, and open **Settings → Consentful**. A compliant baseline is active
 from activation (geo-adaptive defaults, strictest-until-known, banner shown); the UI
-*refines* it. Add tags from the built-in catalog (GA4, GTM, Google Ads, Meta Pixel, …)
-or paste a custom HTML/script snippet, assign each to purposes, edit the purpose copy,
-choose the banner appearance, and review the geo → policy mapping. No code, no prior
-consent-management knowledge.
-
-> The admin UI is being built out to this spec — see ADR 0004. Until then, the code path
-> below is the working configuration surface.
+*refines* it. Add tags from the built-in catalog (GA4, Google Ads, GTM, Meta Pixel) or
+paste a custom HTML/script snippet (one or more tags, injected at the head, body, or
+footer), assign each to purposes, edit the purpose copy, choose the banner appearance,
+and toggle the jurisdiction posture. No code, no prior consent-management knowledge.
 
 ## Extending in code (optional, for developers)
 
 Developers can register a custom adapter, add a purpose, or redirect consent records to
 their own store via documented hooks — never required, and never overriding the admin
-UI. Today this runs through the `consentful_register` action, which hands over the DI
-container (this surface is being reworked into an internal detail per ADR 0004).
-Register from your theme or a companion plugin:
+UI. These are **append-only filters**: they add to what the admin configured, they do
+not replace it. Register from your theme or a companion plugin:
 
 ```php
-add_action(
-	'consentful_register',
-	function ( \Consentful\Container\Container $c ): void {
-		// 1. Register the Google adapter (Consent Mode v2) with your measurement IDs.
-		$c->get( \Consentful\Adapter\AdapterRegistry::class )
-			->add( new \Consentful\Adapter\GoogleAdapter( array( 'G-XXXXXXXX' ) ) );
+// Register a custom adapter and a tag that uses it. The adapter's client-config carries
+// the JS `handler` (`script` injects the snippet; `google` is Consent Mode v2); a Tag
+// points at the adapter id and gates it on one or more purposes.
+add_filter( 'consentful_adapters', function ( array $adapters ): array {
+	$adapters[] = new \Consentful\Adapter\ConfiguredAdapter(
+		'my-widget',
+		array(
+			'handler'  => 'script',
+			'code'     => '<script src="https://example.com/w.js"></script>',
+			'location' => 'footer', // head | body | footer
+		)
+	);
+	return $adapters;
+} );
 
-		// 2. Gate a tag on the 'analytics' purpose; the Google adapter fires it (Direct).
-		//    site_toggleable controls whether the tag appears as a toggle in the admin UI.
-		$c->get( \Consentful\Tag\TagRegistry::class )->add(
-			new \Consentful\Tag\Tag(
-				id: 'ga4',
-				label: 'Google Analytics 4',
-				purposes: array( \Consentful\Consent\DefaultPurpose::Analytics ),
-				delivery: \Consentful\Tag\Delivery::Direct,
-				adapter_id: 'google',
-				site_toggleable: true,
-			)
-		);
+add_filter( 'consentful_tags', function ( array $tags ): array {
+	$tags[] = new \Consentful\Tag\Tag(
+		'my-widget',
+		'My Widget',
+		array( \Consentful\Consent\DefaultPurpose::Functional ),
+		\Consentful\Tag\Delivery::Direct,
+		'my-widget'
+	);
+	return $tags;
+} );
 
-		// 3. Opt in to the optional Personalization purpose (off by default).
-		$c->get( \Consentful\Consent\PurposeRegistry::class )
-			->add( \Consentful\Consent\DefaultPurpose::Personalization );
+// Add a purpose beyond the fixed default taxonomy.
+add_filter( 'consentful_purposes', function ( array $purposes ): array {
+	$purposes[] = new \Consentful\Consent\CustomPurpose( 'ab_testing' );
+	return $purposes;
+} );
 
-		// 4. Override banner copy/appearance, geo resolution, or the proof Sink by
-		//    rebinding the matching value object, e.g.:
-		//    $c->singleton( \Consentful\Frontend\GeoConfig::class, fn() => /* your GeoConfig */ );
-	}
-);
+// Redirect proof-of-consent records to your own store (must implement Consent\Sink).
+add_filter( 'consentful_sink', fn ( $default ) => new \My\CustomSink() );
+```
+
+For a first-class Google integration in code, append a `GoogleAdapter` (it carries the
+Consent Mode v2 signal map) instead of a generic adapter:
+
+```php
+add_filter( 'consentful_adapters', function ( array $adapters ): array {
+	$adapters[] = new \Consentful\Adapter\GoogleAdapter( array( 'G-XXXXXXXX' ) );
+	return $adapters;
+} );
 ```
 
 ## Local development (symlink into a WP install)

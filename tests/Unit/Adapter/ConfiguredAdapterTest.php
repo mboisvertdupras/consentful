@@ -10,9 +10,9 @@ use Consentful\Tag\Tag;
 use PHPUnit\Framework\TestCase;
 
 /**
- * ConfiguredAdapter is the generic adapter the hydrator builds for gtm + each script
- * instance: its id is the instance id a Tag references, and it returns its client-config
- * array verbatim (carrying the `handler` field the gate resolves on).
+ * ConfiguredAdapter is the generic adapter the hydrator builds for each script instance
+ * (Meta Pixel, custom snippets): its id is the instance id a Tag references, and it returns
+ * its client-config array verbatim (carrying the `handler` field the gate resolves on).
  */
 final class ConfiguredAdapterTest extends TestCase {
 
@@ -28,8 +28,8 @@ final class ConfiguredAdapterTest extends TestCase {
 	}
 
 	public function test_handles_only_tags_pointing_at_its_id(): void {
-		$adapter = new ConfiguredAdapter( 'gtm', array( 'handler' => 'gtm' ) );
-		$mine    = new Tag( 'gtm', 'GTM', array( DefaultPurpose::Analytics ), Delivery::Delegated, 'gtm' );
+		$adapter = new ConfiguredAdapter( 'custom-1', array( 'handler' => 'script' ) );
+		$mine    = new Tag( 'custom-1', 'Custom', array( DefaultPurpose::Analytics ), Delivery::Direct, 'custom-1' );
 		$other   = new Tag( 'ga4', 'GA4', array( DefaultPurpose::Analytics ), Delivery::Direct, 'google' );
 
 		$this->assertTrue( $adapter->handles( $mine ) );

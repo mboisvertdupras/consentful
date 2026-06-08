@@ -38,13 +38,16 @@ final class Settings {
 	/** @var list<string> Allowed global postures when geo is not adaptive. */
 	private const GLOBAL_POLICIES = array( 'opt_in', 'opt_out', 'notice_only' );
 
+	/** @var list<string> Allowed custom-snippet injection locations. */
+	private const SNIPPET_LOCATIONS = array( 'head', 'body', 'footer' );
+
 	/** @var array<string, list<string>> Catalog keys → their allowed field keys. */
 	private const CATALOG_FIELDS = array(
 		'ga4'        => array( 'measurementId' ),
 		'google-ads' => array( 'conversionId' ),
-		'gtm'        => array(),
+		'gtm'        => array( 'containerId' ),
 		'meta-pixel' => array( 'pixelId' ),
-		'custom'     => array( 'code', 'src', 'attributes' ),
+		'custom'     => array( 'code', 'location' ),
 	);
 
 	/**
@@ -330,9 +333,9 @@ final class Settings {
 			}
 
 			$fields = self::sanitize_fields( $catalog, $tag['fields'] ?? null );
-			// A custom snippet with neither a snippet nor a script URL is empty — an untouched
-			// "add another" row, or one the Administrator cleared to remove it — so drop it.
-			if ( 'custom' === $catalog && '' === ( $fields['code'] ?? '' ) && '' === ( $fields['src'] ?? '' ) ) {
+			// A custom snippet with no code is empty — an untouched "add another" row, the
+			// JS-free template seed, or one the Administrator cleared to remove it — so drop it.
+			if ( 'custom' === $catalog && '' === ( $fields['code'] ?? '' ) ) {
 				continue;
 			}
 			$seen[ $id ] = true;
@@ -374,13 +377,13 @@ final class Settings {
 	/**
 	 * The stored field values for a tag, per the catalog entry's field schema. For `custom`,
 	 * `code` is stored RAW (only `wp_unslash`, never escaped) — it is injected by JS, gated
-	 * by admin `unfiltered_html` trust; `src` is escaped; `attributes` is a sanitized map.
+	 * by admin `unfiltered_html` trust; `location` is allowlisted (defaulting to `head`).
 	 *
 	 * @return array<string, mixed>
 	 */
 	private static function sanitize_fields( string $catalog, mixed $value ): array {
 		$allowed = self::CATALOG_FIELDS[ $catalog ];
-		if ( ! is_array( $value ) || array() === $allowed ) {
+		if ( ! is_array( $value ) ) {
 			return array();
 		}
 
@@ -390,30 +393,10 @@ final class Settings {
 				continue;
 			}
 			$out[ $field ] = match ( $field ) {
-				'code'       => (string) wp_unslash( self::to_string( $value['code'] ) ),
-				'src'        => esc_url_raw( self::to_string( $value['src'] ) ),
-				'attributes' => self::sanitize_attributes( $value['attributes'] ),
-				default      => sanitize_text_field( self::to_string( $value[ $field ] ) ),
+				'code'     => (string) wp_unslash( self::to_string( $value['code'] ) ),
+				'location' => self::in_list( self::to_string( $value['location'] ), self::SNIPPET_LOCATIONS ) ?? 'head',
+				default    => sanitize_text_field( self::to_string( $value[ $field ] ) ),
 			};
-		}
-		return $out;
-	}
-
-	/**
-	 * A `name => value` attribute map (both sides text-sanitized).
-	 *
-	 * @return array<string, string>
-	 */
-	private static function sanitize_attributes( mixed $value ): array {
-		if ( ! is_array( $value ) ) {
-			return array();
-		}
-		$out = array();
-		foreach ( $value as $name => $val ) {
-			$name = sanitize_text_field( self::to_string( $name ) );
-			if ( '' !== $name ) {
-				$out[ $name ] = sanitize_text_field( self::to_string( $val ) );
-			}
 		}
 		return $out;
 	}

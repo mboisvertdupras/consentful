@@ -49,14 +49,16 @@ final class CatalogTest extends TestCase {
 		$this->assertSame( array( 'conversionId' ), array_keys( $entry->fields() ) );
 	}
 
-	public function test_gtm_is_delegated_with_no_fields(): void {
+	public function test_gtm_loads_a_container_via_the_google_handler(): void {
 		$entry = Catalog::with_defaults()->get( 'gtm' );
 
 		$this->assertNotNull( $entry );
-		$this->assertSame( 'gtm', $entry->handler() );
-		$this->assertSame( Delivery::Delegated, $entry->delivery() );
+		// GTM rides the Google Consent Mode handler and loads its container behind consent.
+		$this->assertSame( 'google', $entry->handler() );
+		$this->assertSame( Delivery::Direct, $entry->delivery() );
 		$this->assertSame( array( 'analytics', 'marketing' ), $entry->default_purposes() );
-		$this->assertSame( array(), $entry->fields() );
+		$this->assertSame( array( 'containerId' ), array_keys( $entry->fields() ) );
+		$this->assertSame( 'text', $entry->fields()['containerId']['type'] );
 	}
 
 	public function test_meta_pixel_is_a_script_handler_with_pixel_id(): void {
@@ -69,15 +71,15 @@ final class CatalogTest extends TestCase {
 		$this->assertSame( array( 'pixelId' ), array_keys( $entry->fields() ) );
 	}
 
-	public function test_custom_is_a_script_handler_with_code_src_attributes(): void {
+	public function test_custom_is_a_script_handler_with_code_and_location(): void {
 		$entry = Catalog::with_defaults()->get( 'custom' );
 
 		$this->assertNotNull( $entry );
 		$this->assertSame( 'script', $entry->handler() );
 		$this->assertSame( Delivery::Direct, $entry->delivery() );
 		$this->assertSame( array(), $entry->default_purposes() );
-		$this->assertSame( array( 'code', 'src', 'attributes' ), array_keys( $entry->fields() ) );
+		$this->assertSame( array( 'code', 'location' ), array_keys( $entry->fields() ) );
 		$this->assertSame( 'textarea', $entry->fields()['code']['type'] );
-		$this->assertSame( 'url', $entry->fields()['src']['type'] );
+		$this->assertSame( 'select', $entry->fields()['location']['type'] );
 	}
 }

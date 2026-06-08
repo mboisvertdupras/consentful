@@ -59,10 +59,16 @@ final class Catalog {
 				new CatalogEntry(
 					'gtm',
 					__( 'Google Tag Manager', 'consentful' ),
-					'gtm',
-					Delivery::Delegated,
+					'google',
+					Delivery::Direct,
 					array( 'analytics', 'marketing' ),
-					array(),
+					array(
+						'containerId' => array(
+							'label'       => __( 'Container ID', 'consentful' ),
+							'placeholder' => 'GTM-XXXXXXX',
+							'type'        => 'text',
+						),
+					),
 				),
 				new CatalogEntry(
 					'meta-pixel',
@@ -85,20 +91,15 @@ final class Catalog {
 					Delivery::Direct,
 					array(),
 					array(
-						'code'       => array(
+						'code'     => array(
 							'label'       => __( 'Snippet', 'consentful' ),
 							'placeholder' => '<script>…</script>',
 							'type'        => 'textarea',
 						),
-						'src'        => array(
-							'label'       => __( 'Script URL', 'consentful' ),
-							'placeholder' => 'https://example.com/tag.js',
-							'type'        => 'url',
-						),
-						'attributes' => array(
-							'label'       => __( 'Attributes', 'consentful' ),
+						'location' => array(
+							'label'       => __( 'Location', 'consentful' ),
 							'placeholder' => '',
-							'type'        => 'text',
+							'type'        => 'select',
 						),
 					),
 				),
