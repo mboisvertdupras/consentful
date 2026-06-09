@@ -11,9 +11,9 @@ const MAP = { US: 'US', GB: 'UK', FR: 'EU', 'CA-QC': 'QC' };
 const config = () => ( {
 	defaultJurisdiction: '*',
 	jurisdictions: {
-		'*': { id: '*', label: 'Default', policy: { type: 'opt_in' } },
-		US: { id: 'US', label: 'United States', policy: { type: 'opt_out' } },
-		QC: { id: 'QC', label: 'Québec', policy: { type: 'opt_in' } },
+		'*': { id: '*', policy: { type: 'opt_in' } },
+		US: { id: 'US', policy: { type: 'opt_out' } },
+		QC: { id: 'QC', policy: { type: 'opt_in' } },
 	},
 	geo: { cookie: '', var: '', endpoint: '', map: MAP },
 } );

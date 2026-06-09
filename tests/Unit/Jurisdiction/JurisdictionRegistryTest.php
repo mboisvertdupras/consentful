@@ -3,6 +3,7 @@ declare( strict_types = 1 );
 
 namespace Consentful\Tests\Unit\Jurisdiction;
 
+use Consentful\Consent\CustomPurpose;
 use Consentful\Consent\DefaultPurpose;
 use Consentful\Jurisdiction\Jurisdiction;
 use Consentful\Jurisdiction\JurisdictionRegistry;
@@ -42,14 +43,14 @@ final class JurisdictionRegistryTest extends TestCase {
 	public function test_with_defaults_all_lists_every_default_jurisdiction(): void {
 		$ids = array_map(
 			static fn ( Jurisdiction $jurisdiction ): string => $jurisdiction->id,
-			JurisdictionRegistry::with_defaults( 1 )->all()
+			JurisdictionRegistry::with_defaults( 1, DefaultPurpose::defaults() )->all()
 		);
 
 		$this->assertSame( array( '*', 'QC', 'EU', 'UK', 'US' ), $ids );
 	}
 
 	public function test_with_defaults_uses_opt_in_for_eu_uk_qc(): void {
-		$registry = JurisdictionRegistry::with_defaults( 1 );
+		$registry = JurisdictionRegistry::with_defaults( 1, DefaultPurpose::defaults() );
 
 		$this->assertSame( PolicyType::OptIn, $registry->get( 'QC' )->policy->type );
 		$this->assertSame( PolicyType::OptIn, $registry->get( 'EU' )->policy->type );
@@ -57,14 +58,14 @@ final class JurisdictionRegistryTest extends TestCase {
 	}
 
 	public function test_with_defaults_uses_opt_out_for_us(): void {
-		$registry = JurisdictionRegistry::with_defaults( 1 );
+		$registry = JurisdictionRegistry::with_defaults( 1, DefaultPurpose::defaults() );
 		$us       = $registry->get( 'US' );
 
 		$this->assertSame( PolicyType::OptOut, $us->policy->type );
 	}
 
 	public function test_us_default_granted_is_every_non_always_on_default_purpose(): void {
-		$registry = JurisdictionRegistry::with_defaults( 1 );
+		$registry = JurisdictionRegistry::with_defaults( 1, DefaultPurpose::defaults() );
 		$us       = $registry->get( 'US' );
 
 		$expected = array_values(
@@ -77,11 +78,38 @@ final class JurisdictionRegistryTest extends TestCase {
 		$this->assertSame( $expected, $us->policy->default_granted );
 		$this->assertTrue( $us->policy->grants_by_default( DefaultPurpose::Analytics ) );
 		$this->assertTrue( $us->policy->grants_by_default( DefaultPurpose::Marketing ) );
-		$this->assertFalse( $us->policy->grants_by_default( DefaultPurpose::Personalization ) );
+	}
+
+	public function test_us_default_granted_follows_the_hydrated_purposes(): void {
+		$custom = new CustomPurpose( 'ab_testing' );
+		$us     = JurisdictionRegistry::with_defaults(
+			1,
+			array(
+				DefaultPurpose::Necessary,
+				DefaultPurpose::Functional,
+				DefaultPurpose::Analytics,
+				DefaultPurpose::Marketing,
+				DefaultPurpose::Personalization,
+				$custom,
+			)
+		)->get( 'US' );
+
+		$this->assertSame(
+			array(
+				DefaultPurpose::Functional,
+				DefaultPurpose::Analytics,
+				DefaultPurpose::Marketing,
+				DefaultPurpose::Personalization,
+				$custom,
+			),
+			$us->policy->default_granted
+		);
+		$this->assertTrue( $us->policy->grants_by_default( DefaultPurpose::Personalization ) );
+		$this->assertTrue( $us->policy->grants_by_default( $custom ) );
 	}
 
 	public function test_with_defaults_fallback_is_strictest_opt_in(): void {
-		$registry = JurisdictionRegistry::with_defaults( 1 );
+		$registry = JurisdictionRegistry::with_defaults( 1, DefaultPurpose::defaults() );
 		$fallback = $registry->fallback();
 
 		$this->assertSame( '*', $fallback->id );
@@ -90,13 +118,13 @@ final class JurisdictionRegistryTest extends TestCase {
 	}
 
 	public function test_unknown_id_falls_back_to_strictest(): void {
-		$registry = JurisdictionRegistry::with_defaults( 1 );
+		$registry = JurisdictionRegistry::with_defaults( 1, DefaultPurpose::defaults() );
 
 		$this->assertSame( $registry->fallback(), $registry->get( 'ZZ' ) );
 	}
 
 	public function test_fallback_is_immutable_against_a_rogue_star_jurisdiction(): void {
-		$registry = JurisdictionRegistry::with_defaults( 1 );
+		$registry = JurisdictionRegistry::with_defaults( 1, DefaultPurpose::defaults() );
 
 		$registry->add( new Jurisdiction( '*', 'Rogue', Policy::opt_out( 1, array() ) ) );
 

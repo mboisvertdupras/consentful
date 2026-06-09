@@ -10,7 +10,9 @@ the first first-class integration, not the boundary of the product.
 
 > Name: **Consentful** — "full of consent". Chosen during the universal-layer pivot
 > to replace "Consent Mode v2" (a Google term that no longer describes the scope).
-> The old name survives only in pre-rewrite code.
+> The pre-rewrite code is gone; the old name survives only in the repo identity
+> (the `consent-mode-v2` directory/remote name) until the rename to
+> `mboisvertdupras/consentful`.
 
 ## Language
 
@@ -24,7 +26,8 @@ toggle purposes; everything else is downstream of a purpose grant. The default s
 gettext, the Administrator may optionally **override** them in the UI and toggle
 optional Personalization, but does not add or remove categories — a Developer may add
 purposes via an optional hook.
-_Avoid_: Category (the current code term, being migrated), Service.
+_Avoid_: Category (the code says Purpose everywhere; only visitor-facing English
+prose uses the word "category"), Service.
 
 **Necessary**:
 The always-on purpose for strictly essential operation; cannot be toggled off and

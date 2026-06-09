@@ -11,6 +11,8 @@
 .gitignore
 .gitattributes
 .github
+/.wp-env.json
+/RELEASE_BODY.md
 
 # OS / editor cruft
 .DS_Store
@@ -18,6 +20,10 @@
 .vscode
 *.swp
 *.log
+
+# Local assistant / skill state
+/.fallow
+/.impeccable
 
 # Node toolchain — never shipped. vendor/ is intentionally NOT excluded: the
 # production Composer autoloader (built --no-dev) ships so PSR-4 classes resolve.
@@ -34,8 +40,12 @@ tests
 phpunit.xml.dist
 .phpunit.cache
 
-# Developer readme (the shipped, user-facing readme is readme.txt)
+# Developer docs (the shipped, user-facing readme is readme.txt)
 /README.md
+/CLAUDE.md
+/CONTEXT.md
+/PRODUCT.md
+/docs
 
 # Tooling / build / lint / static-analysis config
 composer.json
@@ -43,6 +53,8 @@ composer.lock
 package.json
 package-lock.json
 vite.config.js
+/vite.config.decider.js
+/vitest.config.js
 eslint.config.js
 .stylelintrc.json
 .phpcs.xml.dist
@@ -55,3 +67,4 @@ phpstan-baseline.neon
 # This file and any local packaging output
 .distignore
 *.zip
+/dist

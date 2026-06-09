@@ -36,7 +36,7 @@ final class ClientConfigTest extends TestCase {
 			PurposeRegistry::with_defaults(),
 			$tags ?? new TagRegistry(),
 			$adapters ?? new AdapterRegistry(),
-			$jurisdictions ?? JurisdictionRegistry::with_defaults( 1 ),
+			$jurisdictions ?? JurisdictionRegistry::with_defaults( 1, DefaultPurpose::defaults() ),
 			$banner ?? BannerConfig::defaults(),
 			$geo ?? GeoConfig::defaults(),
 			$geo_endpoint_url,
@@ -115,9 +115,9 @@ final class ClientConfigTest extends TestCase {
 		$star          = $this->sub_array( $jurisdictions, '*' );
 		$policy        = $this->sub_array( $star, 'policy' );
 
+		$this->assertSame( array( 'id', 'policy' ), array_keys( $star ) );
 		$this->assertSame( '*', $star['id'] );
 		$this->assertSame( 'opt_in', $policy['type'] );
-		$this->assertTrue( $policy['denyByDefault'] );
 		$this->assertSame( array(), $policy['defaultGranted'] );
 	}
 
@@ -128,7 +128,6 @@ final class ClientConfigTest extends TestCase {
 
 		$this->assertSame( 'US', $us['id'] );
 		$this->assertSame( 'opt_out', $policy['type'] );
-		$this->assertFalse( $policy['denyByDefault'] );
 		$this->assertSame(
 			array( 'functional', 'analytics', 'marketing' ),
 			$policy['defaultGranted']
@@ -148,7 +147,7 @@ final class ClientConfigTest extends TestCase {
 		$policy        = $this->sub_array( $notice, 'policy' );
 
 		$this->assertSame(
-			array( 'type', 'version', 'denyByDefault', 'blocksBeforeConsent', 'showsBanner', 'defaultGranted' ),
+			array( 'type', 'showsBanner', 'defaultGranted' ),
 			array_keys( $policy )
 		);
 		$this->assertSame( 'notice_only', $policy['type'] );
@@ -225,7 +224,7 @@ final class ClientConfigTest extends TestCase {
 		$this->assertSame( 7, $proof['bannerVersion'] );
 	}
 
-	public function test_tags_serialize_with_purpose_keys_and_lowercase_delivery(): void {
+	public function test_tags_serialize_with_purpose_keys_and_adapter_id(): void {
 		$tags = new TagRegistry();
 		$tags->add( new Tag( 'ga4', 'GA4', array( DefaultPurpose::Analytics ), Delivery::Direct, 'google' ) );
 		$tags->add(
@@ -245,13 +244,11 @@ final class ClientConfigTest extends TestCase {
 				array(
 					'id'       => 'ga4',
 					'purposes' => array( 'analytics' ),
-					'delivery' => 'direct',
 					'adapter'  => 'google',
 				),
 				array(
 					'id'       => 'gtm-tag',
 					'purposes' => array( 'marketing', 'analytics' ),
-					'delivery' => 'delegated',
 					'adapter'  => 'gtm',
 				),
 			),
@@ -302,7 +299,7 @@ final class ClientConfigTest extends TestCase {
 			PurposeRegistry::with_defaults(),
 			new TagRegistry(),
 			new AdapterRegistry(),
-			JurisdictionRegistry::with_defaults( 1 ),
+			JurisdictionRegistry::with_defaults( 1, DefaultPurpose::defaults() ),
 			BannerConfig::defaults(),
 			GeoConfig::defaults(),
 			'',

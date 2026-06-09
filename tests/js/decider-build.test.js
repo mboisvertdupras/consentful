@@ -26,12 +26,8 @@ function optInConfig() {
 		jurisdictions: {
 			'*': {
 				id: '*',
-				label: '',
 				policy: {
 					type: 'opt_in',
-					version: 1,
-					denyByDefault: true,
-					blocksBeforeConsent: true,
 					showsBanner: true,
 					defaultGranted: [],
 				},

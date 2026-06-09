@@ -293,8 +293,9 @@ if ( ! function_exists( 'get_transient' ) ) {
 
 if ( ! function_exists( 'set_transient' ) ) {
 	function set_transient( $name, $value, $expiration = 0 ) {
-		$store                            = &consentful_test_option_store();
-		$store[ '_transient_' . $name ] = $value;
+		$store = &consentful_test_option_store();
+		// DB-backed transients round-trip scalars as strings (wp_options LONGTEXT).
+		$store[ '_transient_' . $name ] = is_scalar( $value ) ? (string) $value : $value;
 		return true;
 	}
 }
@@ -342,6 +343,19 @@ if ( ! function_exists( 'register_setting' ) ) {
 			);
 		}
 		return true;
+	}
+}
+
+if ( ! function_exists( 'add_settings_error' ) ) {
+	function add_settings_error( $setting, $code, $message, $type = 'error' ) {
+		if ( isset( $GLOBALS['consentful_test_settings_errors'] ) && is_array( $GLOBALS['consentful_test_settings_errors'] ) ) {
+			$GLOBALS['consentful_test_settings_errors'][] = array(
+				'setting' => $setting,
+				'code'    => $code,
+				'message' => $message,
+				'type'    => $type,
+			);
+		}
 	}
 }
 

@@ -21,6 +21,7 @@ final class BannerConfig {
 		public readonly string $theme,
 		public readonly string $primary_color,
 		public readonly int $radius,
+		// Bump when the default copy changes: stamped into Consent records as proof.bannerVersion.
 		public readonly int $version,
 		public readonly string $privacy_url,
 		public readonly array $copy,
@@ -35,7 +36,6 @@ final class BannerConfig {
 			'theme'        => $this->theme,
 			'primaryColor' => $this->primary_color,
 			'radius'       => $this->radius,
-			'version'      => $this->version,
 			'privacyUrl'   => $this->privacy_url,
 			'copy'         => $this->copy,
 			'purposes'     => $this->purposes,

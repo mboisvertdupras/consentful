@@ -14,7 +14,7 @@ final class ConsentControllerTest extends TestCase {
 	private const SALT = 'pepper';
 
 	protected function tearDown(): void {
-		unset( $GLOBALS['consentful_test_actions'], $GLOBALS['consentful_test_rest_routes'] );
+		unset( $GLOBALS['consentful_test_actions'], $GLOBALS['consentful_test_rest_routes'], $GLOBALS['consentful_test_options'], $_SERVER['REMOTE_ADDR'] );
 		parent::tearDown();
 	}
 
@@ -202,6 +202,27 @@ final class ConsentControllerTest extends TestCase {
 		$this->assertCount( 50, $record->purposes );
 	}
 
+	public function test_stores_grant_keys_outside_the_shipped_purposes_verbatim(): void {
+		$params           = $this->valid_params();
+		$params['grants'] = array(
+			'necessary'       => 1,
+			'vendor_heatmaps' => 1,
+			'not-a-purpose'   => 0,
+		);
+
+		$record = $this->controller()->record_from_input( 'cid-abc', $params, $this->server(), 1733400000 );
+
+		$this->assertInstanceOf( ConsentRecord::class, $record );
+		$this->assertSame(
+			array(
+				'necessary'       => true,
+				'vendor_heatmaps' => true,
+				'not-a-purpose'   => false,
+			),
+			$record->purposes
+		);
+	}
+
 	public function test_handle_stores_the_record_and_returns_the_response(): void {
 		$sink    = new RecordingSink();
 		$request = new FakeRestRequest( $this->valid_params() );
@@ -261,6 +282,38 @@ final class ConsentControllerTest extends TestCase {
 		$this->assertIsArray( $data );
 		$this->assertNotSame( 'bad cid with spaces', $data['id'] );
 		$this->assertCount( 1, $sink->stored );
+	}
+
+	public function test_handle_allows_ten_requests_then_returns_a_429_wp_error(): void {
+		$_SERVER['REMOTE_ADDR'] = '203.0.113.7';
+		$sink                   = new RecordingSink();
+		$controller             = $this->controller( $sink );
+
+		for ( $i = 0; $i < 10; $i++ ) {
+			$this->assertInstanceOf( \WP_REST_Response::class, $controller->handle( new FakeRestRequest( $this->valid_params() ) ) );
+		}
+
+		$result = $controller->handle( new FakeRestRequest( $this->valid_params() ) );
+
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertSame( 'consentful_rate_limited', $result->get_error_code() );
+		$this->assertSame( array( 'status' => 429 ), $result->get_error_data() );
+		$this->assertCount( 10, $sink->stored );
+	}
+
+	public function test_rate_limit_buckets_are_independent_per_remote_addr(): void {
+		$controller = $this->controller();
+
+		$_SERVER['REMOTE_ADDR'] = '203.0.113.7';
+		for ( $i = 0; $i < 10; $i++ ) {
+			$controller->handle( new FakeRestRequest( $this->valid_params() ) );
+		}
+		$this->assertInstanceOf( \WP_Error::class, $controller->handle( new FakeRestRequest( $this->valid_params() ) ) );
+
+		$_SERVER['REMOTE_ADDR'] = '198.51.100.9';
+		$result                 = $controller->handle( new FakeRestRequest( $this->valid_params() ) );
+
+		$this->assertInstanceOf( \WP_REST_Response::class, $result );
 	}
 
 	public function test_register_hooks_register_route_on_rest_api_init(): void {

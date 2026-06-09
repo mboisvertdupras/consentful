@@ -1,26 +1,17 @@
 const optInPolicy = () => ( {
 	type: 'opt_in',
-	version: 1,
-	denyByDefault: true,
-	blocksBeforeConsent: true,
 	showsBanner: true,
 	defaultGranted: [],
 } );
 
 const optOutPolicy = () => ( {
 	type: 'opt_out',
-	version: 1,
-	denyByDefault: false,
-	blocksBeforeConsent: false,
 	showsBanner: true,
 	defaultGranted: [ 'functional', 'analytics', 'marketing', 'personalization' ],
 } );
 
 const noticeOnlyPolicy = () => ( {
 	type: 'notice_only',
-	version: 1,
-	denyByDefault: false,
-	blocksBeforeConsent: false,
 	showsBanner: false,
 	defaultGranted: [ 'functional', 'analytics', 'marketing', 'personalization' ],
 } );
@@ -42,9 +33,9 @@ export function makeConfig( overrides = {} ) {
 			{ key: 'personalization', alwaysOn: false },
 		],
 		jurisdictions: {
-			'*': { id: '*', label: 'Default (strictest)', policy: optInPolicy() },
-			QC: { id: 'QC', label: 'Québec (Loi 25)', policy: optInPolicy() },
-			US: { id: 'US', label: 'United States (state opt-out)', policy: optOutPolicy() },
+			'*': { id: '*', policy: optInPolicy() },
+			QC: { id: 'QC', policy: optInPolicy() },
+			US: { id: 'US', policy: optOutPolicy() },
 		},
 		geo: {
 			cookie: '',
@@ -58,7 +49,7 @@ export function makeConfig( overrides = {} ) {
 			bannerVersion: 1,
 		},
 		tags: [
-			{ id: 'ga4', purposes: [ 'analytics' ], delivery: 'direct', adapter: 'google' },
+			{ id: 'ga4', purposes: [ 'analytics' ], adapter: 'google' },
 		],
 		adapters: {
 			google: {

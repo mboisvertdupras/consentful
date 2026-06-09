@@ -37,9 +37,9 @@ const COPY_DEFAULTS = {
 
 const parseCopy = ( raw ) => {
 	const obj = toObject( raw );
-	const copy = {};
-	for ( const key of Object.keys( COPY_DEFAULTS ) ) {
-		copy[ key ] = toStr( obj[ key ], COPY_DEFAULTS[ key ] );
+	const copy = { ...COPY_DEFAULTS };
+	for ( const key of Object.keys( obj ) ) {
+		copy[ key ] = toStr( obj[ key ], copy[ key ] );
 	}
 	return copy;
 };
@@ -68,7 +68,6 @@ export function coerceBannerConfig( raw ) {
 		theme: oneOf( toStr( cfg.theme ), THEMES, 'auto' ),
 		primaryColor: toStr( cfg.primaryColor, '#2563eb' ),
 		radius: toInt( cfg.radius, 8 ),
-		version: toInt( cfg.version, 1 ),
 		privacyUrl: toStr( cfg.privacyUrl ),
 		copy: parseCopy( cfg.copy ),
 		purposes: parsePurposeCopy( cfg.purposes ),

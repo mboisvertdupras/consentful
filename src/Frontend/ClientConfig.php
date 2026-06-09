@@ -10,7 +10,6 @@ use Consentful\Consent\PurposeRegistry;
 use Consentful\Jurisdiction\JurisdictionRegistry;
 use Consentful\Jurisdiction\Policy;
 use Consentful\Jurisdiction\PolicyType;
-use Consentful\Tag\Delivery;
 use Consentful\Tag\Tag;
 use Consentful\Tag\TagRegistry;
 
@@ -50,13 +49,12 @@ final class ClientConfig {
 		);
 	}
 
-	/** @return array<string, array{id: string, label: string, policy: array<string, mixed>}> */
+	/** @return array<string, array{id: string, policy: array<string, mixed>}> */
 	private function jurisdictions_array(): array {
 		$out = array();
 		foreach ( $this->jurisdictions->all() as $jurisdiction ) {
 			$out[ $jurisdiction->id ] = array(
 				'id'     => $jurisdiction->id,
-				'label'  => $jurisdiction->label,
 				'policy' => $this->policy_array( $jurisdiction->policy ),
 			);
 		}
@@ -78,16 +76,13 @@ final class ClientConfig {
 	}
 
 	/**
-	 * @return array{type: string, version: int, denyByDefault: bool, blocksBeforeConsent: bool, showsBanner: bool, defaultGranted: list<string>}
+	 * @return array{type: string, showsBanner: bool, defaultGranted: list<string>}
 	 */
 	private function policy_array( Policy $policy ): array {
 		return array(
-			'type'                => $this->policy_type( $policy->type ),
-			'version'             => $policy->version,
-			'denyByDefault'       => $policy->denies_by_default(),
-			'blocksBeforeConsent' => $policy->blocks_before_consent(),
-			'showsBanner'         => $policy->shows_banner(),
-			'defaultGranted'      => $this->default_granted( $policy ),
+			'type'           => $this->policy_type( $policy->type ),
+			'showsBanner'    => $policy->shows_banner(),
+			'defaultGranted' => $this->default_granted( $policy ),
 		);
 	}
 
@@ -106,7 +101,7 @@ final class ClientConfig {
 	}
 
 	/**
-	 * @return list<array{id: string, purposes: list<string>, delivery: string, adapter: string}>
+	 * @return list<array{id: string, purposes: list<string>, adapter: string}>
 	 */
 	private function tags_array(): array {
 		$out = array();
@@ -114,7 +109,6 @@ final class ClientConfig {
 			$out[] = array(
 				'id'       => $tag->id,
 				'purposes' => $this->purpose_keys( $tag ),
-				'delivery' => $this->delivery( $tag->delivery ),
 				'adapter'  => $tag->adapter_id,
 			);
 		}
@@ -145,13 +139,6 @@ final class ClientConfig {
 			PolicyType::OptIn      => 'opt_in',
 			PolicyType::OptOut     => 'opt_out',
 			PolicyType::NoticeOnly => 'notice_only',
-		};
-	}
-
-	private function delivery( Delivery $delivery ): string {
-		return match ( $delivery ) {
-			Delivery::Direct    => 'direct',
-			Delivery::Delegated => 'delegated',
 		};
 	}
 }

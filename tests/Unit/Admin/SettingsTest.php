@@ -8,6 +8,21 @@ use PHPUnit\Framework\TestCase;
 
 final class SettingsTest extends TestCase {
 
+	public static function setUpBeforeClass(): void {
+		if ( ! defined( 'CONSENTFUL_OPTION' ) ) {
+			define( 'CONSENTFUL_OPTION', 'consentful_settings' );
+		}
+	}
+
+	protected function tearDown(): void {
+		unset(
+			$GLOBALS['consentful_test_can'],
+			$GLOBALS['consentful_test_options'],
+			$GLOBALS['consentful_test_settings_errors']
+		);
+		parent::tearDown();
+	}
+
 	/**
 	 * @param array<array-key, mixed> $source
 	 * @return array<array-key, mixed>
@@ -16,6 +31,19 @@ final class SettingsTest extends TestCase {
 		$value = $source[ $key ] ?? null;
 		$this->assertIsArray( $value );
 		return $value;
+	}
+
+	/** @return list<array<array-key, mixed>> */
+	private function recorded_settings_errors(): array {
+		$entries = $GLOBALS['consentful_test_settings_errors'] ?? array();
+		$this->assertIsArray( $entries );
+
+		$out = array();
+		foreach ( $entries as $entry ) {
+			$this->assertIsArray( $entry );
+			$out[] = $entry;
+		}
+		return $out;
 	}
 
 	public function test_empty_option_yields_full_defaults(): void {
@@ -324,6 +352,207 @@ final class SettingsTest extends TestCase {
 		$this->assertCount( 1, $fragments );
 		$this->assertSame( 'A();', $this->sub( $fragments, 0 )['code'] );
 		$this->assertSame( 'footer', $this->sub( $fragments, 0 )['location'] );
+	}
+
+	public function test_sanitize_keeps_fragment_backslashes_byte_for_byte(): void {
+		$code = 'var s = "a\nb"; var r = /\d+/;';
+		$out  = Settings::sanitize(
+			array(
+				'tags' => array(
+					array(
+						'id'      => 'custom-1',
+						'catalog' => 'custom',
+						'fields'  => array( 'fragments' => array( array( 'code' => $code, 'location' => 'head' ) ) ),
+					),
+				),
+			)
+		);
+
+		$fragments = $this->sub( $this->sub( $this->sub( $this->sub( $out, 'tags' ), 0 ), 'fields' ), 'fragments' );
+		$this->assertSame( $code, $this->sub( $fragments, 0 )['code'] );
+	}
+
+	public function test_sanitize_saves_fragments_when_the_user_can_unfiltered_html(): void {
+		$GLOBALS['consentful_test_can']             = true;
+		$GLOBALS['consentful_test_settings_errors'] = array();
+
+		$out = Settings::sanitize(
+			array(
+				'tags' => array(
+					array(
+						'id'      => 'custom-1',
+						'catalog' => 'custom',
+						'fields'  => array( 'fragments' => array( array( 'code' => 'A();', 'location' => 'footer' ) ) ),
+					),
+				),
+			)
+		);
+
+		$fragments = $this->sub( $this->sub( $this->sub( $this->sub( $out, 'tags' ), 0 ), 'fields' ), 'fragments' );
+		$this->assertSame( 'A();', $this->sub( $fragments, 0 )['code'] );
+		$this->assertSame( array(), $this->recorded_settings_errors() );
+	}
+
+	public function test_sanitize_preserves_previous_fragments_without_unfiltered_html(): void {
+		$GLOBALS['consentful_test_can']             = false;
+		$GLOBALS['consentful_test_settings_errors'] = array();
+		$GLOBALS['consentful_test_options']         = array(
+			CONSENTFUL_OPTION => array(
+				'tags' => array(
+					array(
+						'id'      => 'custom-1',
+						'catalog' => 'custom',
+						'fields'  => array( 'fragments' => array( array( 'code' => 'Old();', 'location' => 'footer' ) ) ),
+					),
+				),
+			),
+		);
+
+		$out = Settings::sanitize(
+			array(
+				'banner' => array( 'enabled' => '1' ),
+				'tags'   => array(
+					array(
+						'id'      => 'custom-1',
+						'catalog' => 'custom',
+						'fields'  => array( 'fragments' => array( array( 'code' => 'Evil();', 'location' => 'head' ) ) ),
+					),
+					array(
+						'id'      => 'custom-2',
+						'catalog' => 'custom',
+						'fields'  => array( 'fragments' => array( array( 'code' => 'New();', 'location' => 'head' ) ) ),
+					),
+				),
+			)
+		);
+
+		$tags = $this->sub( $out, 'tags' );
+		$this->assertSame( array( 'custom-1' ), array_column( $tags, 'id' ) );
+		$fragments = $this->sub( $this->sub( $this->sub( $tags, 0 ), 'fields' ), 'fragments' );
+		$this->assertSame(
+			array(
+				array(
+					'code'     => 'Old();',
+					'location' => 'footer',
+				),
+			),
+			$fragments
+		);
+		$this->assertTrue( $this->sub( $out, 'banner' )['enabled'] );
+
+		$errors = $this->recorded_settings_errors();
+		$this->assertCount( 1, $errors );
+		$this->assertSame( 'consentful_snippets_locked', $errors[0]['code'] );
+	}
+
+	public function test_sanitize_stays_silent_when_locked_fragments_are_unchanged(): void {
+		$GLOBALS['consentful_test_can']             = false;
+		$GLOBALS['consentful_test_settings_errors'] = array();
+		$GLOBALS['consentful_test_options']         = array(
+			CONSENTFUL_OPTION => array(
+				'tags' => array(
+					array(
+						'id'      => 'custom-1',
+						'catalog' => 'custom',
+						'fields'  => array( 'fragments' => array( array( 'code' => 'Old();', 'location' => 'footer' ) ) ),
+					),
+				),
+			),
+		);
+
+		$out = Settings::sanitize(
+			array(
+				'tags' => array(
+					array(
+						'id'      => 'custom-1',
+						'catalog' => 'custom',
+						'fields'  => array( 'fragments' => array( array( 'code' => 'Old();', 'location' => 'footer' ) ) ),
+					),
+					array(
+						'id'      => 'custom-2',
+						'catalog' => 'custom',
+						'fields'  => array( 'fragments' => array( array( 'code' => '', 'location' => 'head' ) ) ),
+					),
+				),
+			)
+		);
+
+		$this->assertSame( array( 'custom-1' ), array_column( $this->sub( $out, 'tags' ), 'id' ) );
+		$this->assertSame( array(), $this->recorded_settings_errors() );
+	}
+
+	public function test_sanitize_keeps_a_numeric_pixel_id(): void {
+		$GLOBALS['consentful_test_settings_errors'] = array();
+
+		$out = Settings::sanitize(
+			array(
+				'tags' => array(
+					array(
+						'id'      => 'meta-pixel',
+						'catalog' => 'meta-pixel',
+						'fields'  => array( 'pixelId' => '123456789' ),
+					),
+				),
+			)
+		);
+
+		$tag = $this->sub( $this->sub( $out, 'tags' ), 0 );
+		$this->assertSame( array( 'pixelId' => '123456789' ), $this->sub( $tag, 'fields' ) );
+		$this->assertSame( array(), $this->recorded_settings_errors() );
+	}
+
+	public function test_sanitize_keeps_an_empty_pixel_id(): void {
+		$GLOBALS['consentful_test_settings_errors'] = array();
+
+		$out = Settings::sanitize(
+			array(
+				'tags' => array(
+					array(
+						'id'      => 'meta-pixel',
+						'catalog' => 'meta-pixel',
+						'fields'  => array( 'pixelId' => '' ),
+					),
+				),
+			)
+		);
+
+		$tag = $this->sub( $this->sub( $out, 'tags' ), 0 );
+		$this->assertSame( array( 'pixelId' => '' ), $this->sub( $tag, 'fields' ) );
+		$this->assertSame( array(), $this->recorded_settings_errors() );
+	}
+
+	public function test_sanitize_rejects_an_invalid_pixel_id_and_keeps_the_previous_value(): void {
+		$GLOBALS['consentful_test_settings_errors'] = array();
+		$GLOBALS['consentful_test_options']         = array(
+			CONSENTFUL_OPTION => array(
+				'tags' => array(
+					array(
+						'id'      => 'meta-pixel',
+						'catalog' => 'meta-pixel',
+						'fields'  => array( 'pixelId' => '111' ),
+					),
+				),
+			),
+		);
+
+		$out = Settings::sanitize(
+			array(
+				'tags' => array(
+					array(
+						'id'      => 'meta-pixel',
+						'catalog' => 'meta-pixel',
+						'fields'  => array( 'pixelId' => 'abc123' ),
+					),
+				),
+			)
+		);
+
+		$tag = $this->sub( $this->sub( $out, 'tags' ), 0 );
+		$this->assertSame( array( 'pixelId' => '111' ), $this->sub( $tag, 'fields' ) );
+
+		$errors = $this->recorded_settings_errors();
+		$this->assertCount( 1, $errors );
+		$this->assertSame( 'consentful_pixel_id', $errors[0]['code'] );
 	}
 
 	public function test_sanitize_tags_drops_fields_outside_catalog_schema(): void {

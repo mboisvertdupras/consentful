@@ -3,8 +3,6 @@ declare( strict_types = 1 );
 
 namespace Consentful\Adapter;
 
-use Consentful\Tag\Tag;
-
 final class ConfiguredAdapter implements Adapter {
 
 	/**
@@ -17,10 +15,6 @@ final class ConfiguredAdapter implements Adapter {
 
 	public function id(): string {
 		return $this->id;
-	}
-
-	public function handles( Tag $tag ): bool {
-		return $this->id === $tag->adapter_id;
 	}
 
 	/** @return array<string, mixed> */

@@ -162,8 +162,8 @@ describe( 'gate', () => {
 	it( 'resolves several instances of one handler by the adapter handler field', () => {
 		const cfg = makeConfig( {
 			tags: [
-				{ id: 'a', purposes: [ 'necessary' ], delivery: 'direct', adapter: 'cnf-a' },
-				{ id: 'b', purposes: [ 'necessary' ], delivery: 'direct', adapter: 'cnf-b' },
+				{ id: 'a', purposes: [ 'necessary' ], adapter: 'cnf-a' },
+				{ id: 'b', purposes: [ 'necessary' ], adapter: 'cnf-b' },
 			],
 			adapters: {
 				'cnf-a': { handler: 'script', fragments: [ { code: '<script src="https://example.test/a.js"></script>', location: 'head' } ] },
@@ -184,12 +184,37 @@ describe( 'gate', () => {
 		};
 		const cfg = makeConfig( {
 			tags: [
-				{ id: 'snip', purposes: [ 'necessary' ], delivery: 'direct', adapter: 'custom' },
+				{ id: 'snip', purposes: [ 'necessary' ], adapter: 'custom' },
 			],
 			adapters: { custom: { handler: 'custom' } },
 		} );
 		bootGate( cfg );
 		expect( applied ).toEqual( [ 'snip' ] );
+	} );
+
+	it( 'applies a post-init registerAdapter immediately', () => {
+		const applied = [];
+		const cfg = makeConfig( {
+			tags: [
+				{ id: 'late', purposes: [ 'necessary' ], adapter: 'late' },
+			],
+			adapters: { late: { handler: 'late' } },
+		} );
+		const api = bootGate( cfg );
+		expect( applied ).toEqual( [] );
+		api.registerAdapter( 'late', {
+			apply: ( ctx ) => applied.push( [ ctx.tag.id, ctx.granted ] ),
+		} );
+		expect( applied ).toEqual( [ [ 'late', true ] ] );
+	} );
+
+	it( 'keeps a pre-gate captured window.consentful reference live after init', () => {
+		window.consentful = { _adapterQueue: [] };
+		const captured = window.consentful;
+		bootGate();
+		expect( window.consentful ).toBe( captured );
+		expect( typeof captured.setConsent ).toBe( 'function' );
+		expect( captured.get().necessary ).toBe( true );
 	} );
 
 	it( 'resolves the jurisdiction/policy from the geo cookie synchronously', () => {
@@ -348,7 +373,7 @@ describe( 'gate proof of consent', () => {
 			expect( body.policyVersion ).toBe( 1 );
 			expect( body.schemaVersion ).toBe( 1 );
 			expect( body.bannerVersion ).toBe( 1 );
-			expect( typeof body.timestamp ).toBe( 'number' );
+			expect( 'timestamp' in body ).toBe( false );
 		} );
 	} );
 

@@ -71,9 +71,13 @@ add_filter( 'consentful_adapters', function ( array $adapters ): array {
 	$adapters[] = new \Consentful\Adapter\ConfiguredAdapter(
 		'my-widget',
 		array(
-			'handler'  => 'script',
-			'code'     => '<script src="https://example.com/w.js"></script>',
-			'location' => 'footer', // head | body | footer
+			'handler'   => 'script',
+			'fragments' => array(
+				array(
+					'code'     => '<script src="https://example.com/w.js"></script>',
+					'location' => 'footer', // head | body | footer
+				),
+			),
 		)
 	);
 	return $adapters;
@@ -105,10 +109,40 @@ Consent Mode v2 signal map) instead of a generic adapter:
 
 ```php
 add_filter( 'consentful_adapters', function ( array $adapters ): array {
-	$adapters[] = new \Consentful\Adapter\GoogleAdapter( array( 'G-XXXXXXXX' ) );
+	// Products are keyed by Tag id — register a Tag with that id (as above) whose
+	// adapter id is 'google'.
+	$adapters[] = new \Consentful\Adapter\GoogleAdapter(
+		array(
+			'my-ga4' => array(
+				'measurementIds' => array( 'G-XXXXXXXX' ),
+				'containerIds'   => array(),
+			),
+		)
+	);
 	return $adapters;
 } );
 ```
+
+### JavaScript adapter handlers
+
+An adapter whose client-config `handler` names no built-in (`script`, `google`, `meta`)
+needs a matching JS handler:
+
+```js
+window.consentful.registerAdapter( 'my-handler', {
+	apply( { tag, adapterConfig, grants, granted, win, doc } ) {
+		if ( ! granted ) {
+			return;
+		}
+		// Inject the vendor tag (once — see below).
+	},
+} );
+```
+
+`apply( ctx )` receives `{ tag, adapterConfig, grants, granted, win, doc }` and is
+re-applied on every consent change, so handlers must be idempotent. Registration works
+before the gate loads (the inline decider stub queues it) or after (the handler is
+applied immediately).
 
 ## Local development (symlink into a WP install)
 

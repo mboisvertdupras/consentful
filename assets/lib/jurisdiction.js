@@ -64,7 +64,7 @@ export function resolveJurisdictionSync( config, env ) {
  *
  * @param {object}  config Parsed config ({ jurisdictions, defaultJurisdiction }).
  * @param {?string} id     Candidate jurisdiction id.
- * @return {object} A jurisdiction record { id, label, policy }.
+ * @return {object} A jurisdiction record { id, policy }.
  */
 export function activeJurisdiction( config, id ) {
 	const jurisdictions = config.jurisdictions || {};
@@ -77,12 +77,8 @@ export function activeJurisdiction( config, id ) {
 	}
 	return {
 		id: '*',
-		label: '',
 		policy: {
 			type: 'opt_in',
-			version: 1,
-			denyByDefault: true,
-			blocksBeforeConsent: true,
 			showsBanner: true,
 			defaultGranted: [],
 		},

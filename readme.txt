@@ -2,13 +2,13 @@
 Contributors: tamarak
 Tags: consent, gdpr, loi 25, cookie banner, consent mode
 Requires at least: 6.5
-Tested up to: 6.7
+Tested up to: 7.0
 Requires PHP: 8.1
 Stable tag: 1.0.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-A general-purpose WordPress universal consent layer that gates non-essential third-party tags behind visitor consent and adapts to the visitor's jurisdiction (Loi 25 / GDPR / US opt-out) — no code required.
+A universal consent layer: gate non-essential tags behind visitor consent, adapt to each visitor's jurisdiction, and keep proof — no code needed.
 
 == Description ==
 

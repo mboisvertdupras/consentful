@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:       Consentful
- * Plugin URI:        https://github.com/tamarak/consentful
+ * Plugin URI:        https://github.com/mboisvertdupras/consentful
  * Description:        An open-source, universal consent layer that gates all non-essential third-party tags behind visitor consent, adapts to the visitor's jurisdiction, and keeps demonstrable proof of consent.
  * Version:           1.0.0
  * Requires at least: 6.5

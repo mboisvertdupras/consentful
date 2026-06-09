@@ -16,24 +16,16 @@ describe( 'lib/config parseConfig', () => {
 			jurisdictions: {
 				'*': {
 					id: '*',
-					label: 'Default (strictest)',
 					policy: {
 						type: 'opt_in',
-						version: 1,
-						denyByDefault: true,
-						blocksBeforeConsent: true,
 						showsBanner: true,
 						defaultGranted: [],
 					},
 				},
 				US: {
 					id: 'US',
-					label: 'United States (state opt-out)',
 					policy: {
 						type: 'opt_out',
-						version: 1,
-						denyByDefault: false,
-						blocksBeforeConsent: false,
 						showsBanner: false,
 						defaultGranted: [ 'analytics', 'marketing' ],
 					},
@@ -45,7 +37,7 @@ describe( 'lib/config parseConfig', () => {
 				endpoint: 'https://example.test/wp-json/consentful/v1/geo',
 				map: { US: 'US', FR: 'EU', 'CA-QC': 'QC' },
 			},
-			tags: [ { id: 'ga4', purposes: [ 'analytics' ], delivery: 'direct', adapter: 'google' } ],
+			tags: [ { id: 'ga4', purposes: [ 'analytics' ], adapter: 'google' } ],
 			adapters: { google: { handler: 'google', products: { ga4: { measurementIds: [ 'G-X' ] } } } },
 		} );
 
@@ -58,6 +50,12 @@ describe( 'lib/config parseConfig', () => {
 			{ key: 'analytics', alwaysOn: false },
 		] );
 		expect( Object.keys( cfg.jurisdictions ) ).toEqual( [ '*', 'US' ] );
+		expect( Object.keys( cfg.jurisdictions[ '*' ] ) ).toEqual( [ 'id', 'policy' ] );
+		expect( Object.keys( cfg.jurisdictions[ '*' ].policy ) ).toEqual( [
+			'type',
+			'showsBanner',
+			'defaultGranted',
+		] );
 		expect( cfg.jurisdictions[ '*' ].policy.type ).toBe( 'opt_in' );
 		expect( cfg.jurisdictions.US.policy.type ).toBe( 'opt_out' );
 		expect( cfg.jurisdictions.US.policy.defaultGranted ).toEqual( [ 'analytics', 'marketing' ] );
@@ -70,7 +68,6 @@ describe( 'lib/config parseConfig', () => {
 		expect( cfg.tags[ 0 ] ).toEqual( {
 			id: 'ga4',
 			purposes: [ 'analytics' ],
-			delivery: 'direct',
 			adapter: 'google',
 		} );
 		expect( cfg.adapters.google.products.ga4.measurementIds ).toEqual( [ 'G-X' ] );
@@ -82,7 +79,7 @@ describe( 'lib/config parseConfig', () => {
 			policyVersion: '3',
 			maxAgeDays: '90',
 			jurisdictions: {
-				'*': { policy: { version: '4', denyByDefault: 'true', showsBanner: '1' } },
+				'*': { policy: { showsBanner: '1' } },
 			},
 			geo: { map: { US: 'US' } },
 		} );
@@ -90,8 +87,6 @@ describe( 'lib/config parseConfig', () => {
 		expect( cfg.policyVersion ).toBe( 3 );
 		expect( cfg.maxAgeDays ).toBe( 90 );
 		expect( cfg.jurisdictions[ '*' ].id ).toBe( '*' );
-		expect( cfg.jurisdictions[ '*' ].policy.version ).toBe( 4 );
-		expect( cfg.jurisdictions[ '*' ].policy.denyByDefault ).toBe( true );
 		expect( cfg.jurisdictions[ '*' ].policy.showsBanner ).toBe( true );
 		expect( cfg.geo.map.US ).toBe( 'US' );
 	} );
@@ -101,7 +96,6 @@ describe( 'lib/config parseConfig', () => {
 		expect( Object.keys( cfg.jurisdictions ) ).toEqual( [ '*' ] );
 		expect( cfg.jurisdictions[ '*' ] ).toEqual( {
 			id: '*',
-			label: '',
 			policy: parsePolicy( {} ),
 		} );
 	} );

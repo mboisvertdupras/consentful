@@ -14,7 +14,7 @@
     "build:assets": "vite build && vite build --config vite.config.decider.js",
     "build": "npm run build:assets && npm run i18n",
     "i18n": "npm run i18n:pot && npm run i18n:po && npm run i18n:mo",
-    "i18n:pot": "wp i18n make-pot . languages/consentful.pot",
+    "i18n:pot": "wp i18n make-pot . languages/consentful.pot --headers='{\"Report-Msgid-Bugs-To\":\"https://wordpress.org/support/plugin/consentful\"}'",
     "i18n:po": "wp i18n update-po languages/consentful.pot languages",
     "i18n:mo": "wp i18n make-mo languages languages",
     "lint": "npm run lint:js && npm run lint:css && npm run lint:php",
@@ -30,6 +30,7 @@
     "package": "npm run build && composer install --no-dev --optimize-autoloader && wp package install wp-cli/dist-archive-command:^3 && wp dist-archive . ./consentful.zip --plugin-dirname=consentful --force && composer install"
   },
   "devDependencies": {
+    "@wordpress/env": "^11.8.0",
     "@wordpress/eslint-plugin": "^22.0.0",
     "@wordpress/stylelint-config": "^23.0.0",
     "eslint": "^9.0.0",

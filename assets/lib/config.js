@@ -23,9 +23,6 @@ export const parsePolicy = ( raw ) => {
 	const p = toObject( raw );
 	return {
 		type: toStr( p.type, 'opt_in' ),
-		version: toInt( p.version, 1 ),
-		denyByDefault: toBool( p.denyByDefault ),
-		blocksBeforeConsent: toBool( p.blocksBeforeConsent ),
 		showsBanner: toBool( p.showsBanner ),
 		defaultGranted: toArray( p.defaultGranted ).map( ( k ) => toStr( k ) ),
 	};
@@ -38,12 +35,11 @@ const parseJurisdictions = ( raw ) => {
 		const entry = toObject( obj[ id ] );
 		out[ id ] = {
 			id: toStr( entry.id, id ),
-			label: toStr( entry.label ),
 			policy: parsePolicy( entry.policy ),
 		};
 	}
 	if ( Object.keys( out ).length === 0 ) {
-		out[ '*' ] = { id: '*', label: '', policy: parsePolicy( {} ) };
+		out[ '*' ] = { id: '*', policy: parsePolicy( {} ) };
 	}
 	return out;
 };
@@ -78,7 +74,6 @@ const parseTags = ( raw ) =>
 		return {
 			id: toStr( tag.id ),
 			purposes: toArray( tag.purposes ).map( ( k ) => toStr( k ) ),
-			delivery: toStr( tag.delivery, 'direct' ),
 			adapter: toStr( tag.adapter ),
 		};
 	} );

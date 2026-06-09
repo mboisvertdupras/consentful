@@ -5,7 +5,6 @@ namespace Consentful\Adapter;
 
 use Consentful\Consent\DefaultPurpose;
 use Consentful\Consent\Signal;
-use Consentful\Tag\Tag;
 
 final class GoogleAdapter implements Adapter {
 
@@ -25,10 +24,6 @@ final class GoogleAdapter implements Adapter {
 
 	public function id(): string {
 		return self::ID;
-	}
-
-	public function handles( Tag $tag ): bool {
-		return self::ID === $tag->adapter_id;
 	}
 
 	/**

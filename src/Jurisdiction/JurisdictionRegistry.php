@@ -3,7 +3,7 @@ declare( strict_types = 1 );
 
 namespace Consentful\Jurisdiction;
 
-use Consentful\Consent\DefaultPurpose;
+use Consentful\Consent\Purpose;
 
 final class JurisdictionRegistry {
 
@@ -33,7 +33,10 @@ final class JurisdictionRegistry {
 		return array_values( $this->jurisdictions );
 	}
 
-	public static function with_defaults( int $policy_version ): self {
+	/**
+	 * @param list<Purpose> $purposes
+	 */
+	public static function with_defaults( int $policy_version, array $purposes ): self {
 		$registry = new self(
 			new Jurisdiction( '*', 'Default (strictest)', Policy::opt_in( $policy_version ) )
 		);
@@ -44,8 +47,8 @@ final class JurisdictionRegistry {
 
 		$default_granted = array_values(
 			array_filter(
-				DefaultPurpose::defaults(),
-				static fn ( DefaultPurpose $purpose ): bool => ! $purpose->is_always_on(),
+				$purposes,
+				static fn ( Purpose $purpose ): bool => ! $purpose->is_always_on(),
 			)
 		);
 		$registry->add(

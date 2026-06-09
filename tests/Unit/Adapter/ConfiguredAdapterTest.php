@@ -4,9 +4,6 @@ declare( strict_types = 1 );
 namespace Consentful\Tests\Unit\Adapter;
 
 use Consentful\Adapter\ConfiguredAdapter;
-use Consentful\Consent\DefaultPurpose;
-use Consentful\Tag\Delivery;
-use Consentful\Tag\Tag;
 use PHPUnit\Framework\TestCase;
 
 final class ConfiguredAdapterTest extends TestCase {
@@ -20,14 +17,5 @@ final class ConfiguredAdapterTest extends TestCase {
 
 		$this->assertSame( 'custom-hotjar', $adapter->id() );
 		$this->assertSame( $config, $adapter->client_config() );
-	}
-
-	public function test_handles_only_tags_pointing_at_its_id(): void {
-		$adapter = new ConfiguredAdapter( 'custom-1', array( 'handler' => 'script' ) );
-		$mine    = new Tag( 'custom-1', 'Custom', array( DefaultPurpose::Analytics ), Delivery::Direct, 'custom-1' );
-		$other   = new Tag( 'ga4', 'GA4', array( DefaultPurpose::Analytics ), Delivery::Direct, 'google' );
-
-		$this->assertTrue( $adapter->handles( $mine ) );
-		$this->assertFalse( $adapter->handles( $other ) );
 	}
 }

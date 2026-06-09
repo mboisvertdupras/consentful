@@ -16,7 +16,7 @@ final class BannerConfigTest extends TestCase {
 		$this->assertSame( 'auto', $out['theme'] );
 		$this->assertSame( '#2563eb', $out['primaryColor'] );
 		$this->assertSame( 8, $out['radius'] );
-		$this->assertSame( 1, $out['version'] );
+		$this->assertArrayNotHasKey( 'version', $out );
 		$this->assertSame( '', $out['privacyUrl'] );
 	}
 
@@ -84,7 +84,6 @@ final class BannerConfigTest extends TestCase {
 				'theme'        => 'dark',
 				'primaryColor' => '#ff0000',
 				'radius'       => 12,
-				'version'      => 4,
 				'privacyUrl'   => 'https://example.test/privacy',
 				'copy'         => $copy,
 				'purposes'     => $purposes,

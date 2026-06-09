@@ -65,7 +65,7 @@ final class Catalog {
 				new CatalogEntry(
 					'meta-pixel',
 					__( 'Meta Pixel', 'consentful' ),
-					'script',
+					'meta',
 					Delivery::Direct,
 					array( 'marketing' ),
 					array(

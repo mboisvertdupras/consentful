@@ -4,8 +4,9 @@ Guidance for Claude Code when working in this repository.
 
 > **Read these first for *direction*:** [`CONTEXT.md`](CONTEXT.md) (the glossary —
 > Purpose, Tag, Adapter, Policy, …) and [`docs/adr/`](docs/adr/) (the decisions and
-> their rejected alternatives). This file describes the **target** architecture;
-> those define the language and the *why*.
+> their rejected alternatives). This file describes the architecture; those define
+> the language and the *why*. Deferred post-1.0 work lives in
+> [`docs/backlog/`](docs/backlog/) — don't re-propose it as new.
 
 ## What this is
 
@@ -17,21 +18,7 @@ adapts to the visitor's jurisdiction, and keeps demonstrable proof of consent, s
 **site** (not merely one vendor's tag) meets Québec Loi 25 / GDPR / US opt-out laws.
 Google Consent Mode is the first integration, not the boundary.
 
-## ⚠️ Repo status: mid-pivot
-
-The files currently on disk are **legacy v2.0.0** — a single-file, Google-only,
-PHP-7.4 plugin (`consent-mode-v2.php`, `src/consent.{js,css}`). It is being rebuilt
-into the architecture below. **Treat the legacy code as throwaway:**
-
-- Build *toward* the target architecture; do **not** deepen the single-file /
-  procedural / 7.4 / Google-hardcoded design.
-- **No backwards compatibility** is owed (no installs to protect). The rebrand from
-  `cmv2_`/"Consent Mode v2" to `consentful_`/"Consentful" is a clean break — no
-  shim.
-- Where this file and the legacy code disagree, **this file wins**; the code is
-  what's being replaced.
-
-## Target architecture
+## Architecture
 
 ### Domain model — `Purpose ↔ Tag ↔ Adapter`
 
@@ -53,7 +40,8 @@ into the architecture below. **Treat the legacy code as throwaway:**
   `wait_for_update`, `ads_data_redaction`, `url_passthrough`; denied signals degrade a
   loaded, granted Tag to cookieless pings — never pre-consent loading) to
   preserve conversion modeling. Developers may register additional adapters against an
-  explicit interface — an optional extension point, not a requirement.
+  explicit interface — an optional extension point, not a requirement. Catalog/tag IDs
+  travel to client handlers as config data — never interpolated into generated JS.
 
 ### Gating is client-side and cache-safe (sacrosanct)
 
@@ -71,8 +59,9 @@ self-contained, dependency-free script targeting `es2015`** (broad reach, no IE1
 the **decider** builds to a single inlined IIFE (it sets the Consent Mode default
 before any tag, so it can't be a deferred `type=module`); the **gate** to a hashed,
 enqueued classic script. ESLint lints `assets/` as modern ESM; Vitest unit-tests the
-`lib/` helpers directly. Config injected via the inline blob / `wp_localize_script` may
-arrive as strings — coerce explicitly.
+`assets/` modules directly (lib helpers, gate, banner, adapter handlers). Config
+injected via the inline blob / `wp_localize_script` may arrive as strings — coerce
+explicitly.
 
 **Exactly two front-end bundles, by necessity — don't add more.** A self-contained
 classic IIFE can't be code-split, so a single Vite build can't emit two of them; the
@@ -123,12 +112,13 @@ model (ADR 0004 supersedes it).
 
 ## Tech stack & conventions
 
-- **PHP 8.1+**, **OOP / PSR-4 / DI container.** Enums (Purpose, Signal), readonly
-  value objects, explicit adapter interface. (Legacy code is 7.4 procedural — replace
-  it, don't extend it.)
-- **Bundled Composer deps must be prefixed/scoped** (Strauss / PHP-Scoper) or they
-  collide with other plugins loading a different version. This is a hard requirement
-  of shipping a container in a WP plugin.
+- **PHP 8.1+**, **OOP / PSR-4.** Enums (`DefaultPurpose`, `Signal`, `Delivery`,
+  `PolicyType`), readonly value objects, explicit adapter interface. Wiring is
+  **manual factory construction in `Plugin.php`** — no DI container.
+- **If a production Composer dep is ever bundled, it must be prefixed/scoped**
+  (Strauss / PHP-Scoper) or it collides with other plugins loading a different
+  version. There are currently none — `vendor/` ships only the Composer PSR-4
+  autoloader.
 - **First-class tests.** PHPUnit (core, consent decisioning, cookie/record schema,
   each adapter against the interface) **and** a JS layer for the decider/gate — the
   cache-safe client gate is the riskiest, compliance-critical code. **"Verify" =
@@ -137,7 +127,7 @@ model (ADR 0004 supersedes it).
   option `consentful_settings` / cookie `consentful` / CSS root `.consentful` (`.cnf-`
   elements) — enforced by phpcs `PrefixAllGlobals`.
 - **Distribution:** open-source (GPL), primarily via the **WordPress.org plugin
-  directory** for normal installs (built, scoped zip), plus **GitHub +
+  directory** for normal installs (built zip via `wp dist-archive`), plus **GitHub +
   Composer/Packagist** for developers. The audience is **every WordPress site owner**,
   so the admin UI is the primary product surface — make it self-explanatory and
   complete (without becoming a sprawling page builder). Keep the *developer* extension

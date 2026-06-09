@@ -43,7 +43,6 @@ const baseCfg = {
 	theme: 'auto',
 	primaryColor: '#2563eb',
 	radius: 8,
-	version: 1,
 	privacyUrl: '',
 	copy: {},
 	purposes: {

@@ -16,6 +16,7 @@ import {
 	mapRegionToJurisdiction,
 } from './lib/jurisdiction.js';
 import { google } from './adapters/google.js';
+import { meta } from './adapters/meta.js';
 import { script } from './adapters/script.js';
 
 /**
@@ -28,20 +29,21 @@ import { script } from './adapters/script.js';
 export function init( rawConfig, { win, doc } ) {
 	const config = parseConfig( rawConfig );
 
-	const handlers = { google, script };
+	const handlers = { google, meta, script };
 	const listeners = new Set();
 
-	const existing = win.consentful || {};
-	const queue = Array.isArray( existing._adapterQueue ) ? existing._adapterQueue : [];
+	const existing = win.consentful;
+	const queue = existing && Array.isArray( existing._adapterQueue ) ? existing._adapterQueue : [];
 
+	let initialized = false;
 	const registerAdapter = ( name, impl ) => {
 		if ( name && impl && typeof impl.apply === 'function' ) {
 			handlers[ name ] = impl;
+			if ( initialized ) {
+				applyAll();
+			}
 		}
 	};
-	for ( const [ name, impl ] of queue ) {
-		registerAdapter( name, impl );
-	}
 
 	const purposeKeys = config.purposes.map( ( p ) => p.key );
 	const alwaysOn = {};
@@ -57,6 +59,10 @@ export function init( rawConfig, { win, doc } ) {
 	let policy = resolved.policy;
 
 	let grants = recompute();
+
+	for ( const [ name, impl ] of queue ) {
+		registerAdapter( name, impl );
+	}
 
 	function readStored() {
 		return validateConsent(
@@ -164,7 +170,6 @@ export function init( rawConfig, { win, doc } ) {
 					policyVersion: config.policyVersion,
 					schemaVersion: config.schemaVersion,
 					bannerVersion: config.proof.bannerVersion,
-					timestamp: Date.now(),
 				},
 				win
 			);
@@ -215,8 +220,9 @@ export function init( rawConfig, { win, doc } ) {
 		registerAdapter,
 	};
 
-	win.consentful = Object.assign( {}, existing, api );
+	win.consentful = existing ? Object.assign( existing, api ) : api;
 
+	initialized = true;
 	applyAll();
 
 	let bannerHandle = { destroy() {} };

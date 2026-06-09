@@ -4,7 +4,10 @@
 
 accepted — supersedes the original v2.0.0 single-file design. **The "Operator model:
 two-tier" paragraph below is superseded by ADR 0004** (self-serve admin UI; the
-integrator-as-source-of-truth tier is dropped). Everything else stands.
+integrator-as-source-of-truth tier is dropped). **Decision 3's DI container was
+narrowed away during the ADR 0004 rework** — wiring is manual factory construction
+in `Plugin.php`, and `vendor/` ships only the Composer PSR-4 autoloader. Everything
+else stands.
 
 ## Context
 

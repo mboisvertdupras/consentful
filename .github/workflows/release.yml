@@ -79,7 +79,8 @@ jobs:
           ' readme.txt > RELEASE_BODY.md
           [ -s RELEASE_BODY.md ] || { echo "::error::no '= $VERSION =' changelog section in readme.txt"; exit 1; }
 
-      # Generate runtime artifacts (build/ and languages/*.mo are gitignored).
+      # Generate runtime artifacts (build/, languages/*.mo, and the regenerated
+      # languages/consentful.pot are gitignored; .po files are the tracked source).
       - run: npm ci
       - run: npm run build
 
@@ -113,8 +114,9 @@ jobs:
           # vendor/ ships, but only the --no-dev autoloader: no vendor/bin (dev
           # tools install bin wrappers; the plugin has no production bin deps).
           if grep -qE '^consentful/(node_modules|assets|tests)/' zip-list.txt \
+            || grep -qE '^consentful/(docs|dist)/' zip-list.txt \
             || grep -qE '^consentful/vendor/bin/' zip-list.txt \
-            || grep -qxE 'consentful/(composer\.(json|lock)|package(-lock)?\.json|vite\.config\.js|eslint\.config\.js|\.stylelintrc\.json|\.phpcs\.xml(\.dist)?|phpstan\.neon(\.dist)?|phpstan-baseline\.neon|\.phpactor\.json|phpunit\.xml\.dist|README\.md|\.distignore)' zip-list.txt; then
+            || grep -qxE 'consentful/(composer\.(json|lock)|package(-lock)?\.json|vite\.config\.js|vite\.config\.decider\.js|vitest\.config\.js|eslint\.config\.js|\.stylelintrc\.json|\.phpcs\.xml(\.dist)?|phpstan\.neon(\.dist)?|phpstan-baseline\.neon|\.phpactor\.json|phpunit\.xml\.dist|README\.md|CLAUDE\.md|CONTEXT\.md|PRODUCT\.md|RELEASE_BODY\.md|\.wp-env\.json|\.distignore)' zip-list.txt; then
             echo "::error::dev files leaked into the zip"; exit 1
           fi
 

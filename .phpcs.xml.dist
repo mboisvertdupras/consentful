@@ -67,14 +67,6 @@
 		<exclude-pattern>*/Consent/DefaultPurpose.php</exclude-pattern>
 	</rule>
 
-	<!-- The container ships unscoped and WP-agnostic (it runs under PHPUnit without
-	     WordPress loaded, so esc_html() is undefined). Its sole throw is a
-	     developer-facing DI diagnostic for an unknown binding — never browser
-	     output — so EscapeOutput does not apply. -->
-	<rule ref="WordPress.Security.EscapeOutput.ExceptionNotEscaped">
-		<exclude-pattern>*/Container/Container.php</exclude-pattern>
-	</rule>
-
 	<!-- ConsentLogDownload streams a `text/csv` attachment (Content-Disposition: attachment),
 	     not an HTML response — EscapeOutput is an HTML/XSS sniff that does not apply. The body
 	     is built by the unit-tested ConsentLogExporter, which RFC-4180-quotes every field.

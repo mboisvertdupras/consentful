@@ -121,12 +121,10 @@ final class SettingsHydratorTest extends TestCase {
 		$ga4 = $this->sub( $tags, 0 );
 		$this->assertSame( 'ga4', $ga4['id'] );
 		$this->assertSame( 'google', $ga4['adapter'] );
-		$this->assertSame( 'direct', $ga4['delivery'] );
 		$this->assertSame( array( 'analytics' ), $ga4['purposes'] );
 		$ads = $this->sub( $tags, 1 );
 		$this->assertSame( 'google-ads', $ads['id'] );
 		$this->assertSame( 'google', $ads['adapter'] );
-		$this->assertSame( 'direct', $ads['delivery'] );
 		$this->assertSame( array( 'marketing' ), $ads['purposes'] );
 	}
 
@@ -163,11 +161,10 @@ final class SettingsHydratorTest extends TestCase {
 		$tag = $this->sub( $tags, 0 );
 		$this->assertSame( 'gtm', $tag['id'] );
 		$this->assertSame( 'google', $tag['adapter'] );
-		$this->assertSame( 'direct', $tag['delivery'] );
 		$this->assertSame( array( 'analytics', 'marketing' ), $tag['purposes'] );
 	}
 
-	public function test_meta_pixel_emits_a_single_head_script_fragment(): void {
+	public function test_meta_pixel_emits_a_meta_adapter_carrying_the_pixel_id(): void {
 		$out = $this->build(
 			array(
 				'tags' => array(
@@ -181,16 +178,18 @@ final class SettingsHydratorTest extends TestCase {
 		);
 
 		$pixel = $this->sub( $this->sub( $out, 'adapters' ), 'meta-pixel' );
-		$this->assertSame( 'script', $pixel['handler'] );
-		$fragments = $this->sub( $pixel, 'fragments' );
-		$this->assertCount( 1, $fragments );
-		$fragment = $this->sub( $fragments, 0 );
-		$this->assertSame( 'head', $fragment['location'] );
-		$code = $fragment['code'];
-		$this->assertIsString( $code );
-		$this->assertStringContainsString( "fbq('init','123456')", $code );
-		$this->assertStringNotContainsString( 'document.write', $code );
-		$this->assertSame( array( 'marketing' ), $this->sub( $this->sub( $out, 'tags' ), 0 )['purposes'] );
+		$this->assertSame(
+			array(
+				'handler'  => 'meta',
+				'pixelIds' => array( '123456' ),
+			),
+			$pixel
+		);
+
+		$tag = $this->sub( $this->sub( $out, 'tags' ), 0 );
+		$this->assertSame( 'meta-pixel', $tag['id'] );
+		$this->assertSame( 'meta-pixel', $tag['adapter'] );
+		$this->assertSame( array( 'marketing' ), $tag['purposes'] );
 	}
 
 	public function test_custom_snippet_carries_its_script_fragments(): void {
@@ -254,6 +253,18 @@ final class SettingsHydratorTest extends TestCase {
 		$this->assertSame(
 			array( 'necessary', 'functional', 'analytics', 'marketing', 'personalization' ),
 			array_column( $this->sub( $out, 'purposes' ), 'key' )
+		);
+	}
+
+	public function test_adaptive_us_opt_out_grants_personalization_when_enabled(): void {
+		$out = $this->build(
+			array( 'purposes' => array( 'personalization' => array( 'enabled' => true ) ) )
+		);
+
+		$policy = $this->sub( $this->sub( $this->sub( $out, 'jurisdictions' ), 'US' ), 'policy' );
+		$this->assertSame(
+			array( 'functional', 'analytics', 'marketing', 'personalization' ),
+			$policy['defaultGranted']
 		);
 	}
 

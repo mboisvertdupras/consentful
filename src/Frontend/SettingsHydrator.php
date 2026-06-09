@@ -206,13 +206,8 @@ final class SettingsHydrator {
 		$fields = $this->fields( $tag );
 		if ( 'meta-pixel' === $entry->key() ) {
 			return array(
-				'handler'   => 'script',
-				'fragments' => array(
-					array(
-						'code'     => self::meta_pixel_code( $this->str( $fields, 'pixelId' ) ),
-						'location' => 'head',
-					),
-				),
+				'handler'  => 'meta',
+				'pixelIds' => array( $this->str( $fields, 'pixelId' ) ),
 			);
 		}
 
@@ -248,19 +243,10 @@ final class SettingsHydrator {
 		return $out;
 	}
 
-	private static function meta_pixel_code( string $pixel_id ): string {
-		return '!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?'
-			. 'n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;'
-			. "n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;"
-			. 't.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}'
-			. "(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');"
-			. "fbq('init','" . $pixel_id . "');fbq('track','PageView');";
-	}
-
 	private function jurisdiction_registry( int $policy_version, PurposeRegistry $purposes ): JurisdictionRegistry {
 		$geo = $this->section( 'geo' );
 		if ( (bool) ( $geo['adaptive'] ?? true ) ) {
-			return JurisdictionRegistry::with_defaults( $policy_version );
+			return JurisdictionRegistry::with_defaults( $policy_version, $purposes->all() );
 		}
 
 		$non_always_on = array_values(

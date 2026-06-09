@@ -243,6 +243,9 @@ final class Admin {
 	private function render_custom_tags( array $stored ): void {
 		echo '<h3>' . esc_html__( 'Custom snippets', 'consentful' ) . '</h3>';
 		echo '<p class="description">' . esc_html__( 'Group one or more scripts under a name and gate them behind consent. Each script is injected only when the snippet\'s purposes are granted — never printed directly — at the head, body, or footer you choose.', 'consentful' ) . '</p>';
+		if ( ! current_user_can( 'unfiltered_html' ) ) {
+			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'Editing snippet code requires the unfiltered_html capability, so the code below is read-only.', 'consentful' ) . '</p></div>';
+		}
 
 		$next = 1;
 		foreach ( $stored as $tag ) {
@@ -319,7 +322,7 @@ final class Admin {
 		$base = $prefix . '][fields][fragments][' . $index;
 
 		echo '<div class="consentful-fragment">';
-		$this->textarea_field( $base . '][code', $this->str( $fragment, 'code' ), '<script>…</script>' );
+		$this->textarea_field( $base . '][code', $this->str( $fragment, 'code' ), '<script>…</script>', ! current_user_can( 'unfiltered_html' ) );
 		echo '<div class="consentful-fragment-meta"><label>' . esc_html__( 'Location', 'consentful' ) . ' ';
 		$this->select_field( $base . '][location', $this->location_choices(), $this->snippet_location( $fragment ) );
 		echo '</label>';
@@ -564,10 +567,10 @@ JS;
 		echo '<input type="url" id="' . esc_attr( $id ) . '" class="regular-text" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '" placeholder="' . esc_attr( $placeholder ) . '" />';
 	}
 
-	private function textarea_field( string $field, string $value, string $placeholder = '' ): void {
+	private function textarea_field( string $field, string $value, string $placeholder = '', bool $read_only = false ): void {
 		$id   = $this->control_id( $field );
 		$name = CONSENTFUL_OPTION . '[' . $field . ']';
-		echo '<textarea id="' . esc_attr( $id ) . '" class="large-text code" rows="4" name="' . esc_attr( $name ) . '" placeholder="' . esc_attr( $placeholder ) . '">' . esc_textarea( $value ) . '</textarea>';
+		echo '<textarea id="' . esc_attr( $id ) . '" class="large-text code" rows="4" name="' . esc_attr( $name ) . '" placeholder="' . esc_attr( $placeholder ) . '"' . ( $read_only ? ' readonly' : '' ) . '>' . esc_textarea( $value ) . '</textarea>';
 	}
 
 	private function hidden_field( string $field, string $value ): void {

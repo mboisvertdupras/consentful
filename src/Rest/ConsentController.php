@@ -13,6 +13,9 @@ final class ConsentController {
 
 	private const MAX_GRANTS = 50;
 
+	private const RATE_LIMIT  = 10;
+	private const RATE_WINDOW = 60;
+
 	public function __construct(
 		private readonly Sink $sink,
 		private readonly string $salt,
@@ -35,6 +38,22 @@ final class ConsentController {
 	}
 
 	public function handle( \WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
+		$remote_addr = self::server_string( $_SERVER, 'REMOTE_ADDR' );
+		$rate_key    = 'consentful_rl_' . hash( 'sha256', $this->salt . $remote_addr );
+		$count       = get_transient( $rate_key );
+		// DB-backed transients return stored ints as numeric strings; false (miss) becomes 0.
+		$count = is_numeric( $count ) ? (int) $count : 0;
+
+		if ( $count >= self::RATE_LIMIT ) {
+			return new \WP_Error(
+				'consentful_rate_limited',
+				__( 'Too many consent submissions. Try again shortly.', 'consentful' ),
+				array( 'status' => 429 )
+			);
+		}
+
+		set_transient( $rate_key, $count + 1, self::RATE_WINDOW );
+
 		$params = self::params_from( $request->get_json_params() );
 
 		$cid = self::clean_cid( isset( $params['cid'] ) && is_string( $params['cid'] ) ? $params['cid'] : '' );

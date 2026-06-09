@@ -4,10 +4,7 @@ declare( strict_types = 1 );
 namespace Consentful\Tests\Unit\Adapter;
 
 use Consentful\Adapter\GoogleAdapter;
-use Consentful\Consent\DefaultPurpose;
 use Consentful\Consent\Signal;
-use Consentful\Tag\Delivery;
-use Consentful\Tag\Tag;
 use PHPUnit\Framework\TestCase;
 
 final class GoogleAdapterTest extends TestCase {
@@ -15,15 +12,6 @@ final class GoogleAdapterTest extends TestCase {
 	public function test_id_is_google(): void {
 		$this->assertSame( 'google', ( new GoogleAdapter( array() ) )->id() );
 		$this->assertSame( 'google', GoogleAdapter::ID );
-	}
-
-	public function test_handles_only_tags_pointing_at_its_id(): void {
-		$adapter = new GoogleAdapter( array() );
-		$mine    = new Tag( 'ga4', 'GA4', array( DefaultPurpose::Analytics ), Delivery::Direct, 'google' );
-		$other   = new Tag( 'pixel', 'Pixel', array( DefaultPurpose::Marketing ), Delivery::Direct, 'meta' );
-
-		$this->assertTrue( $adapter->handles( $mine ) );
-		$this->assertFalse( $adapter->handles( $other ) );
 	}
 
 	public function test_default_signal_map_covers_every_default_purpose(): void {

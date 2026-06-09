@@ -267,8 +267,10 @@ final class Settings {
 			return array();
 		}
 
-		$out  = array();
-		$seen = array();
+		$out      = array();
+		$seen     = array();
+		$locked   = ! current_user_can( 'unfiltered_html' );
+		$notified = false;
 		foreach ( $value as $tag ) {
 			if ( ! is_array( $tag ) ) {
 				continue;
@@ -279,7 +281,22 @@ final class Settings {
 				continue;
 			}
 
-			$fields = self::sanitize_fields( $catalog, $tag['fields'] ?? null );
+			if ( 'custom' === $catalog && $locked ) {
+				$fields = self::previous_fields( $id );
+				if ( ! $notified && self::sanitize_custom_fields( $tag['fields'] ?? null ) !== $fields ) {
+					$notified = true;
+					add_settings_error(
+						CONSENTFUL_OPTION,
+						'consentful_snippets_locked',
+						__( 'Snippet code requires the unfiltered_html capability and was left unchanged. Other settings were saved.', 'consentful' )
+					);
+				}
+			} else {
+				$fields = self::sanitize_fields( $catalog, $tag['fields'] ?? null );
+			}
+			if ( 'meta-pixel' === $catalog ) {
+				$fields = self::sanitize_pixel_id( $id, $fields );
+			}
 			if ( 'custom' === $catalog && array() === ( $fields['fragments'] ?? array() ) ) {
 				continue;
 			}
@@ -341,6 +358,36 @@ final class Settings {
 	}
 
 	/**
+	 * @param array<string, mixed> $fields
+	 * @return array<string, mixed>
+	 */
+	private static function sanitize_pixel_id( string $id, array $fields ): array {
+		$pixel = self::to_string( $fields['pixelId'] ?? '' );
+		if ( '' === $pixel || 1 === preg_match( '/^\d+$/', $pixel ) ) {
+			return $fields;
+		}
+		$fields['pixelId'] = self::to_string( self::previous_fields( $id )['pixelId'] ?? '' );
+		add_settings_error(
+			CONSENTFUL_OPTION,
+			'consentful_pixel_id',
+			__( 'The Meta Pixel ID must contain only digits. The previous value was kept.', 'consentful' )
+		);
+		return $fields;
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private static function previous_fields( string $id ): array {
+		foreach ( self::from_wp()->tags() as $tag ) {
+			if ( ( $tag['id'] ?? '' ) === $id ) {
+				return self::array_value( $tag['fields'] ?? null );
+			}
+		}
+		return array();
+	}
+
+	/**
 	 * @return array{fragments?: list<array{code: string, location: string}>}
 	 */
 	private static function sanitize_custom_fields( mixed $value ): array {
@@ -353,7 +400,7 @@ final class Settings {
 			if ( ! is_array( $fragment ) ) {
 				continue;
 			}
-			$code = (string) wp_unslash( self::to_string( $fragment['code'] ?? '' ) );
+			$code = self::to_string( $fragment['code'] ?? '' );
 			if ( '' === $code ) {
 				continue;
 			}

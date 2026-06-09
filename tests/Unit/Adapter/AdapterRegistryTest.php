@@ -5,9 +5,6 @@ namespace Consentful\Tests\Unit\Adapter;
 
 use Consentful\Adapter\Adapter;
 use Consentful\Adapter\AdapterRegistry;
-use Consentful\Consent\DefaultPurpose;
-use Consentful\Tag\Delivery;
-use Consentful\Tag\Tag;
 use PHPUnit\Framework\TestCase;
 
 final class FakeAdapter implements Adapter {
@@ -18,10 +15,6 @@ final class FakeAdapter implements Adapter {
 
 	public function id(): string {
 		return $this->id;
-	}
-
-	public function handles( Tag $tag ): bool {
-		return $this->id === $tag->adapter_id;
 	}
 
 	/** @return array<string, mixed> */
@@ -74,15 +67,6 @@ final class AdapterRegistryTest extends TestCase {
 		$registry->add( $meta );
 
 		$this->assertSame( array( $google, $meta ), $registry->all() );
-	}
-
-	public function test_handles_matches_a_tag_by_adapter_id(): void {
-		$adapter = new FakeAdapter( 'google' );
-		$mine    = new Tag( 'ga4', 'GA4', array( DefaultPurpose::Analytics ), Delivery::Direct, 'google' );
-		$other   = new Tag( 'pixel', 'Pixel', array( DefaultPurpose::Marketing ), Delivery::Direct, 'meta' );
-
-		$this->assertTrue( $adapter->handles( $mine ) );
-		$this->assertFalse( $adapter->handles( $other ) );
 	}
 
 	public function test_client_config_returns_the_expected_array(): void {

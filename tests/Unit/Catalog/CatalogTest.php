@@ -55,11 +55,11 @@ final class CatalogTest extends TestCase {
 		$this->assertSame( 'text', $entry->fields()['containerId']['type'] );
 	}
 
-	public function test_meta_pixel_is_a_script_handler_with_pixel_id(): void {
+	public function test_meta_pixel_uses_the_meta_handler_with_pixel_id(): void {
 		$entry = Catalog::with_defaults()->get( 'meta-pixel' );
 
 		$this->assertNotNull( $entry );
-		$this->assertSame( 'script', $entry->handler() );
+		$this->assertSame( 'meta', $entry->handler() );
 		$this->assertSame( Delivery::Direct, $entry->delivery() );
 		$this->assertSame( array( 'marketing' ), $entry->default_purposes() );
 		$this->assertSame( array( 'pixelId' ), array_keys( $entry->fields() ) );
