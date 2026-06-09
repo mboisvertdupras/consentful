@@ -29,7 +29,7 @@ final class BannerConfigTest extends TestCase {
 		$copy = BannerConfig::defaults()->to_array()['copy'];
 
 		$this->assertIsArray( $copy );
-		$keys = array( 'title', 'description', 'privacyLabel', 'prefsTitle', 'acceptAll', 'rejectAll', 'customize', 'save', 'reopen', 'noticeTitle', 'noticeDescription', 'doNotSell', 'close' );
+		$keys = array( 'title', 'description', 'privacyLabel', 'prefsTitle', 'acceptAll', 'rejectAll', 'customize', 'save', 'reopen', 'saved', 'noticeTitle', 'noticeDescription', 'doNotSell', 'close' );
 		foreach ( $keys as $key ) {
 			$this->assertArrayHasKey( $key, $copy );
 			$this->assertNotSame( '', $copy[ $key ] );
@@ -41,7 +41,7 @@ final class BannerConfigTest extends TestCase {
 
 		$this->assertSame( 'Your privacy choices', $copy['noticeTitle'] );
 		$this->assertSame(
-			'We and our partners process personal data for advertising, analytics and personalization. You can opt out at any time.',
+			'We use cookies and similar technologies to run this site, and for analytics, advertising and personalization. You can opt out at any time.',
 			$copy['noticeDescription']
 		);
 		$this->assertSame( 'Do Not Sell or Share My Personal Information', $copy['doNotSell'] );

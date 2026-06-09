@@ -1,7 +1,6 @@
-/* Consentful — consent banner. Theme-agnostic, accessible, customizable.
- * --cnf-primary / --cnf-radius are injected inline on the root by the JS (from
- * banner.primaryColor / banner.radius). Palette vars below are switched by the
- * --theme-* modifier class. Ported from the legacy consent.css. */
+/* Consentful consent banner — theme-agnostic, accessible, cache-safe.
+ * --cnf-primary / --cnf-radius are injected inline by the JS; palette vars
+ * switch on the --theme-* modifier class. */
 
 /* ---- Theme palettes -------------------------------------------------- */
 .cnf-banner--theme-light,
@@ -11,6 +10,8 @@
 	--cnf-muted: #54545a;
 	--cnf-surface: rgba(0, 0, 0, 0.045);
 	--cnf-border: rgba(0, 0, 0, 0.14);
+	--cnf-control-border: rgba(0, 0, 0, 0.42); /* ghost controls, ≥3:1 on bg */
+	--cnf-link: var(--cnf-primary, #2563eb);
 	--cnf-shadow: rgba(0, 0, 0, 0.18);
 }
 
@@ -21,6 +22,8 @@
 	--cnf-muted: #d6d0c6;
 	--cnf-surface: rgba(255, 255, 255, 0.06);
 	--cnf-border: rgba(255, 255, 255, 0.18);
+	--cnf-control-border: rgba(255, 255, 255, 0.45); /* ghost controls, ≥3:1 on bg */
+	--cnf-link: #7aa2f7; /* ≥4.5:1 on dark bg, unlike #2563eb */
 	--cnf-shadow: rgba(0, 0, 0, 0.45);
 }
 
@@ -32,6 +35,8 @@
 	--cnf-muted: #54545a;
 	--cnf-surface: rgba(0, 0, 0, 0.045);
 	--cnf-border: rgba(0, 0, 0, 0.14);
+	--cnf-control-border: rgba(0, 0, 0, 0.42); /* ghost controls, ≥3:1 on bg */
+	--cnf-link: var(--cnf-primary, #2563eb);
 	--cnf-shadow: rgba(0, 0, 0, 0.18);
 }
 
@@ -44,13 +49,17 @@
 		--cnf-muted: #d6d0c6;
 		--cnf-surface: rgba(255, 255, 255, 0.06);
 		--cnf-border: rgba(255, 255, 255, 0.18);
+		--cnf-control-border: rgba(255, 255, 255, 0.45); /* ghost controls, ≥3:1 on bg */
+		--cnf-link: #7aa2f7; /* ≥4.5:1 on dark bg, unlike #2563eb */
 		--cnf-shadow: rgba(0, 0, 0, 0.45);
 	}
 }
 
 /* ---- Base ------------------------------------------------------------ */
 .consentful {
+	--cnf-font: -apple-system, "BlinkMacSystemFont", "Segoe UI", "Roboto", "Oxygen-Sans", "Ubuntu", "Cantarell", "Helvetica Neue", sans-serif;
 	z-index: 2147483600; /* above Elementor popups / sticky headers */
+	font-family: var(--cnf-font);
 	font-size: 15px;
 	line-height: 1.5;
 	box-sizing: border-box;
@@ -66,11 +75,26 @@
 	display: none !important;
 }
 
-.cnf-banner__title {
+/* Scoped under .cnf-banner so our font wins over a theme's `.kit h2` (specificity). */
+.cnf-banner .cnf-banner__title {
 	margin: 0 0 6px;
+	font-family: inherit;
 	font-size: 18px;
 	font-weight: 700;
 	color: var(--cnf-fg);
+}
+
+/* Suppress decorative heading lines some themes inject (e.g. Twenty Nineteen's h2::before). */
+.cnf-banner .cnf-banner__title::before,
+.cnf-banner .cnf-prefs__title::before {
+	content: none;
+}
+
+/* Modal/corner: larger title (~1.4x body); bar stays 18px for vertical room. */
+.cnf-banner--modal .cnf-banner__title,
+.cnf-banner--corner .cnf-banner__title {
+	font-size: 21px;
+	letter-spacing: -0.01em;
 }
 
 .cnf-banner__desc {
@@ -80,14 +104,43 @@
 }
 
 .cnf-banner__link {
-	display: inline-block;
+	display: block;
+	width: fit-content;
 	margin: 0 0 14px;
-	color: var(--cnf-primary, #2563eb);
+	color: var(--cnf-link, #2563eb);
 	text-decoration: underline;
 }
 
 .cnf-banner__link:hover {
+	color: var(--cnf-link, #2563eb);
 	filter: brightness(1.12);
+}
+
+/* Customize is a text link, not a row button — keeps the action row an equal pair. */
+.cnf-customize {
+	appearance: none;
+	display: block;
+	width: fit-content;
+	margin: 0 0 14px;
+	padding: 0;
+	border: 0;
+	background: none;
+	font: inherit;
+	color: var(--cnf-link, #2563eb);
+	text-align: left; /* left-align like the privacy link when the bar grid stretches it */
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.cnf-customize:hover {
+	background: none;
+	color: var(--cnf-link, #2563eb);
+	filter: brightness(1.12);
+}
+
+.cnf-customize:focus-visible {
+	outline: 3px solid var(--cnf-fg, #1d1d1f);
+	outline-offset: 2px;
 }
 
 .cnf-prefs {
@@ -97,14 +150,17 @@
 	padding: 14px 16px;
 	background: var(--cnf-surface);
 	border-radius: 10px;
+	max-height: min(50vh, 360px); /* scrolls past a few rows */
+	overflow: auto;
 }
 
 .cnf-prefs[hidden] {
 	display: none;
 }
 
-.cnf-prefs__title {
+.cnf-banner .cnf-prefs__title {
 	margin: 0;
+	font-family: inherit;
 	font-size: 15px;
 	font-weight: 700;
 	color: var(--cnf-fg);
@@ -154,6 +210,7 @@
 	border: 0;
 	border-radius: var(--cnf-radius, 8px);
 	padding: 11px 18px;
+	font-family: inherit;
 	font-size: 15px;
 	font-weight: 600;
 	cursor: pointer;
@@ -165,36 +222,58 @@
 	display: none;
 }
 
-/* "Reject all" is as easy AND as prominent as "Accept all" (Loi 25 / CNIL equal
- * prominence): same screen, one click, identical size/weight AND identical fill —
- * only position distinguishes them, never colour saturation. */
-.cnf-btn--primary,
-.cnf-btn--save,
+/* Reject + Accept: equal prominence (Loi 25 / CNIL) — identical size, weight and
+ * fill, only position differs. A neutral fill (the panel fg, inverted per theme)
+ * leaves the accent free to mark the single commit without nudging toward consent. */
 .cnf-btn--reject,
+.cnf-btn--primary {
+	background: var(--cnf-fg);
+	color: var(--cnf-bg);
+}
+
+/* Save / Do Not Sell: the one accent-coloured commit. */
+.cnf-btn--save,
 .cnf-btn--optout {
 	background: var(--cnf-primary, #2563eb);
 	color: #fff;
 }
 
-.cnf-btn--primary:hover,
-.cnf-btn--save:hover,
+/* Hover/active re-assert each fill (so a host theme's button:hover can't bleed
+ * through) over a translucent state layer: grey reads on the inverted pair in
+ * either theme; black darkens the accent. */
 .cnf-btn--reject:hover,
-.cnf-btn--optout:hover {
-	filter: brightness(1.08);
+.cnf-btn--reject:active,
+.cnf-btn--primary:hover,
+.cnf-btn--primary:active {
+	background-color: var(--cnf-fg);
+	color: var(--cnf-bg);
+	background-image: linear-gradient(rgba(128, 128, 128, 0.32), rgba(128, 128, 128, 0.32));
+}
+
+.cnf-btn--save:hover,
+.cnf-btn--save:active,
+.cnf-btn--optout:hover,
+.cnf-btn--optout:active {
+	background-color: var(--cnf-primary, #2563eb);
+	color: #fff;
+	background-image: linear-gradient(rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.22));
 }
 
 .cnf-btn--ghost {
 	background: transparent;
 	color: var(--cnf-fg);
-	border: 1px solid var(--cnf-border);
+	border: 1px solid var(--cnf-control-border);
 }
 
-.cnf-btn--ghost:hover {
+/* Re-assert bg + fg so a host theme's button:hover can't paint fg-on-fg. */
+.cnf-btn--ghost:hover,
+.cnf-btn--ghost:active {
+	background: var(--cnf-surface);
+	color: var(--cnf-fg);
 	border-color: var(--cnf-fg);
 }
 
-/* Focus ring uses the panel foreground so it always contrasts with BOTH the
- * panel and the primary/save buttons (which are filled with --cnf-primary). */
+/* Focus ring sits on the panel (outline-offset), so panel fg always contrasts. */
 .cnf-btn:focus-visible,
 .cnf-banner__link:focus-visible,
 .cnf-reopen:focus-visible {
@@ -217,6 +296,44 @@
 	max-width: 1100px;
 	margin: 0 auto;
 	padding: 20px clamp(16px, 4vw, 28px);
+}
+
+/* Horizontal bar (>=768px): copy in column 1, actions pinned right in column 2 and
+ * centred against it; prefs spans the full width on its own row. */
+@media (min-width: 768px) {
+
+	.cnf-banner--bar .cnf-banner__inner {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		column-gap: clamp(20px, 4vw, 40px);
+	}
+
+	.cnf-banner--bar .cnf-banner__title,
+	.cnf-banner--bar .cnf-banner__desc,
+	.cnf-banner--bar .cnf-banner__link,
+	.cnf-banner--bar .cnf-customize {
+		grid-column: 1;
+		margin-bottom: 0;
+	}
+
+	.cnf-banner--bar .cnf-banner__title,
+	.cnf-banner--bar .cnf-banner__desc {
+		margin-bottom: 6px;
+	}
+
+	/* Span the copy rows (a generous span, not 1 / -1) so actions centre against them. */
+	.cnf-banner--bar .cnf-actions {
+		grid-column: 2;
+		grid-row: 1 / span 99;
+		align-self: center;
+		justify-content: flex-end;
+	}
+
+	.cnf-banner--bar .cnf-prefs {
+		grid-column: 1 / -1;
+		margin-top: 16px;
+		margin-bottom: 0;
+	}
 }
 
 /* ---- Position: floating corner card ---------------------------------- */
@@ -260,6 +377,14 @@
 	overflow: auto;
 }
 
+/* Modal-only: pin actions as a sticky footer so they stay reachable when it scrolls. */
+.cnf-banner--modal .cnf-actions {
+	position: sticky;
+	bottom: 0;
+	padding-top: 14px;
+	background: var(--cnf-bg);
+}
+
 /* ---- Re-open / withdraw pill ----------------------------------------- */
 .cnf-reopen {
 	position: fixed;
@@ -268,18 +393,70 @@
 	z-index: 2147483600;
 	background: var(--cnf-bg);
 	color: var(--cnf-fg);
-	border: 1px solid var(--cnf-border);
+	border: 1px solid var(--cnf-control-border);
 	border-radius: 999px;
 	padding: 10px 18px;
+	font-family: var(--cnf-font); /* explicit: the pill is a <body> child, so `inherit` pulls the theme font */
 	font-size: 14px;
 	font-weight: 600;
 	cursor: pointer;
 	box-shadow: 0 2px 10px var(--cnf-shadow);
 	min-height: 44px;
+	transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
 }
 
-.cnf-reopen:hover {
-	filter: brightness(1.06);
+/* The pill lives in <body>, so it meets the host theme's button:hover/:focus rules.
+ * Re-assert our colours on focus (a theme's button:focus must not paint fg-on-fg) and
+ * invert on hover/active for a clearly visible state. */
+.cnf-reopen:focus {
+	background: var(--cnf-bg);
+	color: var(--cnf-fg);
+	border-color: var(--cnf-fg);
+}
+
+.cnf-reopen:hover,
+.cnf-reopen:active {
+	background: var(--cnf-fg);
+	color: var(--cnf-bg);
+	border-color: var(--cnf-fg);
+}
+
+/* ---- Decision confirmation toast -------------------------------------
+ * Polite live region acknowledging a saved choice; fades via opacity ([hidden] is truth). */
+.cnf-toast {
+	position: fixed;
+	left: 14px;
+	bottom: 66px; /* clears the re-open pill below it */
+	z-index: 2147483600;
+	max-width: min(320px, calc(100vw - 28px));
+	background: var(--cnf-bg);
+	color: var(--cnf-fg);
+	border: 1px solid var(--cnf-border);
+	border-radius: 10px;
+	padding: 10px 14px;
+	font-size: 14px;
+	box-shadow: 0 4px 16px var(--cnf-shadow);
+	opacity: 1;
+	transform: translateY(0);
+	transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.cnf-toast[hidden] {
+	display: block !important; /* override .consentful[hidden] so the fade is visible */
+	opacity: 0;
+	transform: translateY(8px); /* slides down as it fades out, up as it fades in */
+	pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.cnf-toast {
+		transition: none;
+	}
+
+	.cnf-toast[hidden] {
+		display: none !important; /* instant, no fade */
+	}
 }
 
 /* ---- Responsive ------------------------------------------------------ */

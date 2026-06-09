@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-06-08T22:57:12+00:00\n"
+"POT-Creation-Date: 2026-06-09T16:05:11+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: consentful\n"
@@ -130,7 +130,7 @@ msgstr ""
 
 #: src/Admin/Admin.php:220
 #: src/Admin/Admin.php:778
-#: src/Frontend/BannerConfig.php:206
+#: src/Frontend/BannerConfig.php:207
 msgid "Personalization"
 msgstr ""
 
@@ -307,17 +307,17 @@ msgid "Footer (end of body)"
 msgstr ""
 
 #: src/Admin/Admin.php:775
-#: src/Frontend/BannerConfig.php:194
+#: src/Frontend/BannerConfig.php:195
 msgid "Functional"
 msgstr ""
 
 #: src/Admin/Admin.php:776
-#: src/Frontend/BannerConfig.php:198
+#: src/Frontend/BannerConfig.php:199
 msgid "Analytics"
 msgstr ""
 
 #: src/Admin/Admin.php:777
-#: src/Frontend/BannerConfig.php:202
+#: src/Frontend/BannerConfig.php:203
 msgid "Marketing"
 msgstr ""
 
@@ -366,7 +366,7 @@ msgid "Your privacy"
 msgstr ""
 
 #: src/Frontend/BannerConfig.php:175
-msgid "We use cookies and similar technologies to run this site and, with your consent, to measure traffic and personalize content."
+msgid "We use cookies and similar technologies to run this site. With your consent, we also use them for analytics, advertising and personalization."
 msgstr ""
 
 #: src/Frontend/BannerConfig.php:176
@@ -374,6 +374,7 @@ msgid "Privacy policy"
 msgstr ""
 
 #: src/Frontend/BannerConfig.php:177
+#: src/Frontend/BannerConfig.php:180
 msgid "Manage preferences"
 msgstr ""
 
@@ -385,10 +386,6 @@ msgstr ""
 msgid "Reject all"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:180
-msgid "Customize"
-msgstr ""
-
 #: src/Frontend/BannerConfig.php:181
 msgid "Save preferences"
 msgstr ""
@@ -398,42 +395,46 @@ msgid "Privacy settings"
 msgstr ""
 
 #: src/Frontend/BannerConfig.php:183
-msgid "Your privacy choices"
+msgid "Your privacy choices were saved."
 msgstr ""
 
 #: src/Frontend/BannerConfig.php:184
-msgid "We and our partners process personal data for advertising, analytics and personalization. You can opt out at any time."
+msgid "Your privacy choices"
 msgstr ""
 
 #: src/Frontend/BannerConfig.php:185
-msgid "Do Not Sell or Share My Personal Information"
+msgid "We use cookies and similar technologies to run this site, and for analytics, advertising and personalization. You can opt out at any time."
 msgstr ""
 
 #: src/Frontend/BannerConfig.php:186
+msgid "Do Not Sell or Share My Personal Information"
+msgstr ""
+
+#: src/Frontend/BannerConfig.php:187
 msgid "Close"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:190
+#: src/Frontend/BannerConfig.php:191
 msgid "Strictly necessary"
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:191
+#: src/Frontend/BannerConfig.php:192
 msgid "Required for the site to function; always on and cannot be turned off."
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:195
+#: src/Frontend/BannerConfig.php:196
 msgid "Remembers your choices and preferences to improve your experience."
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:199
+#: src/Frontend/BannerConfig.php:200
 msgid "Measures how the site is used so we can improve it."
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:203
+#: src/Frontend/BannerConfig.php:204
 msgid "Used to deliver and measure advertising relevant to you."
 msgstr ""
 
-#: src/Frontend/BannerConfig.php:207
+#: src/Frontend/BannerConfig.php:208
 msgid "Tailors content and recommendations to your interests."
 msgstr ""
 

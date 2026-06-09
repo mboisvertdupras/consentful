@@ -27,7 +27,7 @@ msgid "Your privacy"
 msgstr "Votre vie privée"
 
 #: src/Admin/Admin.php:776
-#: src/Frontend/BannerConfig.php:198
+#: src/Frontend/BannerConfig.php:199
 msgid "Analytics"
 msgstr "Mesure d’audience"
 
@@ -38,10 +38,6 @@ msgstr "Tout accepter"
 #: src/Frontend/BannerConfig.php:179
 msgid "Reject all"
 msgstr "Tout refuser"
-
-#: src/Frontend/BannerConfig.php:180
-msgid "Customize"
-msgstr "Personnaliser"
 
 #: src/Admin/Admin.php:67
 #: src/Admin/Admin.php:68
@@ -149,15 +145,12 @@ msgstr "Empreinte UA"
 msgid "You are not allowed to export the consent log."
 msgstr "Vous n'êtes pas autorisé à exporter le journal des consentements."
 
-#: src/Frontend/BannerConfig.php:175
-msgid "We use cookies and similar technologies to run this site and, with your consent, to measure traffic and personalize content."
-msgstr "Nous utilisons des témoins et des technologies similaires pour faire fonctionner ce site et, avec votre consentement, pour mesurer l'audience et personnaliser le contenu."
-
 #: src/Frontend/BannerConfig.php:176
 msgid "Privacy policy"
 msgstr "Politique de confidentialité"
 
 #: src/Frontend/BannerConfig.php:177
+#: src/Frontend/BannerConfig.php:180
 msgid "Manage preferences"
 msgstr "Gérer les préférences"
 
@@ -169,59 +162,55 @@ msgstr "Enregistrer les préférences"
 msgid "Privacy settings"
 msgstr "Paramètres de confidentialité"
 
-#: src/Frontend/BannerConfig.php:183
+#: src/Frontend/BannerConfig.php:184
 msgid "Your privacy choices"
 msgstr "Vos choix de confidentialité"
 
-#: src/Frontend/BannerConfig.php:184
-msgid "We and our partners process personal data for advertising, analytics and personalization. You can opt out at any time."
-msgstr "Nos partenaires et nous traitons des renseignements personnels à des fins de publicité, de mesure d'audience et de personnalisation. Vous pouvez vous y opposer en tout temps."
-
-#: src/Frontend/BannerConfig.php:185
+#: src/Frontend/BannerConfig.php:186
 msgid "Do Not Sell or Share My Personal Information"
 msgstr "Ne pas vendre ni communiquer mes renseignements personnels"
 
-#: src/Frontend/BannerConfig.php:186
+#: src/Frontend/BannerConfig.php:187
 msgid "Close"
 msgstr "Fermer"
 
-#: src/Frontend/BannerConfig.php:190
+#: src/Frontend/BannerConfig.php:191
 msgid "Strictly necessary"
 msgstr "Strictement nécessaires"
 
-#: src/Frontend/BannerConfig.php:191
+#: src/Frontend/BannerConfig.php:192
 msgid "Required for the site to function; always on and cannot be turned off."
 msgstr "Nécessaires au fonctionnement du site; toujours actifs et ne peuvent pas être désactivés."
 
 #: src/Admin/Admin.php:775
-#: src/Frontend/BannerConfig.php:194
+#: src/Frontend/BannerConfig.php:195
 msgid "Functional"
 msgstr "Fonctionnels"
 
-#: src/Frontend/BannerConfig.php:195
+#: src/Frontend/BannerConfig.php:196
 msgid "Remembers your choices and preferences to improve your experience."
 msgstr "Mémorise vos choix et vos préférences afin d'améliorer votre expérience."
 
-#: src/Frontend/BannerConfig.php:199
+#: src/Frontend/BannerConfig.php:200
 msgid "Measures how the site is used so we can improve it."
 msgstr "Mesure la façon dont le site est utilisé afin que nous puissions l'améliorer."
 
 #: src/Admin/Admin.php:777
-#: src/Frontend/BannerConfig.php:202
+#: src/Frontend/BannerConfig.php:203
 msgid "Marketing"
 msgstr "Marketing"
 
-#: src/Frontend/BannerConfig.php:203
+#: src/Frontend/BannerConfig.php:204
 msgid "Used to deliver and measure advertising relevant to you."
 msgstr "Sert à diffuser et à mesurer des publicités pertinentes pour vous."
 
 #: src/Admin/Admin.php:220
 #: src/Admin/Admin.php:778
-#: src/Frontend/BannerConfig.php:206
+#: src/Frontend/BannerConfig.php:207
 msgid "Personalization"
 msgstr "Personnalisation"
 
-#: src/Frontend/BannerConfig.php:207
+#: src/Frontend/BannerConfig.php:208
 msgid "Tailors content and recommendations to your interests."
 msgstr "Adapte le contenu et les recommandations à vos centres d'intérêt."
 
@@ -442,3 +431,15 @@ msgstr "Ajouter un script"
 #: src/Admin/Admin.php:383
 msgid "Remove script"
 msgstr "Supprimer le script"
+
+#: src/Frontend/BannerConfig.php:175
+msgid "We use cookies and similar technologies to run this site. With your consent, we also use them for analytics, advertising and personalization."
+msgstr "Nous utilisons des témoins et des technologies similaires pour faire fonctionner ce site. Avec votre consentement, nous les utilisons aussi à des fins d'analyse, de publicité et de personnalisation."
+
+#: src/Frontend/BannerConfig.php:183
+msgid "Your privacy choices were saved."
+msgstr "Vos choix de confidentialité ont été enregistrés."
+
+#: src/Frontend/BannerConfig.php:185
+msgid "We use cookies and similar technologies to run this site, and for analytics, advertising and personalization. You can opt out at any time."
+msgstr "Nous utilisons des témoins et des technologies similaires pour faire fonctionner ce site, ainsi qu'à des fins d'analyse, de publicité et de personnalisation. Vous pouvez vous y opposer à tout moment."

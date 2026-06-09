@@ -33,12 +33,13 @@ const COPY_DEFAULTS = {
 	prefsTitle: 'Manage preferences',
 	acceptAll: 'Accept all',
 	rejectAll: 'Reject all',
-	customize: 'Customize',
+	customize: 'Manage preferences',
 	save: 'Save preferences',
 	reopen: 'Privacy settings',
+	saved: 'Your privacy choices were saved.',
 	noticeTitle: 'Your privacy choices',
 	noticeDescription:
-		'We and our partners process personal data for advertising, analytics and personalization. You can opt out at any time.',
+		'We use cookies and similar technologies to run this site, and for analytics, advertising and personalization. You can opt out at any time.',
 	doNotSell: 'Do Not Sell or Share My Personal Information',
 	close: 'Close',
 };

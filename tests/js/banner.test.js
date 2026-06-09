@@ -2,6 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { initBanner } from '../../assets/banner.js';
 import { optInPolicy, optOutPolicy, noticeOnlyPolicy } from './helpers.js';
 
+// baseCfg.copy is {}, so cfg.copy.saved falls back to this COPY_DEFAULTS value.
+const SAVED = 'Your privacy choices were saved.';
+
 const POLICIES = {
 	opt_in: optInPolicy,
 	opt_out: optOutPolicy,
@@ -66,6 +69,7 @@ function bootHandle( cfg = baseCfg, api = makeApi() ) {
 
 const root = () => document.querySelector( '.cnf-banner' );
 const pill = () => document.querySelector( '.cnf-reopen' );
+const toast = () => document.querySelector( '.cnf-toast' );
 
 describe( 'banner', () => {
 	beforeEach( () => {
@@ -170,7 +174,7 @@ describe( 'banner', () => {
 		} );
 		boot( baseCfg, api );
 		const prefs = root().querySelector( '.cnf-prefs' );
-		const customize = root().querySelector( '.cnf-btn--ghost' );
+		const customize = root().querySelector( '.cnf-customize' );
 		expect( prefs.hidden ).toBe( true );
 		customize.click();
 		expect( prefs.hidden ).toBe( false );
@@ -181,9 +185,23 @@ describe( 'banner', () => {
 		);
 	} );
 
+	it( 'opening Customize leaves exactly two visible action buttons with Accept all hidden', () => {
+		boot();
+		root().querySelector( '.cnf-customize' ).click(); // reveal prefs
+		const actions = root().querySelector( '.cnf-actions' );
+		const visible = Array.prototype.filter.call(
+			actions.querySelectorAll( '.cnf-btn' ),
+			( b ) => ! b.hidden
+		);
+		expect( visible.length ).toBe( 2 );
+		expect( root().querySelector( '.cnf-btn--primary' ).hidden ).toBe( true );
+		expect( root().querySelector( '.cnf-btn--save' ).hidden ).toBe( false );
+		expect( root().querySelector( '.cnf-btn--reject' ).hidden ).toBe( false );
+	} );
+
 	it( 'Save reads checkbox state and calls api.setConsent with the grants', () => {
 		const api = boot();
-		root().querySelector( '.cnf-btn--ghost' ).click(); // reveal prefs
+		root().querySelector( '.cnf-customize' ).click(); // reveal prefs
 		root().querySelector( '.cnf-purpose__input[value="marketing"]' ).checked = true;
 		root().querySelector( '.cnf-btn--save' ).click();
 		expect( api.setConsent ).toHaveBeenCalledTimes( 1 );
@@ -196,6 +214,57 @@ describe( 'banner', () => {
 		expect( root().hidden ).toBe( true );
 	} );
 
+	it( 'creates a polite status toast (initially hidden, empty)', () => {
+		boot();
+		const node = toast();
+		expect( node ).not.toBeNull();
+		expect( node.getAttribute( 'role' ) ).toBe( 'status' );
+		expect( node.getAttribute( 'aria-live' ) ).toBe( 'polite' );
+		expect( node.hidden ).toBe( true );
+		expect( node.textContent ).toBe( '' );
+	} );
+
+	it( 'Accept all confirms the saved choice in the toast (panel still collapses sync)', () => {
+		boot();
+		root().querySelector( '.cnf-btn--primary' ).click();
+		expect( root().hidden ).toBe( true );
+		expect( toast().textContent ).toBe( SAVED );
+		expect( toast().hidden ).toBe( false );
+	} );
+
+	it( 'Reject all confirms the saved choice in the toast', () => {
+		boot();
+		root().querySelector( '.cnf-btn--reject' ).click();
+		expect( toast().textContent ).toBe( SAVED );
+		expect( toast().hidden ).toBe( false );
+	} );
+
+	it( 'Save confirms the saved choice in the toast', () => {
+		boot();
+		root().querySelector( '.cnf-customize' ).click();
+		root().querySelector( '.cnf-btn--save' ).click();
+		expect( toast().textContent ).toBe( SAVED );
+		expect( toast().hidden ).toBe( false );
+	} );
+
+	it( 'auto-clears the toast after the timeout', () => {
+		vi.useFakeTimers();
+		try {
+			boot();
+			root().querySelector( '.cnf-btn--primary' ).click();
+			expect( toast().hidden ).toBe( false );
+			vi.advanceTimersByTime( 2000 );
+			// Hidden (fading out) but the text persists so it fades WITH the box…
+			expect( toast().hidden ).toBe( true );
+			expect( toast().textContent ).toBe( SAVED );
+			// …and is cleared only once the fade-out finishes.
+			vi.advanceTimersByTime( 250 );
+			expect( toast().textContent ).toBe( '' );
+		} finally {
+			vi.useRealTimers();
+		}
+	} );
+
 	it( 'returns a destroy handle that removes the banner and pill', () => {
 		const handle = bootHandle();
 		expect( typeof handle.destroy ).toBe( 'function' );
@@ -204,6 +273,13 @@ describe( 'banner', () => {
 		handle.destroy();
 		expect( root() ).toBeNull();
 		expect( pill() ).toBeNull();
+	} );
+
+	it( 'destroy removes the toast node (no leak on re-init)', () => {
+		const handle = bootHandle();
+		expect( toast() ).not.toBeNull();
+		handle.destroy();
+		expect( toast() ).toBeNull();
 	} );
 
 	it( 'returns a no-op destroy handle on early-return paths', () => {
@@ -239,6 +315,9 @@ describe( 'banner', () => {
 		expect( root().hidden ).toBe( false );
 		expect( pill().hidden ).toBe( true );
 		expect( root().querySelector( '.cnf-prefs' ).hidden ).toBe( false );
+		// Re-open reveals prefs => Save is the commit, Accept all is hidden.
+		expect( root().querySelector( '.cnf-btn--save' ).hidden ).toBe( false );
+		expect( root().querySelector( '.cnf-btn--primary' ).hidden ).toBe( true );
 		expect( root().querySelector( '.cnf-purpose__input[value="analytics"]' ).checked ).toBe(
 			true
 		);
@@ -375,12 +454,15 @@ describe( 'banner opt_out (Do Not Sell/Share notice)', () => {
 	it( 'Manage preferences reveals prefs prefilled from api.get (all-on), Save persists toggles', () => {
 		const api = makeOptOut();
 		boot( baseCfg, api );
-		const customize = root().querySelector( '.cnf-btn--ghost' );
+		const customize = root().querySelector( '.cnf-customize' );
 		const prefs = root().querySelector( '.cnf-prefs' );
 		expect( prefs.hidden ).toBe( true );
 		customize.click();
 		expect( prefs.hidden ).toBe( false );
 		expect( customize.getAttribute( 'aria-expanded' ) ).toBe( 'true' );
+		// Save is the commit while prefs are open; Close is hidden.
+		expect( root().querySelector( '.cnf-btn--save' ).hidden ).toBe( false );
+		expect( closeBtn().hidden ).toBe( true );
 		// Prefilled from the all-on opt-out defaults.
 		expect( root().querySelector( '.cnf-purpose__input[value="analytics"]' ).checked ).toBe( true );
 		expect( root().querySelector( '.cnf-purpose__input[value="marketing"]' ).checked ).toBe( true );
@@ -421,6 +503,21 @@ describe( 'banner opt_out (Do Not Sell/Share notice)', () => {
 		expect( api.setConsent ).toHaveBeenCalledTimes( 1 );
 		expect( root().hidden ).toBe( true );
 		expect( pill().hidden ).toBe( false );
+	} );
+
+	it( 'DNS confirms the saved choice in the toast (panel still collapses sync)', () => {
+		boot( baseCfg, makeOptOut() );
+		dnsBtn().click();
+		expect( root().hidden ).toBe( true );
+		expect( toast().textContent ).toBe( SAVED );
+		expect( toast().hidden ).toBe( false );
+	} );
+
+	it( 'Close confirms the saved choice in the toast', () => {
+		boot( baseCfg, makeOptOut() );
+		closeBtn().click();
+		expect( toast().textContent ).toBe( SAVED );
+		expect( toast().hidden ).toBe( false );
 	} );
 
 	it( 'never traps focus or inerts the background, even at position modal', () => {

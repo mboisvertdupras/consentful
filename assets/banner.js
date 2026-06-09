@@ -121,6 +121,48 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		return pill;
 	}
 
+	// Confirmation toast — a polite live region each variant shows on commit. Built once
+	// per init; torn down in destroy().
+	function buildToast() {
+		const toast = el( 'div', 'consentful cnf-toast cnf-banner--theme-' + cfg.theme );
+		toast.setAttribute( 'role', 'status' );
+		toast.setAttribute( 'aria-live', 'polite' );
+		toast.hidden = true;
+		let hideTimer = null;
+		let clearTimer = null;
+		// Reveal immediately, fade out after a beat. The text outlives the fade-out (cleared
+		// only once it finishes) so it fades WITH the box, not before it. Never steals focus.
+		const show = () => {
+			if ( hideTimer ) {
+				clearTimeout( hideTimer );
+			}
+			if ( clearTimer ) {
+				clearTimeout( clearTimer );
+			}
+			toast.textContent = cfg.copy.saved;
+			toast.hidden = false;
+			hideTimer = setTimeout( () => {
+				toast.hidden = true;
+				clearTimer = setTimeout( () => {
+					toast.textContent = '';
+				}, 250 );
+				hideTimer = null;
+			}, 2000 );
+		};
+		const destroy = () => {
+			if ( hideTimer ) {
+				clearTimeout( hideTimer );
+			}
+			if ( clearTimer ) {
+				clearTimeout( clearTimer );
+			}
+			if ( toast.parentNode ) {
+				toast.parentNode.removeChild( toast );
+			}
+		};
+		return { toast, show, destroy };
+	}
+
 	if ( policy.type === 'opt_out' ) {
 		return renderOptOut();
 	}
@@ -176,30 +218,35 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			inner.appendChild( link );
 		}
 
-		// Preferences — per-purpose rows, revealed by Customize or shown on re-open.
+		// Preferences — per-purpose rows, revealed by the Customize link or shown on re-open.
 		const { prefs, inputs } = buildPrefs();
+
+		// Customize is a text link, not a row button — keeps the action row an equal pair.
+		const customizeBtn = button( 'cnf-customize', cfg.copy.customize );
+		customizeBtn.setAttribute( 'aria-expanded', 'false' );
+		customizeBtn.setAttribute( 'aria-controls', prefs.id );
+		inner.appendChild( customizeBtn );
+
 		inner.appendChild( prefs );
 
 		// Actions — equal-prominence Reject/Accept enforced in CSS.
 		const actions = el( 'div', 'cnf-actions' );
 		const rejectBtn = button( 'cnf-btn cnf-btn--reject', cfg.copy.rejectAll );
-		const customizeBtn = button( 'cnf-btn cnf-btn--ghost', cfg.copy.customize );
-		customizeBtn.setAttribute( 'aria-expanded', 'false' );
-		customizeBtn.setAttribute( 'aria-controls', prefs.id );
 		const saveBtn = button( 'cnf-btn cnf-btn--save', cfg.copy.save );
 		saveBtn.hidden = true;
 		const acceptBtn = button( 'cnf-btn cnf-btn--primary', cfg.copy.acceptAll );
 		actions.appendChild( rejectBtn );
-		actions.appendChild( customizeBtn );
 		actions.appendChild( saveBtn );
 		actions.appendChild( acceptBtn );
 		inner.appendChild( actions );
 
 		const pill = buildPill();
+		const toast = buildToast();
 
 		const body = doc.body || doc.documentElement;
 		body.appendChild( root );
 		body.appendChild( pill );
+		body.appendChild( toast.toast );
 
 		// Only currently-visible, focusable controls — a static querySelectorAll would
 		// include the [hidden] preference inputs and break the modal trap boundary.
@@ -322,6 +369,8 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		function revealPrefs() {
 			prefs.hidden = false;
 			saveBtn.hidden = false;
+			// Save is the sole commit here; hide Accept so it can't discard the new toggles.
+			acceptBtn.hidden = true;
 			customizeBtn.setAttribute( 'aria-expanded', 'true' );
 			prefillToggles( inputs );
 			const firstToggle = purposes.find( ( p ) => ! p.alwaysOn );
@@ -345,14 +394,17 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 
 		rejectBtn.addEventListener( 'click', () => {
 			api.rejectAll();
+			toast.show();
 			hidePanel();
 		} );
 		acceptBtn.addEventListener( 'click', () => {
 			api.acceptAll();
+			toast.show();
 			hidePanel();
 		} );
 		saveBtn.addEventListener( 'click', () => {
 			api.setConsent( readToggles( inputs ) );
+			toast.show();
 			hidePanel();
 		} );
 		customizeBtn.addEventListener( 'click', revealPrefs );
@@ -370,6 +422,7 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		function destroy() {
 			doc.removeEventListener( 'keydown', trap );
 			backgroundInert( false );
+			toast.destroy();
 			[ root, pill ].forEach( ( node ) => {
 				if ( node.parentNode ) {
 					node.parentNode.removeChild( node );
@@ -415,31 +468,35 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			inner.appendChild( link );
 		}
 
-		// Preferences (all non-essential on by default under opt-out); revealPrefs()
-		// prefills from the live grants when "Manage preferences" is opened.
+		// Preferences (all non-essential on by default under opt-out).
 		const { prefs, inputs } = buildPrefs();
-		inner.appendChild( prefs );
 
-		// Actions: the conspicuous DNS control, manage-prefs (reveals prefs + Save), Close.
-		const actions = el( 'div', 'cnf-actions' );
-		const dnsBtn = button( 'cnf-btn cnf-btn--optout', cfg.copy.doNotSell );
-		const customizeBtn = button( 'cnf-btn cnf-btn--ghost', cfg.copy.customize );
+		// Customize is a text link, not a row button — keeps the action row an equal pair.
+		const customizeBtn = button( 'cnf-customize', cfg.copy.customize );
 		customizeBtn.setAttribute( 'aria-expanded', 'false' );
 		customizeBtn.setAttribute( 'aria-controls', prefs.id );
+		inner.appendChild( customizeBtn );
+
+		inner.appendChild( prefs );
+
+		// Actions: the conspicuous DNS control + Close; revealing prefs swaps Close for Save.
+		const actions = el( 'div', 'cnf-actions' );
+		const dnsBtn = button( 'cnf-btn cnf-btn--optout', cfg.copy.doNotSell );
 		const saveBtn = button( 'cnf-btn cnf-btn--save', cfg.copy.save );
 		saveBtn.hidden = true;
 		const closeBtn = button( 'cnf-btn cnf-btn--ghost', cfg.copy.close );
 		actions.appendChild( dnsBtn );
-		actions.appendChild( customizeBtn );
 		actions.appendChild( saveBtn );
 		actions.appendChild( closeBtn );
 		inner.appendChild( actions );
 
 		const pill = buildPill();
+		const toast = buildToast();
 
 		const body = doc.body || doc.documentElement;
 		body.appendChild( root );
 		body.appendChild( pill );
+		body.appendChild( toast.toast );
 
 		function showPanel( moveFocus ) {
 			pill.hidden = true;
@@ -469,6 +526,7 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			doc.removeEventListener( 'keydown', onKeydown );
 			prefs.hidden = true;
 			saveBtn.hidden = true;
+			closeBtn.hidden = false;
 			customizeBtn.setAttribute( 'aria-expanded', 'false' );
 			pill.hidden = false;
 			if ( restoreFocus ) {
@@ -483,6 +541,8 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		function revealPrefs() {
 			prefs.hidden = false;
 			saveBtn.hidden = false;
+			// Save is the commit while prefs are open — hide Close (keeps the row two buttons).
+			closeBtn.hidden = true;
 			customizeBtn.setAttribute( 'aria-expanded', 'true' );
 			prefillToggles( inputs );
 			const firstToggle = purposes.find( ( p ) => ! p.alwaysOn );
@@ -508,16 +568,19 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		// regimes permit default-on; this is acknowledgement, not prohibited implied consent.
 		function acknowledge() {
 			api.setConsent( api.get() );
+			toast.show();
 			hidePanel( true );
 		}
 
 		dnsBtn.addEventListener( 'click', () => {
 			api.rejectAll();
+			toast.show();
 			hidePanel( true );
 		} );
 		customizeBtn.addEventListener( 'click', revealPrefs );
 		saveBtn.addEventListener( 'click', () => {
 			api.setConsent( readToggles( inputs ) );
+			toast.show();
 			hidePanel( true );
 		} );
 		closeBtn.addEventListener( 'click', acknowledge );
@@ -541,6 +604,7 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		// undo (the opt-out notice never installs them). Idempotent.
 		function destroy() {
 			doc.removeEventListener( 'keydown', onKeydown );
+			toast.destroy();
 			[ root, pill ].forEach( ( node ) => {
 				if ( node.parentNode ) {
 					node.parentNode.removeChild( node );
