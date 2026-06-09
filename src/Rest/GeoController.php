@@ -24,9 +24,10 @@ final class GeoController {
 		);
 	}
 
-	/** @return array{region: string|null} */
-	public function handle(): array {
-		return array( 'region' => self::detect_region( $_SERVER ) );
+	public function handle(): \WP_REST_Response {
+		$response = new \WP_REST_Response( array( 'region' => self::detect_region( $_SERVER ) ) );
+		$response->header( 'Cache-Control', 'no-store, max-age=0' );
+		return $response;
 	}
 
 	/** @param array<mixed> $server */

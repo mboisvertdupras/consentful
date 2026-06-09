@@ -50,6 +50,20 @@ describe( 'gate', () => {
 		expect( api.purposes().length ).toBe( 5 );
 	} );
 
+	it( 'blocks the Google tag before consent under the opt-in default', () => {
+		const gtagScripts = () =>
+			Array.from( document.querySelectorAll( 'script[src]' ) ).filter( ( s ) =>
+				s.src.includes( 'googletagmanager.com' )
+			);
+		gtagScripts().forEach( ( s ) => s.remove() );
+
+		const api = bootGate();
+		expect( gtagScripts().length ).toBe( 0 );
+
+		api.acceptAll();
+		expect( gtagScripts().length ).toBe( 1 );
+	} );
+
 	it( 'recomputes without the decider _init', () => {
 		const api = bootGate();
 		expect( api.get() ).toEqual( {
@@ -228,6 +242,10 @@ describe( 'gate async geo fallback', () => {
 		await flush();
 
 		expect( window.fetch ).toHaveBeenCalledTimes( 1 );
+		expect( window.fetch ).toHaveBeenCalledWith( 'https://example.test/wp-json/consentful/v1/geo', {
+			credentials: 'omit',
+			cache: 'no-store',
+		} );
 		expect( api.jurisdiction() ).toBe( 'US' );
 		expect( api.policy().type ).toBe( 'opt_out' );
 		expect( api.get().analytics ).toBe( true );

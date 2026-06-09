@@ -49,14 +49,16 @@ const loadContainer = ( id, win, doc ) => {
 export const google = {
 	/**
 	 * @param {object}   ctx
-	 * @param {object}   ctx.adapterConfig { measurementIds, containerIds, purposeSignals }.
+	 * @param {object}   ctx.tag           The gated tag (its id keys its product in products).
+	 * @param {object}   ctx.adapterConfig { products, purposeSignals }.
 	 * @param {object}   ctx.grants        Purpose key => bool.
+	 * @param {boolean}  ctx.granted
 	 * @param {Window}   ctx.win
 	 * @param {Document} ctx.doc
 	 * @param {Function} [ctx.gtag]        Optional pre-resolved gtag (else resolved from win).
 	 */
 	apply( ctx ) {
-		const { adapterConfig, grants, win, doc } = ctx;
+		const { tag, adapterConfig, grants, granted, win, doc } = ctx;
 		const gtag = ctx.gtag || resolveGtag( win );
 		const purposeSignals =
 			adapterConfig && adapterConfig.purposeSignals ? adapterConfig.purposeSignals : {};
@@ -68,22 +70,19 @@ export const google = {
 			gtag( 'consent', 'update', state );
 		}
 
-		const anyGranted = Object.keys( state ).some( ( signal ) => state[ signal ] === 'granted' );
-		if ( ! anyGranted ) {
+		if ( ! granted ) {
 			return;
 		}
-		const ids = Array.isArray( adapterConfig && adapterConfig.measurementIds )
-			? adapterConfig.measurementIds
-			: [];
+		const product =
+			( adapterConfig && adapterConfig.products && adapterConfig.products[ tag.id ] ) || {};
+		const ids = Array.isArray( product.measurementIds ) ? product.measurementIds : [];
 		for ( const id of ids ) {
 			if ( id ) {
 				loadGtag( String( id ), gtag, doc );
 			}
 		}
 
-		const containerIds = Array.isArray( adapterConfig && adapterConfig.containerIds )
-			? adapterConfig.containerIds
-			: [];
+		const containerIds = Array.isArray( product.containerIds ) ? product.containerIds : [];
 		for ( const id of containerIds ) {
 			if ( id ) {
 				loadContainer( String( id ), win, doc );

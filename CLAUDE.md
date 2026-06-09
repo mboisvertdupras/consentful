@@ -50,7 +50,8 @@ into the architecture below. **Treat the legacy code as throwaway:**
 - **Adapter** — knows *how* to load/signal a tag. The plugin ships a **curated
   catalog** the admin picks from; the core hard-codes nothing Google. **Google is
   just a rich adapter** that additionally emits Consent Mode v2 signals (default-deny,
-  `wait_for_update`, cookieless pings, `ads_data_redaction`, `url_passthrough`) to
+  `wait_for_update`, `ads_data_redaction`, `url_passthrough`; denied signals degrade a
+  loaded, granted Tag to cookieless pings — never pre-consent loading) to
   preserve conversion modeling. Developers may register additional adapters against an
   explicit interface — an optional extension point, not a requirement.
 

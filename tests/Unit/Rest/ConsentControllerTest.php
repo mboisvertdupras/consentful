@@ -208,14 +208,15 @@ final class ConsentControllerTest extends TestCase {
 
 		$result = $this->controller( $sink )->handle( $request );
 
-		$this->assertIsArray( $result );
+		$this->assertInstanceOf( \WP_REST_Response::class, $result );
 		$this->assertSame(
 			array(
 				'stored' => true,
 				'id'     => 'cid-abc',
 			),
-			$result
+			$result->get_data()
 		);
+		$this->assertSame( 'no-store, max-age=0', $result->get_headers()['Cache-Control'] ?? null );
 		$this->assertCount( 1, $sink->stored );
 	}
 
@@ -237,8 +238,10 @@ final class ConsentControllerTest extends TestCase {
 
 		$result = $this->controller( $sink )->handle( $request );
 
-		$this->assertIsArray( $result );
-		$this->assertNotSame( '', $result['id'] );
+		$this->assertInstanceOf( \WP_REST_Response::class, $result );
+		$data = $result->get_data();
+		$this->assertIsArray( $data );
+		$this->assertNotSame( '', $data['id'] );
 		$this->assertCount( 1, $sink->stored );
 	}
 
@@ -253,8 +256,10 @@ final class ConsentControllerTest extends TestCase {
 
 		$result = $this->controller( $sink )->handle( $request );
 
-		$this->assertIsArray( $result );
-		$this->assertNotSame( 'bad cid with spaces', $result['id'] );
+		$this->assertInstanceOf( \WP_REST_Response::class, $result );
+		$data = $result->get_data();
+		$this->assertIsArray( $data );
+		$this->assertNotSame( 'bad cid with spaces', $data['id'] );
 		$this->assertCount( 1, $sink->stored );
 	}
 

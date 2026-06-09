@@ -151,39 +151,35 @@ final class SettingsHydrator {
 	 * @param list<string>                                          $active_keys
 	 */
 	private function add_google( PurposeRegistry $purposes, TagRegistry $tags, AdapterRegistry $adapters, array $google, array $active_keys ): void {
-		$ids           = array();
-		$container_ids = array();
-		$purpose_union = array();
+		$products = array();
 		foreach ( $google as list( $entry, $tag ) ) {
+			$id      = $this->str( $tag, 'id' );
+			$product = array(
+				'measurementIds' => array(),
+				'containerIds'   => array(),
+			);
 			if ( 'gtm' === $entry->key() ) {
 				$container_id = $this->str( $this->fields( $tag ), 'containerId' );
-				if ( '' !== $container_id && ! in_array( $container_id, $container_ids, true ) ) {
-					$container_ids[] = $container_id;
+				if ( '' !== $container_id ) {
+					$product['containerIds'][] = $container_id;
 				}
 			} else {
-				foreach ( $this->google_ids( $tag ) as $id ) {
-					if ( '' !== $id && ! in_array( $id, $ids, true ) ) {
-						$ids[] = $id;
-					}
-				}
+				$product['measurementIds'] = $this->google_ids( $tag );
 			}
-			foreach ( $this->tag_purpose_keys( $entry, $tag, $active_keys ) as $key ) {
-				if ( ! in_array( $key, $purpose_union, true ) ) {
-					$purpose_union[] = $key;
-				}
-			}
+			$products[ $id ] = $product;
+
+			$tags->add(
+				new Tag(
+					$id,
+					$this->tag_label( $entry, $tag ),
+					$this->resolve_purposes( $purposes, $this->tag_purpose_keys( $entry, $tag, $active_keys ) ),
+					Delivery::Direct,
+					GoogleAdapter::ID,
+				)
+			);
 		}
 
-		$adapters->add( new GoogleAdapter( $ids, container_ids: $container_ids ) );
-		$tags->add(
-			new Tag(
-				GoogleAdapter::ID,
-				__( 'Google', 'consentful' ),
-				$this->resolve_purposes( $purposes, $purpose_union ),
-				Delivery::Direct,
-				GoogleAdapter::ID,
-			)
-		);
+		$adapters->add( new GoogleAdapter( $products ) );
 	}
 
 	/**

@@ -40,15 +40,34 @@ final class GoogleAdapterTest extends TestCase {
 	}
 
 	public function test_client_config_uses_the_default_map_and_flags(): void {
-		$adapter = new GoogleAdapter( array( 'G-XXXXXXX', 'AW-1111' ) );
+		$adapter = new GoogleAdapter(
+			array(
+				'ga4'        => array(
+					'measurementIds' => array( 'G-XXXXXXX' ),
+					'containerIds'   => array(),
+				),
+				'google-ads' => array(
+					'measurementIds' => array( 'AW-1111' ),
+					'containerIds'   => array(),
+				),
+			)
+		);
 
 		$config = $adapter->client_config();
 
 		$this->assertSame(
 			array(
 				'handler'          => 'google',
-				'measurementIds'   => array( 'G-XXXXXXX', 'AW-1111' ),
-				'containerIds'     => array(),
+				'products'         => array(
+					'ga4'        => array(
+						'measurementIds' => array( 'G-XXXXXXX' ),
+						'containerIds'   => array(),
+					),
+					'google-ads' => array(
+						'measurementIds' => array( 'AW-1111' ),
+						'containerIds'   => array(),
+					),
+				),
 				'purposeSignals'   => array(
 					'necessary'       => array( 'security_storage' ),
 					'functional'      => array( 'functionality_storage' ),
@@ -65,14 +84,28 @@ final class GoogleAdapterTest extends TestCase {
 	}
 
 	public function test_client_config_carries_gtm_container_ids(): void {
-		$config = ( new GoogleAdapter( array( 'G-XXXXXXX' ), array(), true, true, 500, array( 'GTM-ABC', 'GTM-DEF' ) ) )->client_config();
+		$config = ( new GoogleAdapter(
+			array(
+				'gtm' => array(
+					'measurementIds' => array(),
+					'containerIds'   => array( 'GTM-ABC' ),
+				),
+			)
+		) )->client_config();
 
-		$this->assertSame( array( 'GTM-ABC', 'GTM-DEF' ), $config['containerIds'] );
-		$this->assertSame( array( 'G-XXXXXXX' ), $config['measurementIds'] );
+		$this->assertSame(
+			array(
+				'gtm' => array(
+					'measurementIds' => array(),
+					'containerIds'   => array( 'GTM-ABC' ),
+				),
+			),
+			$config['products']
+		);
 	}
 
 	public function test_security_storage_is_always_present_via_necessary(): void {
-		$config = ( new GoogleAdapter( array( 'G-XXXXXXX' ) ) )->client_config();
+		$config = ( new GoogleAdapter( array() ) )->client_config();
 
 		$signals = $config['purposeSignals'];
 		$this->assertIsArray( $signals );
@@ -81,7 +114,7 @@ final class GoogleAdapterTest extends TestCase {
 
 	public function test_client_config_uses_an_override_map_when_supplied(): void {
 		$adapter = new GoogleAdapter(
-			array( 'G-OVERRIDE' ),
+			array(),
 			array(
 				'analytics' => array( Signal::AnalyticsStorage ),
 				'marketing' => array( Signal::AdStorage ),
@@ -100,7 +133,7 @@ final class GoogleAdapterTest extends TestCase {
 	}
 
 	public function test_flags_and_wait_for_update_are_configurable(): void {
-		$adapter = new GoogleAdapter( array( 'G-XXXXXXX' ), array(), false, false, 0 );
+		$adapter = new GoogleAdapter( array(), array(), false, false, 0 );
 
 		$config = $adapter->client_config();
 

@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   node:
-    name: Lint JS/CSS + verify build
+    name: Lint + test JS/CSS + verify build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -31,17 +31,20 @@ jobs:
       - run: npm run lint:js
       - run: npm run lint:css
       - run: npm run build:assets # i18n (.mo) needs WP-CLI; the release job covers it
+      - run: npm run test:js # after the build: the smoke test executes build/decider.js
 
       # Prove the runtime can resolve its assets, not just that Vite exited 0:
-      # PHP reads build/.vite/manifest.json and loads the hashed files it names.
+      # PHP reads build/.vite/manifest.json and loads the hashed files it names
+      # (Gate.php GATE_ENTRY/STYLE_ENTRY), plus the fixed-path inlined decider.
       - name: Verify Vite build output
         run: |
           set -euo pipefail
           test -f build/.vite/manifest.json
+          test -f build/decider.js
           node -e '
             const fs = require("fs");
             const m = JSON.parse(fs.readFileSync("build/.vite/manifest.json", "utf8"));
-            for (const k of ["assets/consent.js", "assets/consent.css"]) {
+            for (const k of ["assets/gate.js", "style.css"]) {
               if (!m[k] || !m[k].file) throw new Error("manifest missing entry " + k);
               if (!fs.existsSync("build/" + m[k].file)) throw new Error("missing built file build/" + m[k].file);
             }

@@ -78,6 +78,33 @@ final class PluginTest extends TestCase {
 		$this->assertContains( Activator::PURGE_HOOK, $hooks );
 	}
 
+	public function test_boot_registers_the_textdomain_on_init(): void {
+		Plugin::instance()->boot();
+
+		$this->assertContains( 'init', array_column( $this->recorded_actions(), 'hook' ) );
+	}
+
+	/** @return list<mixed> */
+	private function recorded_textdomains(): array {
+		$loaded = $GLOBALS['consentful_test_textdomains'] ?? array();
+		return is_array( $loaded ) ? array_values( $loaded ) : array();
+	}
+
+	public function test_load_textdomain_loads_the_bundled_languages(): void {
+		$GLOBALS['consentful_test_textdomains'] = array();
+
+		Plugin::instance()->load_textdomain();
+
+		$loaded = $this->recorded_textdomains();
+		$this->assertCount( 1, $loaded );
+		$entry = $loaded[0];
+		$this->assertIsArray( $entry );
+		$this->assertSame( 'consentful', $entry['domain'] );
+		$this->assertIsString( $entry['path'] );
+		$this->assertStringEndsWith( '/languages', $entry['path'] );
+		unset( $GLOBALS['consentful_test_textdomains'] );
+	}
+
 	public function test_boot_is_idempotent(): void {
 		$plugin = Plugin::instance();
 
@@ -90,10 +117,18 @@ final class PluginTest extends TestCase {
 		$this->assertSame( $first, $second );
 	}
 
-	public function test_boot_registers_the_admin_hooks_only_in_admin_context(): void {
+	public function test_boot_defers_admin_registration_to_init_in_admin_context(): void {
 		$GLOBALS['consentful_test_is_admin'] = true;
 
 		Plugin::instance()->boot();
+
+		$hooks = array_column( $this->recorded_actions(), 'hook' );
+		$this->assertNotContains( 'admin_menu', $hooks );
+		$this->assertCount( 2, array_keys( $hooks, 'init', true ) );
+	}
+
+	public function test_register_admin_registers_the_admin_hooks(): void {
+		Plugin::instance()->register_admin();
 
 		$hooks = array_column( $this->recorded_actions(), 'hook' );
 		$this->assertContains( 'admin_menu', $hooks );
@@ -106,5 +141,6 @@ final class PluginTest extends TestCase {
 		$hooks = array_column( $this->recorded_actions(), 'hook' );
 		$this->assertNotContains( 'admin_menu', $hooks );
 		$this->assertNotContains( 'admin_init', $hooks );
+		$this->assertCount( 1, array_keys( $hooks, 'init', true ) );
 	}
 }

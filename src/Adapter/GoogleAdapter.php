@@ -12,17 +12,15 @@ final class GoogleAdapter implements Adapter {
 	public const ID = 'google';
 
 	/**
-	 * @param list<string>                $measurement_ids
-	 * @param array<string, list<Signal>> $purpose_signals
-	 * @param list<string>                $container_ids
+	 * @param array<string, array{measurementIds: list<string>, containerIds: list<string>}> $products
+	 * @param array<string, list<Signal>>                                                    $purpose_signals
 	 */
 	public function __construct(
-		private readonly array $measurement_ids,
+		private readonly array $products = array(),
 		private readonly array $purpose_signals = array(),
 		private readonly bool $ads_data_redaction = true,
 		private readonly bool $url_passthrough = true,
 		private readonly int $wait_for_update = 500,
-		private readonly array $container_ids = array(),
 	) {}
 
 	public function id(): string {
@@ -47,8 +45,7 @@ final class GoogleAdapter implements Adapter {
 
 		return array(
 			'handler'          => self::ID,
-			'measurementIds'   => $this->measurement_ids,
-			'containerIds'     => $this->container_ids,
+			'products'         => $this->products,
 			'purposeSignals'   => $signals,
 			'adsDataRedaction' => $this->ads_data_redaction,
 			'urlPassthrough'   => $this->url_passthrough,

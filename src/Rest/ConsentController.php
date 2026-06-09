@@ -34,8 +34,7 @@ final class ConsentController {
 		);
 	}
 
-	/** @return array{stored: true, id: string}|\WP_Error */
-	public function handle( \WP_REST_Request $request ): array|\WP_Error {
+	public function handle( \WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
 		$params = self::params_from( $request->get_json_params() );
 
 		$cid = self::clean_cid( isset( $params['cid'] ) && is_string( $params['cid'] ) ? $params['cid'] : '' );
@@ -53,10 +52,14 @@ final class ConsentController {
 
 		$this->sink->store( $record );
 
-		return array(
-			'stored' => true,
-			'id'     => $record->consent_id,
+		$response = new \WP_REST_Response(
+			array(
+				'stored' => true,
+				'id'     => $record->consent_id,
+			)
 		);
+		$response->header( 'Cache-Control', 'no-store, max-age=0' );
+		return $response;
 	}
 
 	/**

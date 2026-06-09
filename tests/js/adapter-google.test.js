@@ -11,7 +11,10 @@ const purposeSignals = {
 function ctx( grants, calls ) {
 	return {
 		tag: { id: 'ga4', purposes: [ 'analytics' ] },
-		adapterConfig: { measurementIds: [ 'G-ABC' ], purposeSignals },
+		adapterConfig: {
+			products: { ga4: { measurementIds: [ 'G-ABC' ], containerIds: [] } },
+			purposeSignals,
+		},
 		grants,
 		granted: Boolean( grants.analytics ),
 		gtag: ( ...a ) => calls.push( a ),
@@ -35,7 +38,7 @@ describe( 'adapters/google', () => {
 		expect( update[ 2 ].ad_storage ).toBe( 'denied' );
 	} );
 
-	it( 'loads gtag.js once when a mapped purpose is granted', () => {
+	it( 'loads gtag.js once when the tag is granted', () => {
 		const calls = [];
 		google.apply( ctx( { necessary: true, analytics: true }, calls ) );
 		google.apply( ctx( { necessary: true, analytics: true }, calls ) );
@@ -44,10 +47,14 @@ describe( 'adapters/google', () => {
 		expect( scripts[ 0 ].async ).toBe( true );
 	} );
 
-	it( 'loads the GTM container once when a mapped purpose is granted', () => {
+	it( 'loads the GTM container once when the tag is granted', () => {
 		const calls = [];
 		const c = ctx( { necessary: true, analytics: true }, calls );
-		c.adapterConfig = { measurementIds: [], containerIds: [ 'GTM-XYZ' ], purposeSignals };
+		c.tag = { id: 'gtm', purposes: [ 'analytics' ] };
+		c.adapterConfig = {
+			products: { gtm: { measurementIds: [], containerIds: [ 'GTM-XYZ' ] } },
+			purposeSignals,
+		};
 		google.apply( c );
 		google.apply( c );
 		const containers = document.querySelectorAll( 'script[src*="gtm.js?id=GTM-XYZ"]' );
@@ -56,10 +63,46 @@ describe( 'adapters/google', () => {
 		expect( document.querySelectorAll( 'script[src*="gtag/js"]' ).length ).toBe( 0 );
 	} );
 
-	it( 'does not load gtag.js when all signals denied', () => {
+	it( 'does not load gtag.js pre-consent but still pushes the consent update', () => {
 		const calls = [];
-		google.apply( ctx( { necessary: false, analytics: false, marketing: false }, calls ) );
+		google.apply( ctx( { necessary: true, analytics: false, marketing: false }, calls ) );
 		expect( document.querySelectorAll( 'script[src*="gtag/js"]' ).length ).toBe( 0 );
+		const update = calls.find( ( a ) => a[ 0 ] === 'consent' && a[ 1 ] === 'update' );
+		expect( update[ 2 ].security_storage ).toBe( 'granted' );
+		expect( update[ 2 ].analytics_storage ).toBe( 'denied' );
+		expect( update[ 2 ].ad_storage ).toBe( 'denied' );
+	} );
+
+	it( 'loads only the product keyed by the granted tag id', () => {
+		const calls = [];
+		const c = ctx( { necessary: true, analytics: true }, calls );
+		c.adapterConfig.products = {
+			ga4: { measurementIds: [ 'G-ABC' ], containerIds: [] },
+			'google-ads': { measurementIds: [ 'AW-111' ], containerIds: [] },
+		};
+		google.apply( c );
+		expect( document.querySelectorAll( 'script[src*="gtag/js?id=G-ABC"]' ).length ).toBe( 1 );
+		expect( document.querySelectorAll( 'script[src*="gtag/js?id=AW-111"]' ).length ).toBe( 0 );
+	} );
+
+	it( 'gates each google tag independently and pushes one update for identical state', () => {
+		const calls = [];
+		const grants = { necessary: true, analytics: true, marketing: false };
+		const products = {
+			ga4: { measurementIds: [ 'G-ABC' ], containerIds: [] },
+			'google-ads': { measurementIds: [ 'AW-111' ], containerIds: [] },
+		};
+		const a = ctx( grants, calls );
+		a.adapterConfig.products = products;
+		google.apply( a );
+		const b = ctx( grants, calls );
+		b.tag = { id: 'google-ads', purposes: [ 'marketing' ] };
+		b.granted = false;
+		b.adapterConfig.products = products;
+		google.apply( b );
+		expect( document.querySelectorAll( 'script[src*="gtag/js?id=G-ABC"]' ).length ).toBe( 1 );
+		expect( document.querySelectorAll( 'script[src*="gtag/js?id=AW-111"]' ).length ).toBe( 0 );
+		expect( calls.filter( ( c ) => c[ 1 ] === 'update' ).length ).toBe( 1 );
 	} );
 
 	it( 'does not re-push an unchanged consent state', () => {

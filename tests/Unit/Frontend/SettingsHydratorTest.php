@@ -76,7 +76,7 @@ final class SettingsHydratorTest extends TestCase {
 		$this->assertSame( 'http://example.test/privacy', $this->sub( $out, 'banner' )['privacyUrl'] );
 	}
 
-	public function test_ga4_and_ads_merge_into_one_google_adapter(): void {
+	public function test_ga4_and_ads_emit_one_tag_each_sharing_one_google_adapter(): void {
 		$out = $this->build(
 			array(
 				'tags' => array(
@@ -100,18 +100,34 @@ final class SettingsHydratorTest extends TestCase {
 		$this->assertSame( array( 'google' ), array_keys( $adapters ) );
 		$google = $this->sub( $adapters, 'google' );
 		$this->assertSame( 'google', $google['handler'] );
-		$this->assertSame( array( 'G-AAA', 'AW-BBB' ), $google['measurementIds'] );
-		$this->assertSame( array(), $google['containerIds'] );
+		$this->assertSame(
+			array(
+				'ga4'        => array(
+					'measurementIds' => array( 'G-AAA' ),
+					'containerIds'   => array(),
+				),
+				'google-ads' => array(
+					'measurementIds' => array( 'AW-BBB' ),
+					'containerIds'   => array(),
+				),
+			),
+			$google['products']
+		);
 		$this->assertTrue( $google['adsDataRedaction'] );
 		$this->assertSame( 500, $google['waitForUpdate'] );
 
 		$tags = $this->sub( $out, 'tags' );
-		$this->assertCount( 1, $tags );
-		$tag = $this->sub( $tags, 0 );
-		$this->assertSame( 'google', $tag['id'] );
-		$this->assertSame( 'google', $tag['adapter'] );
-		$this->assertSame( 'direct', $tag['delivery'] );
-		$this->assertSame( array( 'analytics', 'marketing' ), $tag['purposes'] );
+		$this->assertCount( 2, $tags );
+		$ga4 = $this->sub( $tags, 0 );
+		$this->assertSame( 'ga4', $ga4['id'] );
+		$this->assertSame( 'google', $ga4['adapter'] );
+		$this->assertSame( 'direct', $ga4['delivery'] );
+		$this->assertSame( array( 'analytics' ), $ga4['purposes'] );
+		$ads = $this->sub( $tags, 1 );
+		$this->assertSame( 'google-ads', $ads['id'] );
+		$this->assertSame( 'google', $ads['adapter'] );
+		$this->assertSame( 'direct', $ads['delivery'] );
+		$this->assertSame( array( 'marketing' ), $ads['purposes'] );
 	}
 
 	public function test_gtm_loads_a_container_through_the_google_adapter(): void {
@@ -131,14 +147,22 @@ final class SettingsHydratorTest extends TestCase {
 		$this->assertSame( array( 'google' ), array_keys( $adapters ) );
 		$google = $this->sub( $adapters, 'google' );
 		$this->assertSame( 'google', $google['handler'] );
-		$this->assertSame( array(), $google['measurementIds'] );
-		$this->assertSame( array( 'GTM-ABCDEF' ), $google['containerIds'] );
+		$this->assertSame(
+			array(
+				'gtm' => array(
+					'measurementIds' => array(),
+					'containerIds'   => array( 'GTM-ABCDEF' ),
+				),
+			),
+			$google['products']
+		);
 		$this->assertSame( array( 'analytics_storage' ), $this->sub( $google, 'purposeSignals' )['analytics'] );
 
 		$tags = $this->sub( $out, 'tags' );
 		$this->assertCount( 1, $tags );
 		$tag = $this->sub( $tags, 0 );
-		$this->assertSame( 'google', $tag['id'] );
+		$this->assertSame( 'gtm', $tag['id'] );
+		$this->assertSame( 'google', $tag['adapter'] );
 		$this->assertSame( 'direct', $tag['delivery'] );
 		$this->assertSame( array( 'analytics', 'marketing' ), $tag['purposes'] );
 	}

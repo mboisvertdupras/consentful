@@ -261,7 +261,14 @@ final class ClientConfigTest extends TestCase {
 
 	public function test_adapters_are_keyed_by_id_and_passed_through_verbatim(): void {
 		$adapters = new AdapterRegistry();
-		$google   = new GoogleAdapter( array( 'G-XXXXXXX' ) );
+		$google   = new GoogleAdapter(
+			array(
+				'ga4' => array(
+					'measurementIds' => array( 'G-XXXXXXX' ),
+					'containerIds'   => array(),
+				),
+			)
+		);
 		$adapters->add( $google );
 
 		$out = $this->build( null, $adapters );

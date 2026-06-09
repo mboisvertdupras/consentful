@@ -46,7 +46,7 @@ describe( 'lib/config parseConfig', () => {
 				map: { US: 'US', FR: 'EU', 'CA-QC': 'QC' },
 			},
 			tags: [ { id: 'ga4', purposes: [ 'analytics' ], delivery: 'direct', adapter: 'google' } ],
-			adapters: { google: { handler: 'google', measurementIds: [ 'G-X' ] } },
+			adapters: { google: { handler: 'google', products: { ga4: { measurementIds: [ 'G-X' ] } } } },
 		} );
 
 		expect( cfg.cookie ).toBe( 'consentful' );
@@ -73,7 +73,7 @@ describe( 'lib/config parseConfig', () => {
 			delivery: 'direct',
 			adapter: 'google',
 		} );
-		expect( cfg.adapters.google.measurementIds ).toEqual( [ 'G-X' ] );
+		expect( cfg.adapters.google.products.ga4.measurementIds ).toEqual( [ 'G-X' ] );
 	} );
 
 	it( 'coerces string-encoded scalars (wp_localize_script)', () => {

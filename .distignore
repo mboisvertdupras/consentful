@@ -23,8 +23,11 @@
 # production Composer autoloader (built --no-dev) ships so PSR-4 classes resolve.
 node_modules
 
-# Front-end source — compiled into build/ at release time (build/ itself ships)
-assets
+# Front-end source — compiled into build/ at release time (build/ itself ships).
+# Anchored: dist-archive v3 uses gitignore any-depth matching, so a bare
+# `assets` would also exclude build/assets/ (the hashed gate bundle the
+# manifest names).
+/assets
 
 # Tests
 tests

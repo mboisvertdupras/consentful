@@ -194,6 +194,24 @@ if ( ! function_exists( 'plugin_dir_url' ) ) {
 	}
 }
 
+if ( ! function_exists( 'plugin_basename' ) ) {
+	function plugin_basename( $file ) {
+		return basename( dirname( (string) $file ) ) . '/' . basename( (string) $file );
+	}
+}
+
+if ( ! function_exists( 'load_plugin_textdomain' ) ) {
+	function load_plugin_textdomain( $domain, $deprecated = false, $plugin_rel_path = false ) {
+		if ( isset( $GLOBALS['consentful_test_textdomains'] ) && is_array( $GLOBALS['consentful_test_textdomains'] ) ) {
+			$GLOBALS['consentful_test_textdomains'][] = array(
+				'domain' => $domain,
+				'path'   => $plugin_rel_path,
+			);
+		}
+		return true;
+	}
+}
+
 if ( ! function_exists( 'wp_get_inline_script_tag' ) ) {
 	function wp_get_inline_script_tag( $data, $attributes = array() ) {
 		return '<script>' . $data . '</script>';
@@ -540,6 +558,42 @@ if ( ! class_exists( 'WP_Error' ) ) {
 		public function get_error_data( $code = '' ) {
 			$code = '' !== $code ? $code : $this->get_error_code();
 			return $this->error_data[ $code ] ?? null;
+		}
+	}
+}
+
+if ( ! class_exists( 'WP_REST_Response' ) ) {
+	class WP_REST_Response {
+
+		/** @var mixed */
+		public $data;
+
+		/** @var int */
+		public $status;
+
+		/** @var array<string, string> */
+		public $headers;
+
+		public function __construct( $data = null, $status = 200, $headers = array() ) {
+			$this->data    = $data;
+			$this->status  = $status;
+			$this->headers = $headers;
+		}
+
+		public function header( $key, $value ) {
+			$this->headers[ $key ] = $value;
+		}
+
+		public function get_data() {
+			return $this->data;
+		}
+
+		public function get_status() {
+			return $this->status;
+		}
+
+		public function get_headers() {
+			return $this->headers;
 		}
 	}
 }

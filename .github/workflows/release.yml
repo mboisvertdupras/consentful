@@ -105,6 +105,8 @@ jobs:
           # which would silently bypass the leak guard.
           unzip -Z1 consentful.zip > zip-list.txt
           grep -qFx 'consentful/build/.vite/manifest.json' zip-list.txt
+          grep -qFx 'consentful/build/decider.js' zip-list.txt
+          grep -qE '^consentful/build/assets/' zip-list.txt # hashed gate bundle + CSS
           grep -qE '^consentful/languages/.+\.mo$' zip-list.txt
           grep -qE '^consentful/src/' zip-list.txt                # PHP runtime ships
           grep -qFx 'consentful/vendor/autoload.php' zip-list.txt # Composer autoloader ships

@@ -263,7 +263,7 @@ function fetchGeoRegion( endpoint, win ) {
 		return Promise.resolve( null );
 	}
 	return win
-		.fetch( endpoint, { credentials: 'omit' } )
+		.fetch( endpoint, { credentials: 'omit', cache: 'no-store' } )
 		.then( ( r ) => ( r.ok ? r.json() : null ) )
 		.then( ( d ) => ( d && typeof d.region === 'string' ? d.region : null ) )
 		.catch( () => null );

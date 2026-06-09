@@ -124,9 +124,17 @@ final class GeoControllerTest extends TestCase {
 		$this->assertSame( '__return_true', $args['permission_callback'] );
 	}
 
-	public function test_handle_returns_a_region_keyed_array(): void {
+	public function test_handle_returns_a_region_keyed_response(): void {
 		$out = ( new GeoController() )->handle();
 
-		$this->assertArrayHasKey( 'region', $out );
+		$data = $out->get_data();
+		$this->assertIsArray( $data );
+		$this->assertArrayHasKey( 'region', $data );
+	}
+
+	public function test_handle_sends_a_no_store_cache_header(): void {
+		$out = ( new GeoController() )->handle();
+
+		$this->assertSame( 'no-store, max-age=0', $out->get_headers()['Cache-Control'] ?? null );
 	}
 }

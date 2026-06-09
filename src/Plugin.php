@@ -39,16 +39,27 @@ final class Plugin {
 
 		$this->ensure_database();
 
+		add_action( 'init', array( $this, 'load_textdomain' ) );
+
 		$this->gate()->register();
 
 		if ( is_admin() ) {
-			$this->admin()->register();
+			add_action( 'init', array( $this, 'register_admin' ) );
 		}
 
 		( new GeoController() )->register();
 		$this->consent_controller()->register();
 
 		add_action( Activator::PURGE_HOOK, array( $this, 'purge_consent_log' ) );
+	}
+
+	public function load_textdomain(): void {
+		load_plugin_textdomain( 'consentful', false, dirname( plugin_basename( CONSENTFUL_FILE ) ) . '/languages' );
+	}
+
+	/** Deferred to init: Catalog::with_defaults() resolves gettext, so it must run after load_textdomain. */
+	public function register_admin(): void {
+		$this->admin()->register();
 	}
 
 	public function purge_consent_log(): void {

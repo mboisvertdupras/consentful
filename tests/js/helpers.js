@@ -63,7 +63,7 @@ export function makeConfig( overrides = {} ) {
 		adapters: {
 			google: {
 				handler: 'google',
-				measurementIds: [ 'G-XXXX' ],
+				products: { ga4: { measurementIds: [ 'G-XXXX' ], containerIds: [] } },
 				purposeSignals: {
 					necessary: [ 'security_storage' ],
 					functional: [ 'functionality_storage' ],
