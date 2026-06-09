@@ -18,6 +18,13 @@ import {
 import { google } from './adapters/google.js';
 import { script } from './adapters/script.js';
 
+/**
+ * Initialize the gate against a window/document.
+ *
+ * @param {unknown} rawConfig window.consentfulConfig.
+ * @param {object}  env       { win, doc }.
+ * @return {object} The public API.
+ */
 export function init( rawConfig, { win, doc } ) {
 	const config = parseConfig( rawConfig );
 
@@ -244,6 +251,13 @@ export function init( rawConfig, { win, doc } ) {
 	return win.consentful;
 }
 
+/**
+ * Fetch a region code from the non-cached geo endpoint.
+ *
+ * @param {string} endpoint Absolute endpoint URL.
+ * @param {Window} win
+ * @return {Promise<?string>} The region code, or null.
+ */
 function fetchGeoRegion( endpoint, win ) {
 	if ( ! win.fetch ) {
 		return Promise.resolve( null );

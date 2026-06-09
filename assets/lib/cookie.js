@@ -1,3 +1,10 @@
+/**
+ * Read a raw cookie value by name.
+ *
+ * @param {string}   name Cookie name.
+ * @param {Document} doc  Document (defaults to global document).
+ * @return {?string} Decoded value, or null when absent.
+ */
 export function readCookie( name, doc = document ) {
 	const jar = typeof doc.cookie === 'string' ? doc.cookie : '';
 	const prefix = name + '=';
@@ -10,6 +17,16 @@ export function readCookie( name, doc = document ) {
 	return null;
 }
 
+/**
+ * Write a cookie carrying a JSON payload.
+ *
+ * @param {string}   name             Cookie name.
+ * @param {object}   payload          Serializable payload (the v1 consent object).
+ * @param {object}   opts             Options.
+ * @param {number}   opts.maxAgeMs    Lifetime in ms (sets expires).
+ * @param {boolean} [opts.secure]     Force the Secure flag (else inferred from https).
+ * @param {Document} doc              Document (defaults to global document).
+ */
 export function writeCookie( name, payload, { maxAgeMs, secure }, doc = document ) {
 	const value = encodeURIComponent( JSON.stringify( payload ) );
 	const expires = new Date( Date.now() + maxAgeMs ).toUTCString();
@@ -25,6 +42,12 @@ export function writeCookie( name, payload, { maxAgeMs, secure }, doc = document
 	doc.cookie = cookie;
 }
 
+/**
+ * Parse a raw cookie value into the decoded v1 payload (no validation).
+ *
+ * @param {?string} rawValue Decoded cookie string.
+ * @return {?object} Decoded payload, or null on parse failure.
+ */
 export function parseConsent( rawValue ) {
 	if ( typeof rawValue !== 'string' || rawValue === '' ) {
 		return null;
@@ -37,6 +60,17 @@ export function parseConsent( rawValue ) {
 	}
 }
 
+/**
+ * Serialize a consent decision to the compact v1 cookie shape (grants as 0/1).
+ *
+ * @param {object} consent              Decision.
+ * @param {number} consent.schemaVersion
+ * @param {number} consent.policyVersion
+ * @param {string} consent.jurisdiction
+ * @param {object} consent.grants       Purpose key => bool.
+ * @param {number} consent.timestamp    Epoch millis.
+ * @return {object} The { v, p, j, g, t } payload.
+ */
 export function serializeConsent( {
 	schemaVersion,
 	policyVersion,
@@ -57,6 +91,17 @@ export function serializeConsent( {
 	};
 }
 
+/**
+ * Validate a stored decision: versions must match, timestamp must be positive, and the re-consent window must not have lapsed.
+ *
+ * @param {?object} payload         Decoded v1 payload.
+ * @param {object}  expect          Expectations.
+ * @param {number}  expect.schemaVersion
+ * @param {number}  expect.policyVersion
+ * @param {number}  expect.maxAgeMs
+ * @param {number} [expect.now]     Current epoch millis.
+ * @return {?object} { grants, jurisdiction, schemaVersion, policyVersion, timestamp }, or null.
+ */
 export function validateConsent(
 	payload,
 	{ schemaVersion, policyVersion, maxAgeMs, now = Date.now() }

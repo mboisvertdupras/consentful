@@ -4,6 +4,13 @@ import { computeGrants } from './lib/grants.js';
 import { resolveJurisdictionSync, activeJurisdiction } from './lib/jurisdiction.js';
 import { signalState, anyAdSignalDenied } from './adapters/google-signals.js';
 
+/**
+ * Run the decider against a window/document.
+ *
+ * @param {unknown} rawConfig window.consentfulConfig.
+ * @param {object}  env       { win, doc }.
+ * @return {object} { grants, hasDecision, gpc, jurisdiction } (also stashed on window.consentful._init).
+ */
 export function init( rawConfig, { win, doc } ) {
 	const config = parseConfig( rawConfig );
 

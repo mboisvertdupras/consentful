@@ -92,6 +92,12 @@ const parseAdapters = ( raw ) => {
 	return out;
 };
 
+/**
+ * Coerce window.consentfulConfig into a typed config object.
+ *
+ * @param {unknown} raw The raw config value.
+ * @return {object} Normalized config.
+ */
 export function parseConfig( raw ) {
 	const cfg = toObject( raw );
 	const maxAgeDays = toInt( cfg.maxAgeDays, 180 );

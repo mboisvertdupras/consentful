@@ -4,6 +4,7 @@ import { resolveGtag } from './google-gtag.js';
 let lastStateJson = null;
 const loaded = new Set();
 
+/** Reset module state (test seam). */
 export function reset() {
 	lastStateJson = null;
 	loaded.clear();
@@ -46,6 +47,14 @@ const loadContainer = ( id, win, doc ) => {
 };
 
 export const google = {
+	/**
+	 * @param {object}   ctx
+	 * @param {object}   ctx.adapterConfig { measurementIds, containerIds, purposeSignals }.
+	 * @param {object}   ctx.grants        Purpose key => bool.
+	 * @param {Window}   ctx.win
+	 * @param {Document} ctx.doc
+	 * @param {Function} [ctx.gtag]        Optional pre-resolved gtag (else resolved from win).
+	 */
 	apply( ctx ) {
 		const { adapterConfig, grants, win, doc } = ctx;
 		const gtag = ctx.gtag || resolveGtag( win );

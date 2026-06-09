@@ -1,5 +1,12 @@
 import { readCookie } from './cookie.js';
 
+/**
+ * Map a region code to a jurisdiction id.
+ *
+ * @param {?string} region Region code (e.g. 'US', 'CA-QC').
+ * @param {object}  map    Region-code => jurisdiction-id.
+ * @return {?string} Jurisdiction id, or null when unmapped.
+ */
 export function mapRegionToJurisdiction( region, map ) {
 	if ( typeof region !== 'string' || region === '' ) {
 		return null;
@@ -13,6 +20,15 @@ export function mapRegionToJurisdiction( region, map ) {
 	return typeof lookup[ country ] === 'string' ? lookup[ country ] : null;
 }
 
+/**
+ * Read a region code from the configured client/edge geo signal.
+ *
+ * @param {object} geo        { cookie, var } signal names.
+ * @param {object} env        { win, doc }.
+ * @param {Window} env.win
+ * @param {Document} env.doc
+ * @return {?string} Region code, or null when no signal is present.
+ */
 export function readGeoSignal( geo, { win, doc } ) {
 	const cfg = geo && typeof geo === 'object' ? geo : {};
 	if ( cfg.cookie ) {
@@ -27,6 +43,13 @@ export function readGeoSignal( geo, { win, doc } ) {
 	return null;
 }
 
+/**
+ * Resolve the active jurisdiction id synchronously from the geo signal.
+ *
+ * @param {object} config Parsed config ({ geo, jurisdictions }).
+ * @param {object} env    { win, doc }.
+ * @return {?string} Jurisdiction id, or null when unresolved.
+ */
 export function resolveJurisdictionSync( config, env ) {
 	const region = readGeoSignal( config.geo, env );
 	const id = mapRegionToJurisdiction( region, config.geo && config.geo.map );
@@ -36,6 +59,13 @@ export function resolveJurisdictionSync( config, env ) {
 	return null;
 }
 
+/**
+ * Resolve a jurisdiction record from an id, falling back to default then strictest `*`.
+ *
+ * @param {object}  config Parsed config ({ jurisdictions, defaultJurisdiction }).
+ * @param {?string} id     Candidate jurisdiction id.
+ * @return {object} A jurisdiction record { id, label, policy }.
+ */
 export function activeJurisdiction( config, id ) {
 	const jurisdictions = config.jurisdictions || {};
 	if ( id && jurisdictions[ id ] ) {

@@ -1,5 +1,13 @@
 import { coerceBannerConfig, purposeCopy } from './banner-config.js';
 
+/**
+ * Initialize the banner against the gate API.
+ *
+ * @param {object}  api               The window.consentful API.
+ * @param {unknown} rawBannerConfig   The raw banner config slice (untrusted — coerced here).
+ * @param {object}  env               { win, doc } — only doc is needed.
+ * @return {object} A handle { destroy }.
+ */
 export function initBanner( api, rawBannerConfig, { doc } ) {
 	const cfg = coerceBannerConfig( rawBannerConfig );
 
@@ -133,6 +141,11 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 	}
 	return renderOptIn();
 
+	/**
+	 * Opt-in (Loi 25/GDPR): deny-by-default, blocking, modal focus trap + background-inert.
+	 *
+	 * @return {object} { destroy }.
+	 */
 	function renderOptIn() {
 		const isModal = cfg.position === 'modal';
 
@@ -366,6 +379,11 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		return { destroy };
 	}
 
+	/**
+	 * Opt-out (US state laws): allow-by-default, a non-blocking "Do Not Sell or Share" notice.
+	 *
+	 * @return {object} { destroy }.
+	 */
 	function renderOptOut() {
 		const root = doc.createElement( 'div' );
 		root.className =
