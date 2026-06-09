@@ -8,9 +8,6 @@ use Consentful\Consent\DefaultPurpose;
 use Consentful\Consent\PurposeRegistry;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Covers the active Purpose set: seeding, dedupe-by-key, and insertion order.
- */
 final class PurposeRegistryTest extends TestCase {
 
 	public function test_with_defaults_holds_the_four_default_purposes_in_order(): void {
@@ -21,7 +18,6 @@ final class PurposeRegistryTest extends TestCase {
 	}
 
 	public function test_personalization_is_opt_in_via_add(): void {
-		// The optional Personalization purpose is added explicitly by an Integrator.
 		$registry = PurposeRegistry::with_defaults();
 		$registry->add( DefaultPurpose::Personalization );
 

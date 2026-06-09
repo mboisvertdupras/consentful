@@ -9,9 +9,6 @@ use Consentful\Jurisdiction\Policy;
 use Consentful\Jurisdiction\PolicyType;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Policy / PolicyType behavior per jurisdiction posture.
- */
 final class PolicyTest extends TestCase {
 
 	public function test_opt_in_denies_blocks_and_shows_banner(): void {
@@ -55,8 +52,6 @@ final class PolicyTest extends TestCase {
 	}
 
 	public function test_notice_only_grants_its_default_list_without_a_banner(): void {
-		// NoticeOnly performs no gating: it informs without a banner and loads exactly the
-		// purposes its default_granted lists (typically all non-essential).
 		$policy = Policy::notice_only( 1, array( DefaultPurpose::Analytics, DefaultPurpose::Marketing ) );
 
 		$this->assertFalse( $policy->shows_banner() );
@@ -76,7 +71,6 @@ final class PolicyTest extends TestCase {
 	public function test_grants_by_default_matches_by_key_not_identity(): void {
 		$policy = Policy::opt_out( 1, array( DefaultPurpose::Analytics ) );
 
-		// A distinct Purpose object sharing the 'analytics' key still matches.
 		$this->assertTrue( $policy->grants_by_default( new CustomPurpose( 'analytics' ) ) );
 	}
 

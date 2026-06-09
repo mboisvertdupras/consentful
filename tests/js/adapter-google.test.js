@@ -53,7 +53,6 @@ describe( 'adapters/google', () => {
 		const containers = document.querySelectorAll( 'script[src*="gtm.js?id=GTM-XYZ"]' );
 		expect( containers.length ).toBe( 1 );
 		expect( containers[ 0 ].async ).toBe( true );
-		// No gtag.js when there are no measurement ids.
 		expect( document.querySelectorAll( 'script[src*="gtag/js"]' ).length ).toBe( 0 );
 	} );
 

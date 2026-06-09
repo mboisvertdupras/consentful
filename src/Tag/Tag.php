@@ -5,10 +5,6 @@ namespace Consentful\Tag;
 
 use Consentful\Consent\Purpose;
 
-/**
- * A concrete gated thing (GA4, a pixel, a snippet). Fires only when every one of
- * its Purposes is granted. Immutable; the registry keys it by id.
- */
 final class Tag {
 
 	/**

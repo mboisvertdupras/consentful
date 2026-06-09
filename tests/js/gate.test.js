@@ -51,7 +51,6 @@ describe( 'gate', () => {
 	} );
 
 	it( 'recomputes without the decider _init', () => {
-		// No decider ran; gate alone must compute opt-in deny-all.
 		const api = bootGate();
 		expect( api.get() ).toEqual( {
 			necessary: true,
@@ -147,8 +146,6 @@ describe( 'gate', () => {
 	} );
 
 	it( 'resolves several instances of one handler by the adapter handler field', () => {
-		// Two custom snippets, distinct adapter ids, both mapped to the `script` handler.
-		// The old lookup keyed by adapter id would miss both; the handler-field lookup fires them.
 		const cfg = makeConfig( {
 			tags: [
 				{ id: 'a', purposes: [ 'necessary' ], delivery: 'direct', adapter: 'cnf-a' },
@@ -192,14 +189,12 @@ describe( 'gate', () => {
 	} );
 } );
 
-/** Pull consent-update calls out of the dataLayer. */
 function consentUpdates() {
 	return ( window.dataLayer || [] )
 		.map( ( a ) => Array.from( a ) )
 		.filter( ( a ) => a[ 0 ] === 'consent' && a[ 1 ] === 'update' );
 }
 
-/** Resolve after the chained fetch microtasks settle. */
 function flush() {
 	return Promise.resolve().then( () => Promise.resolve() ).then( () => Promise.resolve() );
 }
@@ -236,10 +231,7 @@ describe( 'gate async geo fallback', () => {
 		expect( api.jurisdiction() ).toBe( 'US' );
 		expect( api.policy().type ).toBe( 'opt_out' );
 		expect( api.get().analytics ).toBe( true );
-		// google.apply diffs the state JSON, so the post-geo apply re-emits an update.
 		expect( consentUpdates().length ).toBeGreaterThanOrEqual( 1 );
-		// US is opt_out (Increment B): the prior opt-in `*` banner is torn down and replaced
-		// by exactly one non-blocking Do-Not-Sell notice (no duplicates).
 		expect( document.querySelectorAll( '.cnf-banner' ).length ).toBe( 1 );
 		expect( document.querySelector( '.cnf-banner' ).classList.contains( 'cnf-banner--optout' ) ).toBe(
 			true
@@ -258,7 +250,6 @@ describe( 'gate async geo fallback', () => {
 
 		expect( api.jurisdiction() ).toBe( 'QC' );
 		expect( api.policy().type ).toBe( 'opt_in' );
-		// Exactly one banner — the old node was destroyed before the re-render.
 		expect( document.querySelectorAll( '.cnf-banner' ).length ).toBe( 1 );
 		expect( document.querySelectorAll( '.cnf-reopen' ).length ).toBe( 1 );
 	} );
@@ -298,7 +289,6 @@ describe( 'gate async geo fallback', () => {
 	} );
 } );
 
-/** Inject a navigator.sendBeacon mock (absent in jsdom); returns the spy. */
 function mockBeacon( impl = () => true ) {
 	const spy = vi.fn( impl );
 	Object.defineProperty( navigator, 'sendBeacon', { value: spy, configurable: true } );
@@ -332,7 +322,6 @@ describe( 'gate proof of consent', () => {
 			const body = JSON.parse( text );
 			expect( typeof body.cid ).toBe( 'string' );
 			expect( body.cid.length ).toBeGreaterThan( 0 );
-			// grants = the normalized decision (necessary forced on, marketing denied).
 			expect( body.grants ).toEqual( api.get() );
 			expect( body.grants.necessary ).toBe( true );
 			expect( body.grants.analytics ).toBe( true );
@@ -416,7 +405,6 @@ describe( 'gate proof of consent', () => {
 		} );
 		const api = bootGate();
 		expect( () => api.setConsent( { analytics: true } ) ).not.toThrow();
-		// The decision still applied and persisted despite the proof failure.
 		expect( api.get().analytics ).toBe( true );
 		expect( api.hasDecision() ).toBe( true );
 	} );

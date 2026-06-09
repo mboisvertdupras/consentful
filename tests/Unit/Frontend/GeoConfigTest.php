@@ -6,10 +6,6 @@ namespace Consentful\Tests\Unit\Frontend;
 use Consentful\Frontend\GeoConfig;
 use PHPUnit\Framework\TestCase;
 
-/**
- * GeoConfig is a pure value object: defaults degrade to today's strictest fallback,
- * the endpoint resolves by precedence, and the default region map covers EU/UK/US/QC.
- */
 final class GeoConfigTest extends TestCase {
 
 	public function test_defaults_have_no_signal_and_enable_the_builtin_endpoint(): void {
@@ -63,7 +59,6 @@ final class GeoConfigTest extends TestCase {
 		$this->assertSame( 'UK', $map['GB'] );
 		$this->assertSame( 'US', $map['US'] );
 		$this->assertSame( 'QC', $map['CA-QC'] );
-		// Unmapped regions fall through to the strictest '*' fallback (correct).
 		$this->assertArrayNotHasKey( 'JP', $map );
 		$this->assertArrayNotHasKey( 'CA', $map );
 	}

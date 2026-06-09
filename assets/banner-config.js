@@ -1,12 +1,3 @@
-/**
- * Banner config coercer — the banner's own small normalizer for the `banner` slice of
- * window.consentfulConfig. Values arrive untrusted (PHP-encoded JSON / wp_localize_script
- * strings), so every field is coerced explicitly.
- *
- * Kept separate from lib/config.js on purpose: parseConfig must stay banner-free so the
- * inline decider bundle stays lean. These mirror its toStr/toBool/toInt patterns.
- */
-
 const toBool = ( value ) => value === true || value === 'true' || value === 1 || value === '1';
 
 const toStr = ( value, fallback = '' ) =>
@@ -63,12 +54,6 @@ const parsePurposeCopy = ( raw ) => {
 	return out;
 };
 
-/**
- * Coerce the raw banner slice into a typed banner config.
- *
- * @param {unknown} raw The raw banner config.
- * @return {object} Normalized banner config.
- */
 export function coerceBannerConfig( raw ) {
 	const cfg = toObject( raw );
 	return {
@@ -84,20 +69,11 @@ export function coerceBannerConfig( raw ) {
 	};
 }
 
-/** Humanize a purpose key as a label fallback ("ad_data" => "Ad data"). */
 const humanize = ( key ) => {
 	const spaced = key.replace( /[_-]+/g, ' ' ).trim();
 	return spaced ? spaced.charAt( 0 ).toUpperCase() + spaced.slice( 1 ) : key;
 };
 
-/**
- * Resolve presentation copy for a purpose key, falling back to a humanized key so
- * integrator custom purposes without copy still render.
- *
- * @param {object} cfg Coerced banner config.
- * @param {string} key Purpose key.
- * @return {{label: string, description: string}} Presentation copy.
- */
 export function purposeCopy( cfg, key ) {
 	const entry = cfg.purposes[ key ];
 	return {

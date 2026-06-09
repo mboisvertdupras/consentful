@@ -8,10 +8,6 @@ use Consentful\Consent\ConsentLogSchema;
 use Consentful\Consent\ConsentRecord;
 use PHPUnit\Framework\TestCase;
 
-/**
- * The pure CSV builder: a header row plus one row per record, RFC-4180 quoted so the
- * output round-trips through a compliant reader (here, str_getcsv).
- */
 final class ConsentLogExporterTest extends TestCase {
 
 	private function record( string $cid = 'cid-1', string $jurisdiction = 'US' ): ConsentRecord {
@@ -49,7 +45,6 @@ final class ConsentLogExporterTest extends TestCase {
 			),
 			$rows[0]
 		);
-		// The header is the schema's column order, not a re-listed copy.
 		$this->assertSame( ConsentLogSchema::column_names(), $rows[0] );
 	}
 
@@ -83,7 +78,6 @@ final class ConsentLogExporterTest extends TestCase {
 	}
 
 	public function test_embedded_quotes_and_commas_are_escaped_and_round_trip(): void {
-		// A pre-built export row with characters that must be RFC-4180 quoted.
 		$row = array(
 			'consent_id'     => 'cid,"x"',
 			'created_at'     => '2024-12-05T12:00:00+00:00',
@@ -103,9 +97,6 @@ final class ConsentLogExporterTest extends TestCase {
 	}
 
 	public function test_formula_injection_triggers_are_neutralized(): void {
-		// Grant keys reach the log via the public consent endpoint, so a value beginning with
-		// a formula trigger (=, +, -, @, tab, CR) must be prefixed with a single quote so the
-		// auditor's spreadsheet does not execute it as a formula (CWE-1236).
 		$row = array(
 			'consent_id'     => 'cid',
 			'created_at'     => '2024-12-05T12:00:00+00:00',
@@ -120,7 +111,6 @@ final class ConsentLogExporterTest extends TestCase {
 
 		$rows = $this->parse( ConsentLogExporter::to_csv( array( $row ) ) );
 
-		// The dangerous leading '=' is now an inert literal, prefixed with a single quote.
 		$this->assertSame( "'=cmd|calc!A1=1", $rows[1][6] );
 	}
 
@@ -135,11 +125,7 @@ final class ConsentLogExporterTest extends TestCase {
 		$this->assertSame( 'g1', $rows[1][0] );
 	}
 
-	/**
-	 * Parse the CSV back into rows with the standard library reader.
-	 *
-	 * @return list<list<string>>
-	 */
+	/** @return list<list<string>> */
 	private function parse( string $csv ): array {
 		$rows = array();
 		foreach ( explode( "\r\n", rtrim( $csv, "\r\n" ) ) as $line ) {

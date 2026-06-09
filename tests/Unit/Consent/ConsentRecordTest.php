@@ -7,11 +7,6 @@ use Consentful\Consent\ConsentLogSchema;
 use Consentful\Consent\ConsentRecord;
 use PHPUnit\Framework\TestCase;
 
-/**
- * ConsentRecord is the pure proof entity: to_row() is the DB shape (UTC DATETIME,
- * JSON purposes, hex hash or null) and to_export_row() is the auditor-friendly flat
- * shape (ISO-8601, sorted key=0/1 purposes, '' for absent hashes). No raw IP/UA ever.
- */
 final class ConsentRecordTest extends TestCase {
 
 	private function record(
@@ -58,7 +53,6 @@ final class ConsentRecordTest extends TestCase {
 	public function test_to_row_never_carries_raw_pii(): void {
 		$row = $this->record( 'hashed-ip', 'hashed-ua' )->to_row();
 
-		// The row only ever holds hashes; there is no raw IP/UA column at all.
 		$this->assertArrayNotHasKey( 'ip', $row );
 		$this->assertArrayNotHasKey( 'ua', $row );
 		$this->assertArrayNotHasKey( 'remote_addr', $row );
@@ -69,7 +63,6 @@ final class ConsentRecordTest extends TestCase {
 		$row = $this->record()->to_export_row();
 
 		$this->assertSame( gmdate( 'c', 1733400000 ), $row['created_at'] );
-		// Sorted by key: analytics before necessary.
 		$this->assertSame( 'analytics=0;necessary=1', $row['purposes'] );
 		$this->assertSame( 'a1b2', $row['ip_hash'] );
 	}
@@ -103,7 +96,6 @@ final class ConsentRecordTest extends TestCase {
 	public function test_row_shapes_follow_the_schema_column_order(): void {
 		$record = $this->record();
 
-		// Both row shapes derive their column order from the single contract owner.
 		$this->assertSame( ConsentLogSchema::column_names(), array_keys( $record->to_row() ) );
 		$this->assertSame( ConsentLogSchema::column_names(), array_keys( $record->to_export_row() ) );
 	}

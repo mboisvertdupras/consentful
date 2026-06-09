@@ -9,9 +9,6 @@ use Consentful\Tag\Tag;
 use Consentful\Tag\TagRegistry;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Covers TagRegistry: add/get/has/all (insertion order) and for_adapter.
- */
 final class TagRegistryTest extends TestCase {
 
 	private function tag( string $id, string $adapter_id ): Tag {

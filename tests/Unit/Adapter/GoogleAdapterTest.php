@@ -10,10 +10,6 @@ use Consentful\Tag\Delivery;
 use Consentful\Tag\Tag;
 use PHPUnit\Framework\TestCase;
 
-/**
- * GoogleAdapter owns the Purpose→Signal map and emits the Consent Mode v2 client
- * config (default map or an override, plus the redaction/passthrough/wait flags).
- */
 final class GoogleAdapterTest extends TestCase {
 
 	public function test_id_is_google(): void {
@@ -94,7 +90,6 @@ final class GoogleAdapterTest extends TestCase {
 
 		$config = $adapter->client_config();
 
-		// The Integrator's override is used verbatim — no merge.
 		$this->assertSame(
 			array(
 				'analytics' => array( 'analytics_storage' ),

@@ -7,10 +7,6 @@ use Consentful\Consent\ConsentLogSchema;
 use Consentful\Tests\Unit\Support\FakeWpdb;
 use PHPUnit\Framework\TestCase;
 
-/**
- * The pure DDL builder: create_table_sql carries every column, the two secondary KEYs
- * and the PRIMARY KEY, and honors the passed table name + charset/collation.
- */
 final class ConsentLogSchemaTest extends TestCase {
 
 	private function sql(): string {
@@ -53,7 +49,6 @@ final class ConsentLogSchemaTest extends TestCase {
 	public function test_ddl_declares_every_record_column(): void {
 		$sql = $this->sql();
 
-		// The DDL column lines are generated from the one column contract — assert the tie.
 		foreach ( ConsentLogSchema::column_names() as $column ) {
 			$this->assertStringContainsString( $column, $sql );
 		}
@@ -67,8 +62,6 @@ final class ConsentLogSchemaTest extends TestCase {
 	}
 
 	public function test_uninstall_script_drops_the_same_table_name(): void {
-		// uninstall.php runs standalone (no autoloader), so it inlines the table name; pin that
-		// literal to the schema's single owner so the two cannot drift.
 		$bare      = ConsentLogSchema::table( FakeWpdb::create( '' ) );
 		$uninstall = (string) file_get_contents( dirname( __DIR__, 3 ) . '/uninstall.php' );
 

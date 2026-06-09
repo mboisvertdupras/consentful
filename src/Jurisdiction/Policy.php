@@ -5,14 +5,10 @@ namespace Consentful\Jurisdiction;
 
 use Consentful\Consent\Purpose;
 
-/**
- * The consent rules a Jurisdiction applies: its PolicyType, a version (a bump
- * triggers re-consent) and the Purposes granted before the Visitor acts.
- */
 final class Policy {
 
 	/**
-	 * @param list<Purpose> $default_granted Purposes granted before the Visitor acts.
+	 * @param list<Purpose> $default_granted
 	 */
 	public function __construct(
 		public readonly PolicyType $type,
@@ -56,12 +52,6 @@ final class Policy {
 	}
 
 	/**
-	 * A Notice/None posture: no banner, no blocking — the visitor is informed (e.g. a
-	 * privacy-policy link) but never prompted. `$default_granted` is exactly what loads
-	 * without a decision — typically EVERY non-essential Purpose, since nothing collects
-	 * consent here; an empty list loads only the always-on Purposes (valid but unusual:
-	 * non-essential tags would then never fire). The Integrator chooses this set explicitly.
-	 *
 	 * @param list<Purpose> $default_granted
 	 */
 	public static function notice_only( int $version, array $default_granted ): self {

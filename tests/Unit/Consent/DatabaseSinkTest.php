@@ -9,11 +9,6 @@ use Consentful\Consent\DatabaseSink;
 use Consentful\Tests\Unit\Support\FakeWpdb;
 use PHPUnit\Framework\TestCase;
 
-/**
- * DatabaseSink is the thin $wpdb shell: one prepared insert per record into the
- * prefixed table, with explicit %s/%d formats — never raw SQL interpolation. Exercised
- * with a fake wpdb that records the insert call.
- */
 final class DatabaseSinkTest extends TestCase {
 
 	private function record(): ConsentRecord {
@@ -44,7 +39,6 @@ final class DatabaseSinkTest extends TestCase {
 			array( '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s' ),
 			$insert['format']
 		);
-		// The formats are derived from the single column-contract owner, not re-listed here.
 		$this->assertSame( ConsentLogSchema::insert_formats(), $insert['format'] );
 	}
 

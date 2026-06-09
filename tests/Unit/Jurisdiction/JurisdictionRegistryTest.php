@@ -10,9 +10,6 @@ use Consentful\Jurisdiction\Policy;
 use Consentful\Jurisdiction\PolicyType;
 use PHPUnit\Framework\TestCase;
 
-/**
- * JurisdictionRegistry defaults and fail-closed resolution.
- */
 final class JurisdictionRegistryTest extends TestCase {
 
 	public function test_constructor_stores_and_adds_fallback(): void {
@@ -39,7 +36,6 @@ final class JurisdictionRegistryTest extends TestCase {
 		$registry->add( $quebec );
 		$registry->add( $us );
 
-		// The '*' fallback is added first by the ctor, so it leads.
 		$this->assertSame( array( $fallback, $quebec, $us ), $registry->all() );
 	}
 
@@ -81,7 +77,6 @@ final class JurisdictionRegistryTest extends TestCase {
 		$this->assertSame( $expected, $us->policy->default_granted );
 		$this->assertTrue( $us->policy->grants_by_default( DefaultPurpose::Analytics ) );
 		$this->assertTrue( $us->policy->grants_by_default( DefaultPurpose::Marketing ) );
-		// Personalization is opt-in (not in the default set), so it is not default-granted.
 		$this->assertFalse( $us->policy->grants_by_default( DefaultPurpose::Personalization ) );
 	}
 
@@ -105,8 +100,6 @@ final class JurisdictionRegistryTest extends TestCase {
 
 		$registry->add( new Jurisdiction( '*', 'Rogue', Policy::opt_out( 1, array() ) ) );
 
-		// The stored fallback is captured at construction; re-adding '*' cannot
-		// loosen resolution for an unknown id.
 		$this->assertSame( PolicyType::OptIn, $registry->fallback()->policy->type );
 		$this->assertSame( PolicyType::OptIn, $registry->get( 'ZZ' )->policy->type );
 	}

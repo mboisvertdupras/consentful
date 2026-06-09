@@ -3,9 +3,6 @@ declare( strict_types = 1 );
 
 namespace Consentful\Adapter;
 
-/**
- * The active set of adapters, keyed by their stable id.
- */
 final class AdapterRegistry {
 
 	/** @var array<string, Adapter> */
@@ -23,9 +20,7 @@ final class AdapterRegistry {
 		return $this->adapters[ $id ] ?? null;
 	}
 
-	/**
-	 * @return list<Adapter>
-	 */
+	/** @return list<Adapter> */
 	public function all(): array {
 		return array_values( $this->adapters );
 	}

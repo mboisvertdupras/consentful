@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { initBanner } from '../../assets/banner.js';
 import { optInPolicy, optOutPolicy, noticeOnlyPolicy } from './helpers.js';
 
-// baseCfg.copy is {}, so cfg.copy.saved falls back to this COPY_DEFAULTS value.
 const SAVED = 'Your privacy choices were saved.';
 
 const POLICIES = {
@@ -11,11 +10,6 @@ const POLICIES = {
 	notice_only: noticeOnlyPolicy,
 };
 
-/**
- * Builds a fake gate API with spy decision methods over a mutable grants object, so the
- * banner can be driven without the real gate. `over` patches the defaults per-test;
- * `policyType` selects the matching full policy record the banner reads via api.policy().
- */
 function makeApi( over = {} ) {
 	const state = {
 		grants: { necessary: true, functional: false, analytics: false, marketing: false },
@@ -187,7 +181,7 @@ describe( 'banner', () => {
 
 	it( 'opening Customize leaves exactly two visible action buttons with Accept all hidden', () => {
 		boot();
-		root().querySelector( '.cnf-customize' ).click(); // reveal prefs
+		root().querySelector( '.cnf-customize' ).click();
 		const actions = root().querySelector( '.cnf-actions' );
 		const visible = Array.prototype.filter.call(
 			actions.querySelectorAll( '.cnf-btn' ),
@@ -201,7 +195,7 @@ describe( 'banner', () => {
 
 	it( 'Save reads checkbox state and calls api.setConsent with the grants', () => {
 		const api = boot();
-		root().querySelector( '.cnf-customize' ).click(); // reveal prefs
+		root().querySelector( '.cnf-customize' ).click();
 		root().querySelector( '.cnf-purpose__input[value="marketing"]' ).checked = true;
 		root().querySelector( '.cnf-btn--save' ).click();
 		expect( api.setConsent ).toHaveBeenCalledTimes( 1 );
@@ -254,10 +248,8 @@ describe( 'banner', () => {
 			root().querySelector( '.cnf-btn--primary' ).click();
 			expect( toast().hidden ).toBe( false );
 			vi.advanceTimersByTime( 2000 );
-			// Hidden (fading out) but the text persists so it fades WITH the box…
 			expect( toast().hidden ).toBe( true );
 			expect( toast().textContent ).toBe( SAVED );
-			// …and is cleared only once the fade-out finishes.
 			vi.advanceTimersByTime( 250 );
 			expect( toast().textContent ).toBe( '' );
 		} finally {
@@ -299,7 +291,6 @@ describe( 'banner', () => {
 		handle.destroy();
 		expect( sibling.hasAttribute( 'inert' ) ).toBe( false );
 		expect( sibling.hasAttribute( 'aria-hidden' ) ).toBe( false );
-		// The keydown trap is gone — re-init renders exactly one banner.
 		bootHandle( { ...baseCfg, position: 'modal' }, api );
 		expect( document.querySelectorAll( '.cnf-banner' ).length ).toBe( 1 );
 	} );
@@ -315,7 +306,6 @@ describe( 'banner', () => {
 		expect( root().hidden ).toBe( false );
 		expect( pill().hidden ).toBe( true );
 		expect( root().querySelector( '.cnf-prefs' ).hidden ).toBe( false );
-		// Re-open reveals prefs => Save is the commit, Accept all is hidden.
 		expect( root().querySelector( '.cnf-btn--save' ).hidden ).toBe( false );
 		expect( root().querySelector( '.cnf-btn--primary' ).hidden ).toBe( true );
 		expect( root().querySelector( '.cnf-purpose__input[value="analytics"]' ).checked ).toBe(
@@ -361,11 +351,11 @@ describe( 'banner a11y', () => {
 		expect( root().hidden ).toBe( true );
 		expect( sibling.hasAttribute( 'inert' ) ).toBe( false );
 
-		pill().click(); // open modal
+		pill().click();
 		expect( sibling.getAttribute( 'inert' ) ).toBe( '' );
 		expect( sibling.getAttribute( 'aria-hidden' ) ).toBe( 'true' );
 
-		root().querySelector( '.cnf-btn--primary' ).click(); // decide => close
+		root().querySelector( '.cnf-btn--primary' ).click();
 		expect( sibling.hasAttribute( 'inert' ) ).toBe( false );
 		expect( sibling.hasAttribute( 'aria-hidden' ) ).toBe( false );
 	} );
@@ -377,9 +367,8 @@ describe( 'banner a11y', () => {
 		const api = makeApi( { decision: true } );
 		boot( modalCfg, api );
 
-		pill().click(); // open modal
-		root().querySelector( '.cnf-btn--primary' ).click(); // decide => close
-		// We never set it, so we must not strip the site's own aria-hidden.
+		pill().click();
+		root().querySelector( '.cnf-btn--primary' ).click();
 		expect( sibling.getAttribute( 'aria-hidden' ) ).toBe( 'true' );
 	} );
 
@@ -406,7 +395,6 @@ describe( 'banner opt_out (Do Not Sell/Share notice)', () => {
 		document.body.removeAttribute( 'inert' );
 	} );
 
-	// Opt-out is allow-by-default: every non-essential purpose starts granted.
 	function makeOptOut( over = {} ) {
 		return makeApi( {
 			policyType: 'opt_out',
@@ -460,10 +448,8 @@ describe( 'banner opt_out (Do Not Sell/Share notice)', () => {
 		customize.click();
 		expect( prefs.hidden ).toBe( false );
 		expect( customize.getAttribute( 'aria-expanded' ) ).toBe( 'true' );
-		// Save is the commit while prefs are open; Close is hidden.
 		expect( root().querySelector( '.cnf-btn--save' ).hidden ).toBe( false );
 		expect( closeBtn().hidden ).toBe( true );
-		// Prefilled from the all-on opt-out defaults.
 		expect( root().querySelector( '.cnf-purpose__input[value="analytics"]' ).checked ).toBe( true );
 		expect( root().querySelector( '.cnf-purpose__input[value="marketing"]' ).checked ).toBe( true );
 
@@ -529,7 +515,6 @@ describe( 'banner opt_out (Do Not Sell/Share notice)', () => {
 		expect( node.hasAttribute( 'aria-modal' ) ).toBe( false );
 		expect( sibling.hasAttribute( 'inert' ) ).toBe( false );
 		expect( sibling.hasAttribute( 'aria-hidden' ) ).toBe( false );
-		// Tab is never intercepted — dispatching it changes nothing about the notice.
 		document.dispatchEvent( new window.KeyboardEvent( 'keydown', { key: 'Tab' } ) );
 		expect( node.hidden ).toBe( false );
 	} );
@@ -551,7 +536,6 @@ describe( 'banner opt_out (Do Not Sell/Share notice)', () => {
 		handle.destroy();
 		expect( root() ).toBeNull();
 		expect( pill() ).toBeNull();
-		// Listener is gone — re-init renders exactly one notice.
 		bootHandle( baseCfg, makeOptOut() );
 		expect( document.querySelectorAll( '.cnf-banner' ).length ).toBe( 1 );
 	} );

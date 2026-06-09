@@ -9,28 +9,16 @@ use Consentful\Tests\Unit\Support\FakeWpdb;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
-/**
- * Plugin bootstrap: singleton, idempotent boot, and direct service wiring (no container).
- * boot() registers the cache-safe gate (wp_head priority 1 + wp_enqueue_scripts), the REST
- * controllers, the retention-purge hook, and — only in admin context — the admin UI hooks.
- *
- * Relies on tests/bootstrap.php (CONSENTFUL_* constants) and tests/stubs.php (no-op WP
- * shims: add_action, register_setting, the option/cron/wpdb recorders, …).
- */
 final class PluginTest extends TestCase {
 
 	protected function setUp(): void {
 		parent::setUp();
-		// boot() wires the DB-backed Sink and runs the upgrade check. Seed a matching DB
-		// version so activation is skipped, and a fake wpdb so the Sink factory resolves.
 		$GLOBALS['consentful_test_options'] = array(
 			Activator::VERSION_OPTION => CONSENTFUL_DB_VERSION,
 		);
 		$GLOBALS['wpdb']                    = FakeWpdb::create();
 		$GLOBALS['consentful_test_actions'] = array();
 
-		// The singleton's $booted flag persists across tests in one process, so reset it to a
-		// fresh, un-booted instance per test (boot() is otherwise a no-op the second time).
 		$this->reset_singleton();
 	}
 
@@ -45,17 +33,12 @@ final class PluginTest extends TestCase {
 		parent::tearDown();
 	}
 
-	/** Null the private static singleton so the next instance() builds a fresh, un-booted Plugin. */
 	private function reset_singleton(): void {
 		$property = ( new ReflectionClass( Plugin::class ) )->getProperty( 'instance' );
 		$property->setValue( null, null );
 	}
 
-	/**
-	 * The hooks recorded by the add_action stub for this test.
-	 *
-	 * @return list<array{hook: string, priority: int}>
-	 */
+	/** @return list<array{hook: string, priority: int}> */
 	private function recorded_actions(): array {
 		$actions = $GLOBALS['consentful_test_actions'] ?? array();
 		if ( ! is_array( $actions ) ) {
@@ -101,7 +84,6 @@ final class PluginTest extends TestCase {
 		$plugin->boot();
 		$first = count( $this->recorded_actions() );
 
-		// A second boot must not re-register the hooks.
 		$plugin->boot();
 		$second = count( $this->recorded_actions() );
 
@@ -119,7 +101,6 @@ final class PluginTest extends TestCase {
 	}
 
 	public function test_boot_skips_the_admin_hooks_outside_admin_context(): void {
-		// $GLOBALS['consentful_test_is_admin'] is unset → is_admin() is false.
 		Plugin::instance()->boot();
 
 		$hooks = array_column( $this->recorded_actions(), 'hook' );

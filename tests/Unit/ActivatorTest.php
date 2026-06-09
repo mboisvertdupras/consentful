@@ -7,11 +7,6 @@ use Consentful\Activator;
 use Consentful\Tests\Unit\Support\FakeWpdb;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Activation creates the Consent log table (via a recorded dbDelta), ensures the
- * record salt, and stamps the DB version. Idempotent. The dbDelta + option writes are
- * exercised through recorder stubs and a fake wpdb (no real database).
- */
 final class ActivatorTest extends TestCase {
 
 	protected function setUp(): void {
@@ -82,16 +77,11 @@ final class ActivatorTest extends TestCase {
 
 		Activator::activate();
 
-		// A second run keeps the same salt and just re-runs the (harmless) dbDelta.
 		$this->assertSame( $salt, get_option( Activator::SALT_OPTION ) );
 		$this->assertCount( 2, $this->recorded_dbdelta() );
 	}
 
-	/**
-	 * The dbDelta calls recorded by the stub for this test.
-	 *
-	 * @return list<mixed>
-	 */
+	/** @return list<mixed> */
 	private function recorded_dbdelta(): array {
 		$calls = $GLOBALS['consentful_test_dbdelta'] ?? array();
 		return is_array( $calls ) ? array_values( $calls ) : array();

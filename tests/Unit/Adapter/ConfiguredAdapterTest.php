@@ -9,11 +9,6 @@ use Consentful\Tag\Delivery;
 use Consentful\Tag\Tag;
 use PHPUnit\Framework\TestCase;
 
-/**
- * ConfiguredAdapter is the generic adapter the hydrator builds for each script instance
- * (Meta Pixel, custom snippets): its id is the instance id a Tag references, and it returns
- * its client-config array verbatim (carrying the `handler` field the gate resolves on).
- */
 final class ConfiguredAdapterTest extends TestCase {
 
 	public function test_id_and_client_config_round_trip(): void {

@@ -3,21 +3,10 @@ declare( strict_types = 1 );
 
 namespace Consentful\Consent;
 
-/**
- * An immutable, server-side proof-of-consent record — the durable, pseudonymous
- * evidence a client cookie cannot be. Built once per decision at the REST boundary
- * from validated input plus server-stamped fields, then handed to a Sink.
- *
- * Pure: no WordPress functions (it serializes only via gmdate / wp_json_encode it is
- * handed indirectly), so it runs under PHPUnit without WordPress. Distinct from the
- * runtime Consent value object (the cookie) — that one drives tag gating; this one is
- * the separate audit entity. Hashes are sha256(salt . value) hex or null — never raw
- * IP/UA.
- */
 final class ConsentRecord {
 
 	/**
-	 * @param array<string, bool> $purposes Purpose key → granted.
+	 * @param array<string, bool> $purposes
 	 */
 	public function __construct(
 		public readonly string $consent_id,
@@ -32,10 +21,6 @@ final class ConsentRecord {
 	) {}
 
 	/**
-	 * The DB row: scalar columns plus the DATETIME-formatted timestamp and the
-	 * JSON-encoded purposes. Hash columns carry the hex digest or null. Never any raw
-	 * IP/UA. Column order mirrors the DatabaseSink format map.
-	 *
 	 * @return array{consent_id: string, created_at: string, jurisdiction: string, policy_version: int, schema_version: int, banner_version: int, purposes: string, ip_hash: string|null, ua_hash: string|null}
 	 */
 	public function to_row(): array {
@@ -53,11 +38,6 @@ final class ConsentRecord {
 	}
 
 	/**
-	 * An auditor-friendly, flat row that drives the CSV export: ISO-8601 UTC timestamp,
-	 * a stable `key=0/1;…` purposes string (sorted by key), the scalar versions, and the
-	 * hex hashes ('' when absent). All values are scalar so the row round-trips through
-	 * fputcsv unchanged.
-	 *
 	 * @return array{consent_id: string, created_at: string, jurisdiction: string, policy_version: int, schema_version: int, banner_version: int, purposes: string, ip_hash: string, ua_hash: string}
 	 */
 	public function to_export_row(): array {

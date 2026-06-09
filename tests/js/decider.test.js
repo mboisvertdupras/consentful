@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { init } from '../../assets/decider.js';
 import { makeConfig, resetGlobals, setGpc, seedCookie } from './helpers.js';
 
-/** Pull the args of the gtag('consent','default', ...) call out of dataLayer. */
 function defaultCall() {
 	return ( window.dataLayer || [] )
 		.map( ( a ) => Array.from( a ) )

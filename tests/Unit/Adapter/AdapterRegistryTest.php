@@ -10,9 +10,6 @@ use Consentful\Tag\Delivery;
 use Consentful\Tag\Tag;
 use PHPUnit\Framework\TestCase;
 
-/**
- * A hand-written Adapter (no mock framework), exercised by the registry tests.
- */
 final class FakeAdapter implements Adapter {
 
 	public function __construct(
@@ -27,17 +24,12 @@ final class FakeAdapter implements Adapter {
 		return $this->id === $tag->adapter_id;
 	}
 
-	/**
-	 * @return array<string, mixed>
-	 */
+	/** @return array<string, mixed> */
 	public function client_config(): array {
 		return array( 'id' => $this->id );
 	}
 }
 
-/**
- * Covers AdapterRegistry: add/get/has/all against a hand-written fake Adapter.
- */
 final class AdapterRegistryTest extends TestCase {
 
 	public function test_add_then_get_returns_the_same_adapter(): void {

@@ -6,10 +6,6 @@ namespace Consentful\Tests\Unit\Consent;
 use Consentful\Consent\Signal;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Covers the Google Consent Mode v2 Signal enum — backing values must equal the
- * gtag keys verbatim.
- */
 final class SignalTest extends TestCase {
 
 	public function test_backing_values_equal_the_gtag_keys(): void {

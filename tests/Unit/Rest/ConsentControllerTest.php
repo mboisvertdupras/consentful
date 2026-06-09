@@ -9,12 +9,6 @@ use Consentful\Rest\ConsentController;
 use Consentful\Tests\Unit\Support\FakeRestRequest;
 use PHPUnit\Framework\TestCase;
 
-/**
- * ConsentController's pure heart (record_from_input) validates untrusted input,
- * server-stamps created_at, salt-hashes IP/UA, and never stores raw PII. The route is
- * public (POST + __return_true) by cache-safety necessity; handle() stores via the
- * injected Sink and returns the §3 response (or a 400 WP_Error on bad input).
- */
 final class ConsentControllerTest extends TestCase {
 
 	private const SALT = 'pepper';
@@ -62,7 +56,6 @@ final class ConsentControllerTest extends TestCase {
 
 		$this->assertInstanceOf( ConsentRecord::class, $record );
 		$this->assertSame( 'cid-abc', $record->consent_id );
-		// created_at is the server time, NOT the client millis timestamp.
 		$this->assertSame( 1733400000, $record->created_at );
 		$this->assertSame( 'US', $record->jurisdiction );
 		$this->assertSame( 2, $record->policy_version );
@@ -170,9 +163,6 @@ final class ConsentControllerTest extends TestCase {
 	}
 
 	public function test_params_from_normalizes_a_non_array_body_to_an_empty_array(): void {
-		// get_json_params() returns null (empty body / non-JSON content-type) or a scalar
-		// in real WordPress; the public endpoint must turn that into a clean 400 (via the
-		// missing-grants path) rather than a strict_types TypeError 500.
 		$this->assertSame( array(), ConsentController::params_from( null ) );
 		$this->assertSame( array(), ConsentController::params_from( 42 ) );
 		$this->assertSame( array(), ConsentController::params_from( 'scalar-body' ) );
@@ -310,9 +300,6 @@ final class ConsentControllerTest extends TestCase {
 	}
 }
 
-/**
- * A Sink that records the records handed to it.
- */
 final class RecordingSink implements Sink {
 
 	/** @var list<ConsentRecord> */

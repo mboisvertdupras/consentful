@@ -1,8 +1,3 @@
-/**
- * Shared test helpers — a §2-shaped config fixture and global-reset utilities so each
- * suite drives the entries/handlers against a clean jsdom.
- */
-
 const optInPolicy = () => ( {
 	type: 'opt_in',
 	version: 1,
@@ -30,7 +25,6 @@ const noticeOnlyPolicy = () => ( {
 	defaultGranted: [ 'functional', 'analytics', 'marketing', 'personalization' ],
 } );
 
-/** Policy record factories — the banner reads the resolved policy via api.policy(). */
 export { optInPolicy, optOutPolicy, noticeOnlyPolicy };
 
 export function makeConfig( overrides = {} ) {
@@ -86,7 +80,6 @@ export function makeConfig( overrides = {} ) {
 	};
 }
 
-/** Clear cookies, dataLayer, gtag, GPC and the decider emit/registration flags. */
 export function resetGlobals() {
 	document.cookie.split( ';' ).forEach( ( c ) => {
 		const name = c.split( '=' )[ 0 ].trim();
@@ -103,7 +96,6 @@ export function resetGlobals() {
 	}
 }
 
-/** Force navigator.globalPrivacyControl for a test. */
 export function setGpc( value ) {
 	Object.defineProperty( navigator, 'globalPrivacyControl', {
 		value,
@@ -111,7 +103,6 @@ export function setGpc( value ) {
 	} );
 }
 
-/** Write a v1 cookie payload directly (for "stored decision" tests). */
 export function seedCookie( payload ) {
 	document.cookie =
 		'consentful=' + encodeURIComponent( JSON.stringify( payload ) ) + '; path=/';

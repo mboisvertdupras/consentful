@@ -8,18 +8,9 @@ use Consentful\Catalog\Catalog;
 use Consentful\Frontend\SettingsHydrator;
 use PHPUnit\Framework\TestCase;
 
-/**
- * The hydrator turns the EFFECTIVE settings + Catalog into a ClientConfig: the compliant
- * default baseline from an empty option, the Google merge rule (ga4 + google-ads + gtm →
- * one `google` adapter/tag), script instances (Meta Pixel, custom snippets), the
- * personalization toggle, the simple geo toggle, and purpose-copy overrides flowing into
- * the banner.
- */
 final class SettingsHydratorTest extends TestCase {
 
 	/**
-	 * Narrow a sub-array of an untyped (`mixed`-valued) array for nested offset access.
-	 *
 	 * @param array<array-key, mixed> $source
 	 * @return array<array-key, mixed>
 	 */
@@ -30,8 +21,6 @@ final class SettingsHydratorTest extends TestCase {
 	}
 
 	/**
-	 * Build a ClientConfig array from a partial stored option (merged via Settings accessors).
-	 *
 	 * @param array<string, mixed> $stored
 	 * @param list<\Consentful\Consent\Purpose> $extra_purposes
 	 * @param list<\Consentful\Adapter\Adapter> $extra_adapters
@@ -72,13 +61,11 @@ final class SettingsHydratorTest extends TestCase {
 	public function test_empty_settings_yield_the_compliant_default_baseline(): void {
 		$out = $this->build();
 
-		// 4 default purposes (no personalization).
 		$this->assertSame(
 			array( 'necessary', 'functional', 'analytics', 'marketing' ),
 			array_column( $this->sub( $out, 'purposes' ), 'key' )
 		);
 
-		// 5 default jurisdictions, builtin geo, no tags/adapters.
 		$this->assertSame( array( '*', 'QC', 'EU', 'UK', 'US' ), array_keys( $this->sub( $out, 'jurisdictions' ) ) );
 		$this->assertSame( 'EU', $this->sub( $this->sub( $out, 'geo' ), 'map' )['FR'] );
 		$this->assertSame( 'http://example.test/wp-json/consentful/v1/geo', $this->sub( $out, 'geo' )['endpoint'] );
@@ -109,7 +96,6 @@ final class SettingsHydratorTest extends TestCase {
 			)
 		);
 
-		// One google adapter with both ids.
 		$adapters = $this->sub( $out, 'adapters' );
 		$this->assertSame( array( 'google' ), array_keys( $adapters ) );
 		$google = $this->sub( $adapters, 'google' );
@@ -119,7 +105,6 @@ final class SettingsHydratorTest extends TestCase {
 		$this->assertTrue( $google['adsDataRedaction'] );
 		$this->assertSame( 500, $google['waitForUpdate'] );
 
-		// One google tag with the union of purposes, Direct, adapter 'google'.
 		$tags = $this->sub( $out, 'tags' );
 		$this->assertCount( 1, $tags );
 		$tag = $this->sub( $tags, 0 );
@@ -142,7 +127,6 @@ final class SettingsHydratorTest extends TestCase {
 			)
 		);
 
-		// GTM rides the single Google adapter: no gtag ids, one container id, shared signals.
 		$adapters = $this->sub( $out, 'adapters' );
 		$this->assertSame( array( 'google' ), array_keys( $adapters ) );
 		$google = $this->sub( $adapters, 'google' );
@@ -216,7 +200,6 @@ final class SettingsHydratorTest extends TestCase {
 		$this->assertSame( '<script src="https://example.test/b.js"></script>', $this->sub( $fragments, 1 )['code'] );
 		$this->assertSame( 'footer', $this->sub( $fragments, 1 )['location'] );
 
-		// One tag pointing at its own adapter instance.
 		$tags = $this->sub( $out, 'tags' );
 		$this->assertSame( array( 'custom-a' ), array_column( $tags, 'id' ) );
 		$this->assertSame( array( 'custom-a' ), array_column( $tags, 'adapter' ) );
@@ -264,7 +247,6 @@ final class SettingsHydratorTest extends TestCase {
 		$this->assertSame( array( '*' ), array_keys( $jurisdictions ) );
 		$policy = $this->sub( $this->sub( $jurisdictions, '*' ), 'policy' );
 		$this->assertSame( 'opt_out', $policy['type'] );
-		// Empty geo map ⇒ everyone resolves '*'.
 		$geo = $this->sub( $out, 'geo' );
 		$this->assertSame( array(), $this->sub( $geo, 'map' ) );
 		$this->assertSame( '', $geo['endpoint'] );
@@ -318,14 +300,12 @@ final class SettingsHydratorTest extends TestCase {
 		$analytics = $this->sub( $purposes, 'analytics' );
 		$this->assertSame( 'Site stats', $analytics['label'] );
 		$this->assertSame( 'We measure usage.', $analytics['description'] );
-		// Blank override keeps the gettext default for an untouched purpose.
 		$this->assertSame( 'Marketing', $this->sub( $purposes, 'marketing' )['label'] );
 	}
 
 	public function test_proof_disabled_when_setting_off(): void {
 		$out = $this->build( array( 'proof' => array( 'enabled' => false ) ) );
 
-		// The client honors the disabled flag; the endpoint is still emitted by ProofConfig.
 		$this->assertFalse( $this->sub( $out, 'proof' )['enabled'] );
 	}
 }

@@ -8,9 +8,6 @@ use Consentful\Consent\DefaultPurpose;
 use Consentful\Consent\Purpose;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Covers the Purpose contract: the DefaultPurpose enum and the CustomPurpose class.
- */
 final class DefaultPurposeTest extends TestCase {
 
 	public function test_backing_values_are_the_stable_keys(): void {
@@ -50,7 +47,6 @@ final class DefaultPurposeTest extends TestCase {
 	}
 
 	public function test_personalization_is_an_optional_member_not_shipped_by_default(): void {
-		// It exists as a case (with key + copy) but is opt-in — an Integrator adds it.
 		$this->assertContains( DefaultPurpose::Personalization, DefaultPurpose::cases() );
 		$this->assertNotContains( DefaultPurpose::Personalization, DefaultPurpose::defaults() );
 	}

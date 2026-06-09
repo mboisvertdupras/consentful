@@ -7,10 +7,6 @@ use Consentful\Activator;
 use Consentful\Deactivator;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Deactivation clears the scheduled retention purge so a deactivated plugin leaves no
- * phantom cron event — without touching the stored data (that is uninstall's job).
- */
 final class DeactivatorTest extends TestCase {
 
 	protected function tearDown(): void {

@@ -1,17 +1,9 @@
-/**
- * Google adapter handler (Direct, Consent Mode v2). On apply: push a `consent update`
- * when the signal state changed, and — once a mapped purpose is granted — load gtag.js
- * once per measurement id and the gtm.js container once per Tag Manager id. Idempotent;
- * never uses document.write.
- */
-
 import { signalState } from './google-signals.js';
 import { resolveGtag } from './google-gtag.js';
 
 let lastStateJson = null;
 const loaded = new Set();
 
-/** Reset module state (test seam). */
 export function reset() {
 	lastStateJson = null;
 	loaded.clear();
@@ -54,14 +46,6 @@ const loadContainer = ( id, win, doc ) => {
 };
 
 export const google = {
-	/**
-	 * @param {object}   ctx
-	 * @param {object}   ctx.adapterConfig { measurementIds, containerIds, purposeSignals }.
-	 * @param {object}   ctx.grants        Purpose key => bool.
-	 * @param {Window}   ctx.win
-	 * @param {Document} ctx.doc
-	 * @param {Function} [ctx.gtag]        Optional pre-resolved gtag (else resolved from win).
-	 */
 	apply( ctx ) {
 		const { adapterConfig, grants, win, doc } = ctx;
 		const gtag = ctx.gtag || resolveGtag( win );

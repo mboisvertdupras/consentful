@@ -7,10 +7,6 @@ use Consentful\Consent\ConsentLogPurger;
 use Consentful\Tests\Unit\Support\FakeWpdb;
 use PHPUnit\Framework\TestCase;
 
-/**
- * The retention purge (ADR 0002): deletes Consent records past the retention window via a
- * prepared DELETE (table + cutoff bound, never interpolated). Driven by a fake wpdb.
- */
 final class ConsentLogPurgerTest extends TestCase {
 
 	private const NOW = 1_700_000_000;

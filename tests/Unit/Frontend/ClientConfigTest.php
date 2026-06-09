@@ -19,17 +19,9 @@ use Consentful\Tag\Tag;
 use Consentful\Tag\TagRegistry;
 use PHPUnit\Framework\TestCase;
 
-/**
- * ClientConfig is the frozen PHP→JS bridge: camelCase keys, registry order, ALL
- * Jurisdictions (keyed by id with per-jurisdiction Policy), the geo block, lowercase
- * delivery, and adapter config verbatim. The old single jurisdiction/policy keys are
- * gone — the client resolves the active Jurisdiction at runtime.
- */
 final class ClientConfigTest extends TestCase {
 
-	/**
-	 * @return array<string, mixed>
-	 */
+	/** @return array<string, mixed> */
 	private function build(
 		?TagRegistry $tags = null,
 		?AdapterRegistry $adapters = null,
@@ -100,8 +92,6 @@ final class ClientConfigTest extends TestCase {
 	}
 
 	/**
-	 * Narrow a `to_array()` sub-array (the values are `mixed`) for offset access.
-	 *
 	 * @param array<mixed> $out
 	 * @return array<mixed>
 	 */
@@ -191,7 +181,6 @@ final class ClientConfigTest extends TestCase {
 		$this->assertSame( array( 'enabled', 'endpoint', 'bannerVersion' ), array_keys( $proof ) );
 		$this->assertTrue( $proof['enabled'] );
 		$this->assertSame( 'http://example.test/wp-json/consentful/v1/consent', $proof['endpoint'] );
-		// bannerVersion mirrors the BannerConfig version (defaults to 1).
 		$this->assertSame( 1, $proof['bannerVersion'] );
 	}
 

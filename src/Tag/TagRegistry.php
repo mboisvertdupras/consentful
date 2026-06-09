@@ -3,9 +3,6 @@ declare( strict_types = 1 );
 
 namespace Consentful\Tag;
 
-/**
- * The active Tag set, keyed by id and preserving insertion order.
- */
 final class TagRegistry {
 
 	/** @var array<string, Tag> */

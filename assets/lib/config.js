@@ -1,11 +1,3 @@
-/**
- * Config parse/coerce — the single normalizer for window.consentfulConfig.
- *
- * Values arrive untrusted (PHP-encoded JSON, or wp_localize_script strings), so every
- * field is coerced explicitly. Output is a typed, defensively-built object the decider
- * and gate both consume; never the raw object.
- */
-
 const toInt = ( value, fallback ) => {
 	const n = parseInt( value, 10 );
 	return Number.isFinite( n ) ? n : fallback;
@@ -50,7 +42,6 @@ const parseJurisdictions = ( raw ) => {
 			policy: parsePolicy( entry.policy ),
 		};
 	}
-	// Always leave the resolver a strictest fallback to land on.
 	if ( Object.keys( out ).length === 0 ) {
 		out[ '*' ] = { id: '*', label: '', policy: parsePolicy( {} ) };
 	}
@@ -75,7 +66,6 @@ const parseGeo = ( raw ) => {
 const parseProof = ( raw ) => {
 	const p = toObject( raw );
 	return {
-		// Default true, but only loosen when the key is absent — an explicit value wins.
 		enabled: 'enabled' in p ? toBool( p.enabled ) : true,
 		endpoint: toStr( p.endpoint ),
 		bannerVersion: toInt( p.bannerVersion, 1 ),
@@ -102,12 +92,6 @@ const parseAdapters = ( raw ) => {
 	return out;
 };
 
-/**
- * Coerce window.consentfulConfig into a typed config object.
- *
- * @param {unknown} raw The raw config value.
- * @return {object} Normalized config.
- */
 export function parseConfig( raw ) {
 	const cfg = toObject( raw );
 	const maxAgeDays = toInt( cfg.maxAgeDays, 180 );

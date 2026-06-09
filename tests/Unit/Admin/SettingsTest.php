@@ -6,17 +6,9 @@ namespace Consentful\Tests\Unit\Admin;
 use Consentful\Admin\Settings;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Settings is the canonical `consentful_settings` option: `sanitize()` is the pure
- * allowlist+coerce `register_setting` callback; the typed accessors return the EFFECTIVE
- * config (stored deep-merged over `defaults()`), so an empty option yields the compliant
- * baseline. Custom-snippet `code` is stored raw (admin `unfiltered_html` trust).
- */
 final class SettingsTest extends TestCase {
 
 	/**
-	 * Narrow a sub-array of an untyped (`mixed`-valued) array for nested offset access.
-	 *
 	 * @param array<array-key, mixed> $source
 	 * @return array<array-key, mixed>
 	 */
@@ -55,7 +47,6 @@ final class SettingsTest extends TestCase {
 			)
 		);
 
-		// Overridden field changes; siblings keep the default.
 		$this->assertSame( 'modal', $settings->banner()['position'] );
 		$this->assertSame( 'auto', $settings->banner()['theme'] );
 		$this->assertFalse( $settings->geo()['adaptive'] );
@@ -276,7 +267,6 @@ final class SettingsTest extends TestCase {
 		$tag       = $this->sub( $this->sub( $out, 'tags' ), 0 );
 		$fragments = $this->sub( $this->sub( $tag, 'fields' ), 'fragments' );
 		$this->assertCount( 2, $fragments );
-		// code is stored verbatim — never escaped (injected by JS) — one per script row.
 		$this->assertSame( $head, $this->sub( $fragments, 0 )['code'] );
 		$this->assertSame( 'head', $this->sub( $fragments, 0 )['location'] );
 		$this->assertSame( $body, $this->sub( $fragments, 1 )['code'] );
@@ -309,13 +299,11 @@ final class SettingsTest extends TestCase {
 		$out = Settings::sanitize(
 			array(
 				'tags' => array(
-					// A snippet whose only script row has no code (template / untouched) — dropped.
 					array(
 						'id'      => 'custom-1',
 						'catalog' => 'custom',
 						'fields'  => array( 'fragments' => array( array( 'code' => '', 'location' => 'head' ) ) ),
 					),
-					// A snippet with one empty + one filled script: the empty row is dropped, kept.
 					array(
 						'id'      => 'custom-2',
 						'catalog' => 'custom',

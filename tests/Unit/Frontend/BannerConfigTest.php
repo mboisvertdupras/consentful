@@ -6,11 +6,6 @@ namespace Consentful\Tests\Unit\Frontend;
 use Consentful\Frontend\BannerConfig;
 use PHPUnit\Framework\TestCase;
 
-/**
- * BannerConfig is the pure presentation block ClientConfig serializes into the frozen
- * §2 `banner` shape: camelCase keys, real copy from gettext defaults, per-Purpose
- * label/description copy keyed by Purpose key.
- */
 final class BannerConfigTest extends TestCase {
 
 	public function test_defaults_emit_the_frozen_appearance_scalars(): void {
@@ -127,8 +122,6 @@ final class BannerConfigTest extends TestCase {
 	}
 
 	public function test_with_overrides_never_overrides_copy(): void {
-		// Copy is gettext-translated, not Administrator editable: a posted `copy` map is
-		// ignored and the base (gettext) copy is preserved verbatim.
 		$out = BannerConfig::defaults()->with_overrides(
 			array(
 				'position' => 'corner',
@@ -206,11 +199,10 @@ final class BannerConfigTest extends TestCase {
 	}
 
 	public function test_with_privacy_fallback_fills_an_empty_url(): void {
-		$base = BannerConfig::defaults(); // privacyUrl defaults to ''.
+		$base = BannerConfig::defaults();
 		$out  = $base->with_privacy_fallback( 'https://example.test/privacy' );
 
 		$this->assertSame( 'https://example.test/privacy', $out->privacy_url );
-		// Everything else is preserved.
 		$this->assertSame( $base->position, $out->position );
 		$this->assertSame( $base->copy, $out->copy );
 	}
@@ -219,7 +211,6 @@ final class BannerConfigTest extends TestCase {
 		$base = new BannerConfig( true, 'bar', 'auto', '#2563eb', 8, 1, 'https://example.test/custom', array(), array() );
 		$out  = $base->with_privacy_fallback( 'https://example.test/wp-privacy' );
 
-		// An explicit URL wins; the no-op path returns the same instance.
 		$this->assertSame( 'https://example.test/custom', $out->privacy_url );
 		$this->assertSame( $base, $out );
 	}

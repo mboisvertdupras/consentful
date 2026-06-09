@@ -6,11 +6,6 @@ namespace Consentful\Tests\Unit\Frontend;
 use Consentful\Frontend\Manifest;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Manifest resolves a Vite manifest entry to its hashed file, and fails safe (null)
- * on a missing file, malformed JSON, or an unknown entry. Driven by fixtures it
- * writes to a temp dir — never the parallel JS build output.
- */
 final class ManifestTest extends TestCase {
 
 	/** @var list<string> */
@@ -141,7 +136,6 @@ final class ManifestTest extends TestCase {
 		$manifest = new Manifest( $path );
 		$this->assertSame( 'assets/gate.abc123.js', $manifest->path_for( 'assets/gate.js' ) );
 
-		// Remove the fixture: a second resolution must come from the memoized decode.
 		unlink( $path );
 		$this->assertSame( 'assets/gate.abc123.js', $manifest->path_for( 'assets/gate.js' ) );
 	}

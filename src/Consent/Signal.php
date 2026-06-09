@@ -3,10 +3,6 @@ declare( strict_types = 1 );
 
 namespace Consentful\Consent;
 
-/**
- * The Google Consent Mode v2 signal vocabulary. Google-adapter-specific, but
- * placed in the core enums per ADR 0001. The backing value is the gtag key.
- */
 enum Signal: string {
 
 	case AdStorage              = 'ad_storage';

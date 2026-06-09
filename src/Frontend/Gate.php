@@ -9,13 +9,6 @@ use Consentful\Catalog\Catalog;
 use Consentful\Consent\Purpose;
 use Consentful\Tag\Tag;
 
-/**
- * The cache-safe client gate's WordPress surface — the only WP-coupled class here.
- * Emits IDENTICAL HTML for every Visitor (sacrosanct): the config bridge + inlined
- * decider into <head> (priority 1, before any tag) and enqueues the gate bundle in
- * the footer. Serialization lives in ClientConfig; manifest lookup in Manifest. Never
- * varies output by cookie/geo/UA; missing build artifacts emit nothing (never fatal).
- */
 final class Gate {
 
 	private const HANDLE       = 'consentful-gate';
@@ -33,16 +26,11 @@ final class Gate {
 		private readonly string $cookie = 'consentful',
 	) {}
 
-	/** Hook the head output (before themes/other plugins) and the footer enqueue. */
 	public function register(): void {
 		add_action( 'wp_head', array( $this, 'print_head' ), 1 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue' ) );
 	}
 
-	/**
-	 * Echo the config <script> then the inlined decider <script>. Same bytes for
-	 * every Visitor — the gate reads window.consentfulConfig and decides at runtime.
-	 */
 	public function print_head(): void {
 		$config = $this->config()->to_array();
 		$json   = wp_json_encode( $config );
@@ -58,12 +46,6 @@ final class Gate {
 		}
 	}
 
-	/**
-	 * Enqueue the hashed gate bundle in the footer and the banner stylesheet Vite
-	 * extracted from it (no localize — config is in head). Each is independent: a
-	 * missing manifest entry enqueues nothing (never fatal). Identical output for
-	 * every Visitor.
-	 */
 	public function enqueue(): void {
 		$path = $this->manifest->path_for( self::GATE_ENTRY );
 		if ( null !== $path ) {
@@ -87,13 +69,6 @@ final class Gate {
 		}
 	}
 
-	/**
-	 * Build the config from the canonical `consentful_settings` option via the hydrator —
-	 * the admin UI is the source of truth; dev hooks only append (never override). Ships
-	 * ALL Jurisdictions plus the geo block (the client resolves the active one at runtime —
-	 * cache-safe). The built-in geo endpoint URL is the only per-request server surface,
-	 * and it is non-cached.
-	 */
 	private function config(): ClientConfig {
 		$hydrator = new SettingsHydrator(
 			Settings::from_wp()->effective(),
@@ -113,33 +88,21 @@ final class Gate {
 		);
 	}
 
-	/**
-	 * Optional dev-hook purposes (append-only; default = none). Filtered to Purpose instances.
-	 *
-	 * @return list<Purpose>
-	 */
+	/** @return list<Purpose> */
 	private function extra_purposes(): array {
 		/** @var mixed $filtered */
 		$filtered = apply_filters( 'consentful_purposes', array() );
 		return self::instances_of( $filtered, Purpose::class );
 	}
 
-	/**
-	 * Optional dev-hook adapters (append-only; default = none). Filtered to Adapter instances.
-	 *
-	 * @return list<Adapter>
-	 */
+	/** @return list<Adapter> */
 	private function extra_adapters(): array {
 		/** @var mixed $filtered */
 		$filtered = apply_filters( 'consentful_adapters', array() );
 		return self::instances_of( $filtered, Adapter::class );
 	}
 
-	/**
-	 * Optional dev-hook tags (append-only; default = none). Filtered to Tag instances.
-	 *
-	 * @return list<Tag>
-	 */
+	/** @return list<Tag> */
 	private function extra_tags(): array {
 		/** @var mixed $filtered */
 		$filtered = apply_filters( 'consentful_tags', array() );
@@ -147,8 +110,6 @@ final class Gate {
 	}
 
 	/**
-	 * Coerce a filtered value to a list of instances of `$type` (anything else dropped).
-	 *
 	 * @template T of object
 	 * @param  class-string<T> $type
 	 * @return list<T>
@@ -166,15 +127,12 @@ final class Gate {
 		return $out;
 	}
 
-	/** The built decider's source, inlined verbatim. Null when the file is absent. */
 	private function decider_contents(): ?string {
 		$path = rtrim( $this->build_dir, '/' ) . '/' . self::DECIDER_FILE;
 		if ( ! is_readable( $path ) ) {
 			return null;
 		}
 
-		// file() (not WP_Filesystem) reads the trusted build artifact without the
-		// AlternativeFunctions warning that injected-path file_get_contents trips.
 		$lines = file( $path, FILE_IGNORE_NEW_LINES );
 		return false === $lines ? null : implode( "\n", $lines );
 	}

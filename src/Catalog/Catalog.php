@@ -5,26 +5,18 @@ namespace Consentful\Catalog;
 
 use Consentful\Tag\Delivery;
 
-/**
- * The built-in registry of integrations the Administrator picks from in the admin UI.
- * Pure (gettext only for labels). `with_defaults()` seeds the v1 catalog; the hydrator
- * resolves a stored tag entry's catalog key to an entry to build the client config.
- */
 final class Catalog {
 
-	/** @var array<string, CatalogEntry> Keyed by catalog key, in display order. */
+	/** @var array<string, CatalogEntry> */
 	private array $entries = array();
 
-	/**
-	 * @param iterable<CatalogEntry> $entries
-	 */
+	/** @param iterable<CatalogEntry> $entries */
 	public function __construct( iterable $entries ) {
 		foreach ( $entries as $entry ) {
 			$this->entries[ $entry->key() ] = $entry;
 		}
 	}
 
-	/** Seed the shipped v1 catalog. */
 	public static function with_defaults(): self {
 		return new self(
 			array(
@@ -111,9 +103,7 @@ final class Catalog {
 		return $this->entries[ $key ] ?? null;
 	}
 
-	/**
-	 * @return list<CatalogEntry>
-	 */
+	/** @return list<CatalogEntry> */
 	public function entries(): array {
 		return array_values( $this->entries );
 	}

@@ -8,13 +8,6 @@ use Consentful\Frontend\Gate;
 use Consentful\Frontend\Manifest;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Gate is the only WP-coupled class: it registers hooks, prints the config bridge +
- * inlined decider into the head, and enqueues the hashed gate bundle. It must emit
- * identical HTML for every Visitor and fail safe (no output, no fatal) when build
- * artifacts are missing. It builds its config from the canonical `consentful_settings`
- * option (via the hydrator) — tests seed that option to shape the emitted tags/banner.
- */
 final class GateTest extends TestCase {
 
 	/** @var list<string> */
@@ -72,30 +65,18 @@ final class GateTest extends TestCase {
 		return $dir . '/.vite/manifest.json';
 	}
 
-	/**
-	 * Seed the canonical settings option the Gate hydrates its config from.
-	 *
-	 * @param array<string, mixed> $settings
-	 */
+	/** @param array<string, mixed> $settings */
 	private function seed_settings( array $settings ): void {
 		$GLOBALS['consentful_test_options'] = array( CONSENTFUL_OPTION => $settings );
 	}
 
-	/**
-	 * The actions recorded by the add_action stub for this test.
-	 *
-	 * @return list<mixed>
-	 */
+	/** @return list<mixed> */
 	private function recorded_actions(): array {
 		$actions = $GLOBALS['consentful_test_actions'] ?? array();
 		return is_array( $actions ) ? array_values( $actions ) : array();
 	}
 
-	/**
-	 * The enqueues recorded by the wp_enqueue_script stub for this test.
-	 *
-	 * @return list<array<int, mixed>>
-	 */
+	/** @return list<array<int, mixed>> */
 	private function recorded_enqueues(): array {
 		$enqueues = $GLOBALS['consentful_test_enqueues'] ?? array();
 		if ( ! is_array( $enqueues ) ) {
@@ -108,11 +89,7 @@ final class GateTest extends TestCase {
 		return $out;
 	}
 
-	/**
-	 * The styles recorded by the wp_enqueue_style stub for this test.
-	 *
-	 * @return list<array<int, mixed>>
-	 */
+	/** @return list<array<int, mixed>> */
 	private function recorded_styles(): array {
 		$styles = $GLOBALS['consentful_test_styles'] ?? array();
 		if ( ! is_array( $styles ) ) {
@@ -177,7 +154,6 @@ final class GateTest extends TestCase {
 		$this->assertStringContainsString( '"defaultJurisdiction":"*"', $output );
 		$this->assertStringContainsString( '"jurisdictions":', $output );
 		$this->assertStringContainsString( '"geo":', $output );
-		// The proof block carries the non-cached consent endpoint (config, not markup).
 		$this->assertStringContainsString( '"proof":{"enabled":true', $output );
 		$this->assertStringContainsString( '\/wp-json\/consentful\/v1\/consent', $output );
 		$this->assertStringContainsString( '"google":{', $output );
@@ -192,8 +168,6 @@ final class GateTest extends TestCase {
 		$this->gate( $dir, $dir . '/.vite/manifest.json' )->print_head();
 		$first = (string) ob_get_clean();
 
-		// A second render with the same wiring must be byte-identical (no per-visitor
-		// variance — the cache-safety guarantee).
 		ob_start();
 		$this->gate( $dir, $dir . '/.vite/manifest.json' )->print_head();
 		$second = (string) ob_get_clean();
@@ -203,14 +177,12 @@ final class GateTest extends TestCase {
 
 	public function test_print_head_emits_config_but_no_decider_when_file_missing(): void {
 		$dir = $this->build_dir();
-		// No decider written.
 
 		ob_start();
 		$this->gate( $dir, $dir . '/.vite/manifest.json' )->print_head();
 		$output = (string) ob_get_clean();
 
 		$this->assertStringContainsString( 'window.consentfulConfig = {', $output );
-		// Exactly one inline script tag (the config), no decider tag.
 		$this->assertSame( 1, substr_count( $output, '<script>' ) );
 	}
 
@@ -241,7 +213,6 @@ final class GateTest extends TestCase {
 		$GLOBALS['consentful_test_enqueues'] = array();
 		$dir = $this->build_dir();
 
-		// No manifest file at all.
 		$this->gate( $dir, $dir . '/.vite/manifest.json' )->enqueue();
 
 		$this->assertSame( array(), $this->recorded_enqueues() );
@@ -375,8 +346,6 @@ final class GateTest extends TestCase {
 	}
 
 	public function test_print_head_falls_back_to_the_site_privacy_page_when_blank(): void {
-		// No explicit privacy URL: the banner uses the site's configured WordPress privacy
-		// page. Site-global, so identical for every Visitor.
 		$GLOBALS['consentful_test_privacy_url'] = 'https://example.test/privacy';
 		$dir = $this->build_dir();
 
@@ -388,7 +357,6 @@ final class GateTest extends TestCase {
 	}
 
 	public function test_print_head_keeps_an_explicit_privacy_url_over_the_site_default(): void {
-		// An explicit Administrator URL must win over the WordPress privacy-page fallback.
 		$GLOBALS['consentful_test_privacy_url'] = 'https://example.test/wp-privacy';
 		$dir = $this->build_dir();
 		$this->seed_settings( array( 'banner' => array( 'privacyUrl' => 'https://example.test/custom' ) ) );
@@ -408,12 +376,9 @@ final class GateTest extends TestCase {
 		$this->gate( $dir, $dir . '/.vite/manifest.json' )->print_head();
 		$output = (string) ob_get_clean();
 
-		// An empty option is a compliant baseline: 4 default purposes, the default
-		// jurisdictions, no tags.
 		$this->assertStringContainsString( '"purposes":[{"key":"necessary","alwaysOn":true},{"key":"functional","alwaysOn":false},{"key":"analytics","alwaysOn":false},{"key":"marketing","alwaysOn":false}]', $output );
 		$this->assertStringContainsString( '"defaultJurisdiction":"*"', $output );
 		$this->assertStringContainsString( '"tags":[]', $output );
-		// The banner matches the gettext defaults (with the WordPress privacy fallback empty).
 		$banner = (string) wp_json_encode( BannerConfig::defaults()->to_array() );
 		$this->assertStringContainsString( '"banner":' . $banner, $output );
 	}

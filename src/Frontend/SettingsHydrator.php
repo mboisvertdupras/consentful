@@ -20,20 +20,13 @@ use Consentful\Tag\Delivery;
 use Consentful\Tag\Tag;
 use Consentful\Tag\TagRegistry;
 
-/**
- * Turns the EFFECTIVE `consentful_settings` (deep-merged over defaults — i.e. the
- * `Settings::*` accessors) plus the Catalog and optional append-only dev overlays into a
- * fully-built ClientConfig. Pure: no WordPress calls — the caller passes the WP-derived
- * strings (endpoints, privacy fallback). It replaces the container-resolves-code path:
- * the admin UI is the source of truth, dev hooks only append.
- */
 final class SettingsHydrator {
 
 	/**
-	 * @param array<string, mixed> $settings       The EFFECTIVE merged settings.
-	 * @param list<Purpose>        $extra_purposes Dev-hook purposes (append-only).
-	 * @param list<Adapter>        $extra_adapters Dev-hook adapters (append-only).
-	 * @param list<Tag>            $extra_tags     Dev-hook tags (append-only).
+	 * @param array<string, mixed> $settings
+	 * @param list<Purpose>        $extra_purposes
+	 * @param list<Adapter>        $extra_adapters
+	 * @param list<Tag>            $extra_tags
 	 */
 	public function __construct(
 		private readonly array $settings,
@@ -74,8 +67,6 @@ final class SettingsHydrator {
 	}
 
 	/**
-	 * A top-level settings section as a narrowed map (a non-array section becomes empty).
-	 *
 	 * @return array<string, mixed>
 	 */
 	private function section( string $key ): array {
@@ -83,8 +74,6 @@ final class SettingsHydrator {
 	}
 
 	/**
-	 * Narrow an untyped value to a string-keyed map (non-arrays become empty).
-	 *
 	 * @return array<string, mixed>
 	 */
 	private static function map( mixed $value ): array {
@@ -98,7 +87,6 @@ final class SettingsHydrator {
 		return $out;
 	}
 
-	/** The default taxonomy + Personalization (if enabled) + dev-hook purposes (append). */
 	private function purpose_registry(): PurposeRegistry {
 		$purposes        = DefaultPurpose::defaults();
 		$personalization = $this->section( 'purposes' )['personalization'] ?? null;
@@ -113,14 +101,10 @@ final class SettingsHydrator {
 		return $registry;
 	}
 
-	/**
-	 * Walk the enabled stored tags, resolve each via the Catalog, apply the Google merge
-	 * rule, then append dev-hook adapters/tags. The active purpose keys gate tag purposes.
-	 */
 	private function build_tags_and_adapters( PurposeRegistry $purposes, TagRegistry $tags, AdapterRegistry $adapters ): void {
 		$active_keys = $this->purpose_keys( $purposes );
 
-		/** @var list<array{0: CatalogEntry, 1: array<string, mixed>}> $google Resolved [entry, tag] pairs. */
+		/** @var list<array{0: CatalogEntry, 1: array<string, mixed>}> $google */
 		$google = array();
 
 		foreach ( $this->stored_tags() as $tag ) {
@@ -163,10 +147,6 @@ final class SettingsHydrator {
 	}
 
 	/**
-	 * Merge every google-handler tag into ONE `google` adapter (measurementIds = union of
-	 * GA4/Ads id fields; containerIds = union of GTM container ids, in tag order) + ONE
-	 * Direct `google` Tag (purposes = union). GTM rides the same Consent Mode default/update.
-	 *
 	 * @param list<array{0: CatalogEntry, 1: array<string, mixed>}> $google
 	 * @param list<string>                                          $active_keys
 	 */
@@ -207,8 +187,6 @@ final class SettingsHydrator {
 	}
 
 	/**
-	 * The measurement/conversion ids a single google tag contributes.
-	 *
 	 * @param array<string, mixed> $tag
 	 * @return list<string>
 	 */
@@ -225,11 +203,6 @@ final class SettingsHydrator {
 	}
 
 	/**
-	 * The client-config for a `script` catalog entry: a list of `{ code, location }`
-	 * fragments the gate injects in order, each at its own location. A built-in templated
-	 * snippet (e.g. the Meta Pixel) is a single head fragment; a custom snippet is its stored
-	 * fragments. Google-handler entries (GA4 / Ads / GTM) never reach here — see `add_google`.
-	 *
 	 * @param array<string, mixed> $tag
 	 * @return array<string, mixed>
 	 */
@@ -254,10 +227,6 @@ final class SettingsHydrator {
 	}
 
 	/**
-	 * A custom snippet's stored fragments, narrowed to the gate's `{ code, location }` shape
-	 * (empty-code entries dropped, location defaulting to `head`). The settings are already
-	 * sanitized; this just narrows the untyped merged array.
-	 *
 	 * @param array<string, mixed> $fields
 	 * @return list<array{code: string, location: string}>
 	 */
@@ -283,9 +252,6 @@ final class SettingsHydrator {
 		return $out;
 	}
 
-	/**
-	 * The standard Meta Pixel init snippet, templated with the pixel id. No document.write.
-	 */
 	private static function meta_pixel_code( string $pixel_id ): string {
 		return '!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?'
 			. 'n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;'
@@ -295,7 +261,6 @@ final class SettingsHydrator {
 			. "fbq('init','" . $pixel_id . "');fbq('track','PageView');";
 	}
 
-	/** The default geo→policy jurisdictions, or a single '*' built from the global posture. */
 	private function jurisdiction_registry( int $policy_version, PurposeRegistry $purposes ): JurisdictionRegistry {
 		$geo = $this->section( 'geo' );
 		if ( (bool) ( $geo['adaptive'] ?? true ) ) {
@@ -320,14 +285,12 @@ final class SettingsHydrator {
 		);
 	}
 
-	/** The default geo block (adaptive), or no endpoint + empty map (everyone resolves '*'). */
 	private function geo_config(): GeoConfig {
 		return (bool) ( $this->section( 'geo' )['adaptive'] ?? true )
 			? GeoConfig::defaults()
 			: new GeoConfig( '', '', false, '', array() );
 	}
 
-	/** The base banner + appearance overrides + purpose-copy overrides + privacy fallback. */
 	private function banner_config( string $privacy_fallback_url ): BannerConfig {
 		$banner = BannerConfig::defaults();
 		$banner = $banner->with_overrides( $this->section( 'banner' ) );
@@ -337,9 +300,6 @@ final class SettingsHydrator {
 	}
 
 	/**
-	 * Per-purpose copy overrides, narrowed to the `key => { label?, description? }` shape
-	 * BannerConfig::with_purpose_overrides expects (non-array entries dropped).
-	 *
 	 * @return array<string, array<string, mixed>>
 	 */
 	private function purpose_copy(): array {
@@ -366,9 +326,6 @@ final class SettingsHydrator {
 	}
 
 	/**
-	 * A tag's stored purpose keys (falling back to the catalog default), intersected with
-	 * the active purpose set.
-	 *
 	 * @param array<string, mixed> $tag
 	 * @param list<string>         $active_keys
 	 * @return list<string>
@@ -385,8 +342,6 @@ final class SettingsHydrator {
 	}
 
 	/**
-	 * Resolve purpose keys to the active Purpose objects, preserving the registry's instances.
-	 *
 	 * @param list<string> $keys
 	 * @return list<Purpose>
 	 */
@@ -413,8 +368,6 @@ final class SettingsHydrator {
 	}
 
 	/**
-	 * A tag's stored label, falling back to the catalog entry's gettext label.
-	 *
 	 * @param array<string, mixed> $tag
 	 */
 	private function tag_label( CatalogEntry $entry, array $tag ): string {
@@ -423,8 +376,6 @@ final class SettingsHydrator {
 	}
 
 	/**
-	 * A tag's stored field map, narrowed (a non-array `fields` becomes empty).
-	 *
 	 * @param array<string, mixed> $tag
 	 * @return array<string, mixed>
 	 */
@@ -433,8 +384,6 @@ final class SettingsHydrator {
 	}
 
 	/**
-	 * A scalar map value coerced to string ('' when absent or non-scalar).
-	 *
 	 * @param array<string, mixed> $map
 	 */
 	private function str( array $map, string $key ): string {

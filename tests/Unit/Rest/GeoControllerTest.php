@@ -6,10 +6,6 @@ namespace Consentful\Tests\Unit\Rest;
 use Consentful\Rest\GeoController;
 use PHPUnit\Framework\TestCase;
 
-/**
- * GeoController detects a region from CDN geo headers (CloudFront → Cloudflare →
- * generic), validates strictly, and registers a public GET route on rest_api_init.
- */
 final class GeoControllerTest extends TestCase {
 
 	protected function tearDown(): void {
@@ -17,21 +13,13 @@ final class GeoControllerTest extends TestCase {
 		parent::tearDown();
 	}
 
-	/**
-	 * The action hooks recorded by the add_action stub for this test.
-	 *
-	 * @return list<mixed>
-	 */
+	/** @return list<mixed> */
 	private function recorded_actions(): array {
 		$actions = $GLOBALS['consentful_test_actions'] ?? array();
 		return is_array( $actions ) ? array_values( $actions ) : array();
 	}
 
-	/**
-	 * The REST routes recorded by the register_rest_route stub for this test.
-	 *
-	 * @return list<mixed>
-	 */
+	/** @return list<mixed> */
 	private function recorded_routes(): array {
 		$routes = $GLOBALS['consentful_test_rest_routes'] ?? array();
 		return is_array( $routes ) ? array_values( $routes ) : array();

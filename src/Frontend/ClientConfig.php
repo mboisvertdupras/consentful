@@ -14,14 +14,6 @@ use Consentful\Tag\Delivery;
 use Consentful\Tag\Tag;
 use Consentful\Tag\TagRegistry;
 
-/**
- * Serializes the registries, all Jurisdictions, the GeoConfig and BannerConfig into the
- * camelCase config the client gate consumes from `window.consentfulConfig`. Pure: no
- * WordPress functions (it serializes the BannerConfig it is handed, never calls gettext
- * itself), so it runs under PHPUnit without WordPress. The same value feeds the
- * cache-safe, identical-for-every-visitor head output — every Jurisdiction ships in the
- * one blob and the client resolves the active one at runtime.
- */
 final class ClientConfig {
 
 	public function __construct(
@@ -40,9 +32,7 @@ final class ClientConfig {
 		private readonly string $cookie = 'consentful',
 	) {}
 
-	/**
-	 * @return array<string, mixed> The frozen config shape (camelCase keys).
-	 */
+	/** @return array<string, mixed> */
 	public function to_array(): array {
 		return array(
 			'cookie'              => $this->cookie,
@@ -60,12 +50,7 @@ final class ClientConfig {
 		);
 	}
 
-	/**
-	 * Every registered Jurisdiction, keyed by id in insertion order ('*' first). The
-	 * client resolver picks the active one; an unresolved region uses the fallback.
-	 *
-	 * @return array<string, array{id: string, label: string, policy: array<string, mixed>}>
-	 */
+	/** @return array<string, array{id: string, label: string, policy: array<string, mixed>}> */
 	private function jurisdictions_array(): array {
 		$out = array();
 		foreach ( $this->jurisdictions->all() as $jurisdiction ) {
@@ -106,12 +91,7 @@ final class ClientConfig {
 		);
 	}
 
-	/**
-	 * Default-granted keys are the non-always-on Purposes the Policy grants before
-	 * the Visitor acts (always-on Purposes are implicit, never listed here).
-	 *
-	 * @return list<string>
-	 */
+	/** @return list<string> */
 	private function default_granted( Policy $policy ): array {
 		$out = array();
 		foreach ( $this->purposes->all() as $purpose ) {
@@ -151,12 +131,7 @@ final class ClientConfig {
 		);
 	}
 
-	/**
-	 * Adapter client config verbatim — ClientConfig never reshapes it; each adapter
-	 * emits its own camelCase shape.
-	 *
-	 * @return array<string, array<string, mixed>>
-	 */
+	/** @return array<string, array<string, mixed>> */
 	private function adapters_array(): array {
 		$out = array();
 		foreach ( $this->adapters->all() as $adapter ) {
@@ -165,7 +140,6 @@ final class ClientConfig {
 		return $out;
 	}
 
-	/** Lowercase backing string — kept out of the pure PolicyType enum. */
 	private function policy_type( PolicyType $type ): string {
 		return match ( $type ) {
 			PolicyType::OptIn      => 'opt_in',
@@ -174,7 +148,6 @@ final class ClientConfig {
 		};
 	}
 
-	/** Lowercase backing string for the Tag delivery. */
 	private function delivery( Delivery $delivery ): string {
 		return match ( $delivery ) {
 			Delivery::Direct    => 'direct',

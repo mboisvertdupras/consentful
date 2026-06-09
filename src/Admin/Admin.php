@@ -8,25 +8,6 @@ use Consentful\Catalog\CatalogEntry;
 use Consentful\Consent\ConsentLogExporter;
 use Consentful\Frontend\BannerConfig;
 
-/**
- * The Administrator admin surface (the only admin-context WP coupling) — the canonical,
- * sufficient config UI for the `consentful_settings` option. Install + activate yields a
- * compliant baseline; this page lets the Administrator tune the banner, purpose copy,
- * tags (a catalog + custom snippets) and the jurisdiction posture with no code.
- *
- * The form is the WordPress-native Settings layout (`form-table`, the Iris color picker,
- * help text). `manage_options` on every screen and the export action, a nonce on save +
- * export, `Settings::sanitize` on input, escape on output. Banner *copy* is deliberately
- * NOT editable here: it ships as gettext (English source, French via the bundled `.mo`),
- * so translation stays in the language files; only purpose label/description are
- * overridable.
- *
- * Logic lives in pure, unit-tested classes (Settings, the Catalog, ConsentLogReader, the
- * ConsentLogExporter); this shell only registers hooks and renders escaped markup. A
- * custom snippet's `code` is stored raw (admin `unfiltered_html` trust) but only ever
- * rendered into a `<textarea>` (escaped with `esc_textarea`) for editing — never echoed
- * as a literal `<script>`.
- */
 final class Admin {
 
 	private const CAPABILITY    = 'manage_options';
@@ -36,7 +17,6 @@ final class Admin {
 	private const NONCE_EXPORT  = 'consentful_export';
 	private const PER_PAGE      = 50;
 
-	/** The settings-page hook suffix, captured at menu registration; gates the asset enqueue. */
 	private string $settings_hook = '';
 
 	public function __construct(
@@ -44,7 +24,6 @@ final class Admin {
 		private readonly ConsentLogReader $reader,
 	) {}
 
-	/** Wire the admin menu, settings registration, asset enqueue and the export handler. */
 	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
@@ -52,7 +31,6 @@ final class Admin {
 		add_action( 'admin_post_consentful_export', array( $this, 'handle_export' ) );
 	}
 
-	/** Register the Settings page and the Consent-log submenu (both `manage_options`). */
 	public function register_menu(): void {
 		$this->settings_hook = (string) add_menu_page(
 			__( 'Consentful', 'consentful' ),
@@ -80,13 +58,6 @@ final class Admin {
 		);
 	}
 
-	/**
-	 * Enqueue, on our settings screen only: the WordPress color picker (the native Iris
-	 * picker the appearance form's `.consentful-color` input upgrades to) and the small
-	 * vanilla custom-snippet repeater (add/remove snippets and per-snippet scripts; the form
-	 * degrades to one snippet + one script without it) and its layout CSS. Both ride an
-	 * inline-only registered handle — no build artifact.
-	 */
 	public function enqueue_assets( string $hook ): void {
 		if ( '' === $this->settings_hook || $this->settings_hook !== $hook ) {
 			return;
@@ -104,7 +75,6 @@ final class Admin {
 		wp_add_inline_style( 'consentful-admin', self::admin_css() );
 	}
 
-	/** Register the single option with the pure `Settings::sanitize` as its callback. */
 	public function register_settings(): void {
 		register_setting(
 			self::OPTION_GROUP,
@@ -117,7 +87,6 @@ final class Admin {
 		);
 	}
 
-	/** Render the settings form. Capability is checked before any output. */
 	public function render_settings_page(): void {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
 			return;
@@ -139,7 +108,6 @@ final class Admin {
 		echo '</div>';
 	}
 
-	/** The banner appearance fields (toggle, position, theme, color, radius, privacy URL). */
 	private function render_appearance_fields( Settings $settings ): void {
 		$banner = $settings->banner();
 
@@ -184,10 +152,6 @@ final class Admin {
 		echo '</tbody></table>';
 	}
 
-	/**
-	 * Per-purpose copy overrides (blank = gettext default) + the Personalization toggle.
-	 * Categories are fixed (compliance guardrails) — none can be added or removed.
-	 */
 	private function render_purpose_fields( Settings $settings ): void {
 		$stored   = $settings->purposes();
 		$defaults = BannerConfig::defaults()->purposes;
@@ -224,12 +188,6 @@ final class Admin {
 		echo '</tbody></table>';
 	}
 
-	/**
-	 * The tag manager: each catalog integration (enable + fields + purposes) plus a custom
-	 * snippets repeater. All persist into `consentful_settings[tags]` as the §3 ordered list
-	 * (outer keys are the catalog key / `custom-N` for stable round-tripping; the sanitizer
-	 * reads the inner `id`/`catalog`).
-	 */
 	private function render_tag_fields( Settings $settings ): void {
 		$stored = $this->tags_by_id( $settings );
 
@@ -247,10 +205,7 @@ final class Admin {
 	}
 
 	/**
-	 * One catalog integration: an enable checkbox, its field inputs and a purpose checkbox
-	 * group.
-	 *
-	 * @param array<string, mixed> $tag The stored entry for this catalog key (empty if none).
+	 * @param array<string, mixed> $tag
 	 */
 	private function render_catalog_entry( CatalogEntry $entry, array $tag ): void {
 		$key    = $entry->key();
@@ -283,12 +238,7 @@ final class Admin {
 	}
 
 	/**
-	 * The custom-snippet repeater: every saved snippet plus one blank snippet (so it works
-	 * without JavaScript), an "Add snippet" button, and a `<template>` blank snippet the
-	 * enqueued repeater clones on demand. `data-next-index` seeds the next unused `custom-N`
-	 * id; a snippet with no non-empty script (or one removed client-side) is dropped on save.
-	 *
-	 * @param array<string, array<string, mixed>> $stored Stored tags keyed by id.
+	 * @param array<string, array<string, mixed>> $stored
 	 */
 	private function render_custom_tags( array $stored ): void {
 		echo '<h3>' . esc_html__( 'Custom snippets', 'consentful' ) . '</h3>';
@@ -318,10 +268,6 @@ final class Admin {
 	}
 
 	/**
-	 * One snippet card: hidden id/catalog, a remove control, name + purposes, and a nested
-	 * repeater of scripts (each `{ code, location }`). Renders the stored scripts plus one
-	 * blank script (the JS-free fallback) and a `<template>` blank script the repeater clones.
-	 *
 	 * @param array<string, mixed> $tag
 	 */
 	private function render_custom_row( string $id, array $tag ): void {
@@ -367,9 +313,6 @@ final class Admin {
 	}
 
 	/**
-	 * One script row inside a snippet: a code textarea, an injection-location select, and a
-	 * remove control. `code` is rendered with `esc_textarea`, never as a literal `<script>`.
-	 *
 	 * @param array<array-key, mixed> $fragment
 	 */
 	private function render_fragment_row( string $prefix, string $index, array $fragment ): void {
@@ -384,11 +327,6 @@ final class Admin {
 		echo '</div></div>';
 	}
 
-	/**
-	 * The nested vanilla repeater: add/remove snippets and per-snippet scripts. Click-delegated
-	 * on the document so dynamically-added rows work; clones the matching `<template>`,
-	 * substituting the snippet (`__INDEX__`) or script (`__FRAG__`) index into field names.
-	 */
 	private static function repeater_js(): string {
 		return <<<'JS'
 ( function () {
@@ -453,7 +391,6 @@ final class Admin {
 JS;
 	}
 
-	/** Layout CSS for the snippet cards + script rows (inline; no build artifact). */
 	private static function admin_css(): string {
 		return '.consentful-snippet{border:1px solid #c3c4c7;background:#fff;border-radius:4px;'
 			. 'padding:0 16px 12px;margin:0 0 16px;max-width:820px}'
@@ -465,7 +402,6 @@ JS;
 			. '.consentful-fragment-meta{display:flex;align-items:center;gap:12px;margin-top:6px;flex-wrap:wrap}';
 	}
 
-	/** The simple geo posture toggle (adaptive on/off; a global posture when off). */
 	private function render_geo_fields( Settings $settings ): void {
 		$geo = $settings->geo();
 
@@ -488,7 +424,6 @@ JS;
 		echo '</tbody></table>';
 	}
 
-	/** Render the paginated Consent-log table + the Export CSV button. */
 	public function render_log_page(): void {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
 			return;
@@ -538,11 +473,6 @@ JS;
 		echo '</div>';
 	}
 
-	/**
-	 * The export handler: verify capability + nonce, then stream the CSV via the isolated
-	 * ConsentLogDownload shell (which holds the one non-HTML echo, keeping EscapeOutput
-	 * enforced on every rendering screen here). The tested data path is `export_csv_body`.
-	 */
 	public function handle_export(): void {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
 			wp_die( esc_html__( 'You are not allowed to export the consent log.', 'consentful' ), '', array( 'response' => 403 ) );
@@ -552,19 +482,12 @@ JS;
 		ConsentLogDownload::stream( $this->export_csv_body() );
 	}
 
-	/** The CSV body for the whole Consent log — the pure, tested export data path. */
 	public function export_csv_body(): string {
 		return ConsentLogExporter::to_csv( $this->reader->all_export_rows() );
 	}
 
 	/**
-	 * Render a labeled form row, invoking `$control` to print the (inline-escaped) control,
-	 * then any help text. `$field` is the control's field path so `for` matches the control id.
-	 *
-	 * @param string          $label       The field label.
-	 * @param string          $field       The control's field path (drives the matched id).
-	 * @param callable():void $control     Prints the control markup, escaping inline.
-	 * @param string          $description Optional help text shown under the control.
+	 * @param callable():void $control
 	 */
 	private function row( string $label, string $field, callable $control, string $description = '' ): void {
 		echo '<tr><th scope="row"><label for="' . esc_attr( $this->control_id( $field ) ) . '">' . esc_html( $label ) . '</label></th><td>';
@@ -575,12 +498,10 @@ JS;
 		echo '</td></tr>';
 	}
 
-	/** A DOM id for a field path (`banner][enabled` → `consentful-banner-enabled`). */
 	private function control_id( string $field ): string {
 		return 'consentful-' . trim( str_replace( array( '][', '[', ']' ), '-', $field ), '-' );
 	}
 
-	/** One field of a catalog entry, rendered per its schema `type`. */
 	private function render_tag_field( string $name, string $field, mixed $schema, mixed $fields ): void {
 		$schema      = is_array( $schema ) ? $schema : array();
 		$fields      = is_array( $fields ) ? $fields : array();
@@ -606,7 +527,7 @@ JS;
 	}
 
 	/**
-	 * @param array<string, string> $choices Option value => visible (translated) label.
+	 * @param array<string, string> $choices
 	 */
 	private function select_field( string $field, array $choices, string $value ): void {
 		$id   = $this->control_id( $field );
@@ -618,10 +539,6 @@ JS;
 		echo '</select>';
 	}
 
-	/**
-	 * The native WordPress (Iris) color control: a text input the enqueued `wp-color-picker`
-	 * upgrades. `data-default-color` is the shipped base so the picker's reset matches.
-	 */
 	private function color_field( string $field, string $value ): void {
 		$id      = $this->control_id( $field );
 		$name    = CONSENTFUL_OPTION . '[' . $field . ']';
@@ -653,15 +570,12 @@ JS;
 		echo '<textarea id="' . esc_attr( $id ) . '" class="large-text code" rows="4" name="' . esc_attr( $name ) . '" placeholder="' . esc_attr( $placeholder ) . '">' . esc_textarea( $value ) . '</textarea>';
 	}
 
-	/** A hidden input (printed outside a `form-table` row, e.g. a tag's id/catalog). */
 	private function hidden_field( string $field, string $value ): void {
 		$name = CONSENTFUL_OPTION . '[' . $field . ']';
 		echo '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '" />';
 	}
 
 	/**
-	 * A purpose checkbox group for a tag (`<prefix>[purposes][]`), the given keys pre-checked.
-	 *
 	 * @param list<string> $checked
 	 */
 	private function purpose_checkboxes( string $prefix, array $checked ): void {
@@ -672,8 +586,6 @@ JS;
 	}
 
 	/**
-	 * A tag's stored purpose keys, falling back to `$fallback` when none are stored.
-	 *
 	 * @param array<string, mixed> $tag
 	 * @param list<string>         $fallback
 	 * @return list<string>
@@ -687,8 +599,6 @@ JS;
 	}
 
 	/**
-	 * The stored tag entries keyed by id (for round-tripping into the form).
-	 *
 	 * @return array<string, array<string, mixed>>
 	 */
 	private function tags_by_id( Settings $settings ): array {
@@ -702,14 +612,11 @@ JS;
 		return $out;
 	}
 
-	/** The numeric suffix of a `custom-N` id (0 when it has none). */
 	private function custom_index( string $id ): int {
 		return 1 === preg_match( '/^custom-(\d+)$/', $id, $m ) ? (int) $m[1] : 0;
 	}
 
 	/**
-	 * The position choices (value => translated label).
-	 *
 	 * @return array<string, string>
 	 */
 	private function position_choices(): array {
@@ -721,8 +628,6 @@ JS;
 	}
 
 	/**
-	 * The theme choices (value => translated label).
-	 *
 	 * @return array<string, string>
 	 */
 	private function theme_choices(): array {
@@ -734,8 +639,6 @@ JS;
 	}
 
 	/**
-	 * The global-posture choices (value => translated label).
-	 *
 	 * @return array<string, string>
 	 */
 	private function policy_choices(): array {
@@ -747,8 +650,6 @@ JS;
 	}
 
 	/**
-	 * The custom-snippet injection-location choices (value => translated label).
-	 *
 	 * @return array<string, string>
 	 */
 	private function location_choices(): array {
@@ -759,15 +660,12 @@ JS;
 		);
 	}
 
-	/** A custom snippet's stored injection location, defaulting to `head`. */
 	private function snippet_location( mixed $fields ): string {
 		$location = $this->str( $fields, 'location' );
 		return in_array( $location, array( 'head', 'body', 'footer' ), true ) ? $location : 'head';
 	}
 
 	/**
-	 * The gateable purpose choices for tag assignment (value => translated label).
-	 *
 	 * @return array<string, string>
 	 */
 	private function purpose_choices(): array {
@@ -779,7 +677,6 @@ JS;
 		);
 	}
 
-	/** A scalar string read of a map key ('' when absent or non-scalar). */
 	private function str( mixed $map, string $key ): string {
 		if ( ! is_array( $map ) ) {
 			return '';
@@ -788,7 +685,6 @@ JS;
 		return is_scalar( $value ) ? (string) $value : '';
 	}
 
-	/** A scalar int read of a map key (0 when absent or non-numeric). */
 	private function int( mixed $map, string $key ): int {
 		if ( ! is_array( $map ) ) {
 			return 0;
@@ -797,20 +693,14 @@ JS;
 		return is_numeric( $value ) ? (int) $value : 0;
 	}
 
-	/**
-	 * A boolean read of a map key. Callers pass EFFECTIVE settings (merged over defaults),
-	 * so the key is present with the correct default; an absent key reads as false.
-	 */
 	private function bool( mixed $map, string $key ): bool {
 		return is_array( $map ) && (bool) ( $map[ $key ] ?? false );
 	}
 
-	/** Truncate a pseudonymous hash for compact display (full value is in the export). */
 	private function truncate( string $hash ): string {
 		return '' === $hash ? '' : substr( $hash, 0, 12 ) . '…';
 	}
 
-	/** The requested log page (1-based, clamped to ≥ 1). */
 	private function current_page(): int {
 		$raw  = isset( $_GET['paged'] ) ? wp_unslash( $_GET['paged'] ) : '1';
 		$page = absint( is_scalar( $raw ) ? $raw : 1 );

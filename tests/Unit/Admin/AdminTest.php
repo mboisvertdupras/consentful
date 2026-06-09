@@ -9,13 +9,6 @@ use Consentful\Catalog\Catalog;
 use Consentful\Tests\Unit\Support\FakeWpdb;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Admin is the thin WP shell of the self-serve Administrator UI: it registers the menu,
- * settings and export hooks (recorder-tested), the menu carries the `manage_options`
- * capability on every screen, the `register_setting` callback delegates to the pure
- * `Settings::sanitize`, and the export data path (`export_csv_body`) builds CSV from the
- * reader + exporter. The render/header-send shells stay out of the tested core.
- */
 final class AdminTest extends TestCase {
 
 	public static function setUpBeforeClass(): void {
@@ -39,11 +32,7 @@ final class AdminTest extends TestCase {
 		parent::tearDown();
 	}
 
-	/**
-	 * Narrow a recorder global to a list of associative arrays for typed offset access.
-	 *
-	 * @return list<array<array-key, mixed>>
-	 */
+	/** @return list<array<array-key, mixed>> */
 	private function recorded( string $key ): array {
 		$entries = $GLOBALS[ $key ] ?? array();
 		$this->assertIsArray( $entries );
@@ -82,16 +71,12 @@ final class AdminTest extends TestCase {
 		$GLOBALS['consentful_test_inline_scripts'] = array();
 
 		$admin = $this->admin();
-		// register_menu records the settings-page hook (the stub returns the menu slug).
 		$admin->register_menu();
 
-		// A foreign admin screen enqueues nothing.
 		$admin->enqueue_assets( 'edit.php' );
 		$this->assertSame( array(), $this->recorded( 'consentful_test_styles' ) );
 		$this->assertSame( array(), $this->recorded( 'consentful_test_inline_scripts' ) );
 
-		// Our settings screen loads the color-picker style + script (the Iris init) and the
-		// inline-only custom-snippet repeater script.
 		$admin->enqueue_assets( 'consentful' );
 		$this->assertContains( array( 'wp-color-picker' ), $this->recorded( 'consentful_test_styles' ) );
 		$this->assertContains( array( 'wp-color-picker' ), $this->recorded( 'consentful_test_enqueues' ) );
@@ -128,8 +113,6 @@ final class AdminTest extends TestCase {
 		$this->assertSame( 'consentful', $registered['group'] );
 		$this->assertSame( 'consentful_settings', $registered['name'] );
 
-		// The (one-arg) callback delegates to Settings::sanitize (stamps the version,
-		// allowlists the banner, drops unknown keys).
 		$this->assertIsArray( $registered['args'] );
 		$callback = $registered['args']['sanitize_callback'];
 		$this->assertIsCallable( $callback );

@@ -3,49 +3,28 @@ declare( strict_types = 1 );
 
 namespace Consentful\Admin;
 
-/**
- * The canonical `consentful_settings` option (`CONSENTFUL_OPTION`) — the single source
- * of truth the Administrator edits in the admin UI. Constructable from an array so the
- * sanitize/merge logic is pure and unit-testable; `from_wp()` reads the live option.
- *
- * `sanitize()` is the `register_setting` callback: an allowlist + coercion that drops
- * unknown keys. The typed accessors (`banner()`, `purposes()`, `tags()`, `geo()`,
- * `proof()`) return the EFFECTIVE config — stored values deep-merged over `defaults()` —
- * so an empty option yields the full compliant baseline. `all()` returns the raw stored
- * array for the admin form (stored-vs-placeholder).
- *
- * Banner *copy* is never stored here: it ships as gettext, translated in the language
- * files. Custom-snippet `code` is stored RAW (admin `unfiltered_html` trust) — it is only
- * ever injected by JS, never printed as a literal `<script>`.
- */
 final class Settings {
 
-	/** The settings-schema version (migration guard). */
 	private const VERSION = 1;
 
-	/** @var list<string> Allowed banner positions. */
+	/** @var list<string> */
 	private const POSITIONS = array( 'bar', 'corner', 'modal' );
 
-	/** @var list<string> Allowed banner themes. */
+	/** @var list<string> */
 	private const THEMES = array( 'light', 'dark', 'auto' );
 
-	/** Max corner radius the Administrator may set (px). */
 	private const MAX_RADIUS = 32;
 
-	/** @var list<string> The fixed default purpose keys (compliance guardrails). */
+	/** @var list<string> */
 	private const PURPOSE_KEYS = array( 'necessary', 'functional', 'analytics', 'marketing', 'personalization' );
 
-	/** @var list<string> Allowed global postures when geo is not adaptive. */
+	/** @var list<string> */
 	private const GLOBAL_POLICIES = array( 'opt_in', 'opt_out', 'notice_only' );
 
-	/** @var list<string> Allowed custom-snippet injection locations. */
+	/** @var list<string> */
 	private const SNIPPET_LOCATIONS = array( 'head', 'body', 'footer' );
 
-	/**
-	 * @var array<string, list<string>> Catalog keys → their allowed flat field keys. `custom`
-	 * is special: its fields are a `fragments` list (see `sanitize_custom_fields`), so it has
-	 * no flat keys here — the empty list just registers `custom` as a known catalog.
-	 */
+	/** @var array<string, list<string>> */
 	private const CATALOG_FIELDS = array(
 		'ga4'        => array( 'measurementId' ),
 		'google-ads' => array( 'conversionId' ),
@@ -55,22 +34,18 @@ final class Settings {
 	);
 
 	/**
-	 * @param array<array-key, mixed> $stored The sanitized stored option (possibly partial).
+	 * @param array<array-key, mixed> $stored
 	 */
 	public function __construct(
 		private readonly array $stored,
 	) {}
 
-	/** Read the live option from WordPress. */
 	public static function from_wp(): self {
 		$stored = get_option( CONSENTFUL_OPTION, array() );
 		return new self( is_array( $stored ) ? $stored : array() );
 	}
 
 	/**
-	 * The full compliant default settings array — the merge base for the typed accessors
-	 * and the placeholder source for the admin form.
-	 *
 	 * @return array<string, mixed>
 	 */
 	public static function defaults(): array {
@@ -99,8 +74,6 @@ final class Settings {
 	}
 
 	/**
-	 * The raw sanitized stored array (for the admin form to show stored-vs-placeholder).
-	 *
 	 * @return array<array-key, mixed>
 	 */
 	public function all(): array {
@@ -108,8 +81,6 @@ final class Settings {
 	}
 
 	/**
-	 * The EFFECTIVE merged section map (stored over defaults) the hydrator consumes.
-	 *
 	 * @return array<string, mixed>
 	 */
 	public function effective(): array {
@@ -123,8 +94,6 @@ final class Settings {
 	}
 
 	/**
-	 * Effective banner appearance: stored merged over defaults.
-	 *
 	 * @return array<string, mixed>
 	 */
 	public function banner(): array {
@@ -132,9 +101,6 @@ final class Settings {
 	}
 
 	/**
-	 * Effective per-purpose config: stored copy overrides + personalization toggle merged
-	 * over defaults.
-	 *
 	 * @return array<string, mixed>
 	 */
 	public function purposes(): array {
@@ -149,9 +115,6 @@ final class Settings {
 	}
 
 	/**
-	 * The ordered list of stored tag entries (catalog instances + custom snippets). Tags
-	 * have no merge base — the stored list is authoritative.
-	 *
 	 * @return list<array<string, mixed>>
 	 */
 	public function tags(): array {
@@ -165,8 +128,6 @@ final class Settings {
 	}
 
 	/**
-	 * Effective geo config: stored merged over defaults.
-	 *
 	 * @return array<string, mixed>
 	 */
 	public function geo(): array {
@@ -174,8 +135,6 @@ final class Settings {
 	}
 
 	/**
-	 * Effective proof config: stored merged over defaults.
-	 *
 	 * @return array<string, mixed>
 	 */
 	public function proof(): array {
@@ -183,8 +142,6 @@ final class Settings {
 	}
 
 	/**
-	 * A top-level associative section merged over its defaults (one level deep).
-	 *
 	 * @return array<string, mixed>
 	 */
 	private function merged( string $section ): array {
@@ -195,8 +152,6 @@ final class Settings {
 	}
 
 	/**
-	 * A default section as a typed map.
-	 *
 	 * @return array<string, mixed>
 	 */
 	private static function default_section( string $section ): array {
@@ -204,8 +159,6 @@ final class Settings {
 	}
 
 	/**
-	 * Narrow an untyped value to a string-keyed map (non-arrays become empty).
-	 *
 	 * @return array<string, mixed>
 	 */
 	private static function array_value( mixed $value ): array {
@@ -220,10 +173,7 @@ final class Settings {
 	}
 
 	/**
-	 * The PURE heart: allowlist + coerce the raw POSTed option, dropping unknown keys. The
-	 * `register_setting` sanitize callback delegates here. All values arrive untrusted.
-	 *
-	 * @param array<array-key, mixed> $raw The raw submitted option.
+	 * @param array<array-key, mixed> $raw
 	 * @return array<string, mixed>
 	 */
 	public static function sanitize( array $raw ): array {
@@ -282,9 +232,6 @@ final class Settings {
 	}
 
 	/**
-	 * Per-purpose `enabled` (only meaningful for personalization) and copy overrides. Only
-	 * keys in the fixed set survive; blank label/description is allowed (= gettext default).
-	 *
 	 * @return array<string, array<string, mixed>>
 	 */
 	private static function sanitize_purposes( mixed $value ): array {
@@ -313,10 +260,6 @@ final class Settings {
 	}
 
 	/**
-	 * The ordered tag list: catalog instances + custom snippets. Each entry must carry a
-	 * known catalog key (or `custom`) and a non-empty, deduped id (case preserved for ids
-	 * like `GTM-XXX`).
-	 *
 	 * @return list<array<string, mixed>>
 	 */
 	private static function sanitize_tags( mixed $value ): array {
@@ -337,8 +280,6 @@ final class Settings {
 			}
 
 			$fields = self::sanitize_fields( $catalog, $tag['fields'] ?? null );
-			// A custom snippet with no non-empty script is empty — an untouched "add another"
-			// row, the JS-free template seed, or one the Administrator cleared — so drop it.
 			if ( 'custom' === $catalog && array() === ( $fields['fragments'] ?? array() ) ) {
 				continue;
 			}
@@ -360,8 +301,6 @@ final class Settings {
 	}
 
 	/**
-	 * Tag purpose assignment intersected with the fixed purpose set.
-	 *
 	 * @return list<string>
 	 */
 	private static function sanitize_purpose_keys( mixed $value ): array {
@@ -379,9 +318,6 @@ final class Settings {
 	}
 
 	/**
-	 * The stored field values for a tag, per the catalog entry's field schema. `custom` is
-	 * special — its fields are a list of script fragments (see `sanitize_custom_fields`).
-	 *
 	 * @return array<string, mixed>
 	 */
 	private static function sanitize_fields( string $catalog, mixed $value ): array {
@@ -405,12 +341,6 @@ final class Settings {
 	}
 
 	/**
-	 * A custom snippet's fields: an ordered `fragments` list of `{ code, location }`. Each
-	 * `code` is stored RAW (only `wp_unslash`, never escaped) — it is injected by JS, gated
-	 * by admin `unfiltered_html` trust; `location` is allowlisted (defaulting to `head`).
-	 * Empty-code fragments (untouched/template rows) are dropped and the list is re-indexed;
-	 * no non-empty fragment yields an empty array (so the snippet itself is dropped upstream).
-	 *
 	 * @return array{fragments?: list<array{code: string, location: string}>}
 	 */
 	private static function sanitize_custom_fields( mixed $value ): array {
@@ -469,15 +399,12 @@ final class Settings {
 	}
 
 	/**
-	 * The value when it is a string in the allowlist, otherwise null (dropping it).
-	 *
 	 * @param list<string> $allowed
 	 */
 	private static function in_list( mixed $value, array $allowed ): ?string {
 		return is_string( $value ) && in_array( $value, $allowed, true ) ? $value : null;
 	}
 
-	/** A valid hex color, or null when WordPress rejects it. */
 	private static function sanitize_color( mixed $value ): ?string {
 		if ( null === $value ) {
 			return null;
@@ -486,7 +413,6 @@ final class Settings {
 		return is_string( $color ) && '' !== $color ? $color : null;
 	}
 
-	/** Coerce a scalar option value to string (non-scalars become ''). */
 	private static function to_string( mixed $value ): string {
 		return is_scalar( $value ) ? (string) $value : '';
 	}

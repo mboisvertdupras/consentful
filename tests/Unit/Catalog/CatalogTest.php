@@ -7,11 +7,6 @@ use Consentful\Catalog\Catalog;
 use Consentful\Tag\Delivery;
 use PHPUnit\Framework\TestCase;
 
-/**
- * The built-in Catalog: the v1 entries, their handler/delivery/default-purposes, and the
- * field schema the admin UI renders. Pure (gettext labels round-trip as the source string
- * under the test shim).
- */
 final class CatalogTest extends TestCase {
 
 	public function test_default_entries_are_present_in_order(): void {
@@ -53,7 +48,6 @@ final class CatalogTest extends TestCase {
 		$entry = Catalog::with_defaults()->get( 'gtm' );
 
 		$this->assertNotNull( $entry );
-		// GTM rides the Google Consent Mode handler and loads its container behind consent.
 		$this->assertSame( 'google', $entry->handler() );
 		$this->assertSame( Delivery::Direct, $entry->delivery() );
 		$this->assertSame( array( 'analytics', 'marketing' ), $entry->default_purposes() );

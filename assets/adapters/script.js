@@ -1,20 +1,9 @@
-/**
- * Generic script handler (Direct) — proves vendor-neutrality. A tag's adapter config is a
- * list of `{ code, location }` fragments; when the tag is granted, each fragment's HTML
- * (one or more tags) is injected at its own location (head/body/footer). The HTML is parsed
- * in an inert <template>, then each <script> is re-created so it executes (a parsed script
- * never runs on its own) and other elements are imported as-is. Idempotent (the whole tag
- * injects once); never uses document.write.
- */
-
 const injected = new Set();
 
-/** Reset module state (test seam). */
 export function reset() {
 	injected.clear();
 }
 
-/** The { parent, before } insertion point for a location ('head' by default). */
 function target( location, doc ) {
 	const body = doc.body;
 	if ( 'body' === location ) {
@@ -26,7 +15,6 @@ function target( location, doc ) {
 	return { parent: doc.head || doc.documentElement, before: null };
 }
 
-/** A fresh, executable copy of a parsed <script> (attributes + inline code preserved). */
 function recreateScript( node, doc ) {
 	const el = doc.createElement( 'script' );
 	for ( const attr of Array.prototype.slice.call( node.attributes ) ) {
@@ -38,7 +26,6 @@ function recreateScript( node, doc ) {
 	return el;
 }
 
-/** Parse one fragment's HTML and inject its element nodes at the fragment's location. */
 function injectFragment( fragment, doc ) {
 	const code = fragment && fragment.code ? String( fragment.code ) : '';
 	if ( ! code ) {
@@ -70,13 +57,6 @@ function injectFragment( fragment, doc ) {
 }
 
 export const script = {
-	/**
-	 * @param {object}   ctx
-	 * @param {object}   ctx.tag           The gated tag (its id keys idempotency).
-	 * @param {object}   ctx.adapterConfig { fragments: [{ code, location }, …] }.
-	 * @param {boolean}  ctx.granted
-	 * @param {Document} ctx.doc
-	 */
 	apply( ctx ) {
 		const { tag, adapterConfig, granted, doc } = ctx;
 		if ( ! granted ) {

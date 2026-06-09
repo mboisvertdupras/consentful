@@ -8,17 +8,9 @@ use Consentful\Consent\ConsentLogSchema;
 use Consentful\Tests\Unit\Support\FakeWpdb;
 use PHPUnit\Framework\TestCase;
 
-/**
- * ConsentLogReader is the thin $wpdb shell of the auditor surface: it binds the table as a
- * `%i` identifier and LIMIT/OFFSET as `%d` values via prepare (never interpolated), and its
- * pure `to_export_row` maps a stored row (DATETIME, JSON purposes, nullable hashes) to the
- * flat export shape. Exercised with a fake wpdb that records reads and returns seeded rows.
- */
 final class ConsentLogReaderTest extends TestCase {
 
-	/**
-	 * @return array<string, mixed>
-	 */
+	/** @return array<string, mixed> */
 	private function row( string $cid = 'cid-1' ): array {
 		return array(
 			'id'             => 5,
@@ -113,7 +105,6 @@ final class ConsentLogReaderTest extends TestCase {
 		);
 
 		$this->assertSame( 'x', $export['consent_id'] );
-		// Unparseable timestamp passes through; bad JSON yields an empty purposes string.
 		$this->assertSame( 'not-a-date', $export['created_at'] );
 		$this->assertSame( '', $export['purposes'] );
 		$this->assertSame( 0, $export['policy_version'] );
@@ -122,7 +113,6 @@ final class ConsentLogReaderTest extends TestCase {
 	public function test_export_row_keys_match_the_schema_columns(): void {
 		$export = ConsentLogReader::to_export_row( $this->row() );
 
-		// The from-DB mapper follows the single column-contract owner's order.
 		$this->assertSame( ConsentLogSchema::column_names(), array_keys( $export ) );
 	}
 }

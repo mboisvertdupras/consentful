@@ -1,17 +1,10 @@
 <?php
 declare( strict_types = 1 );
 
-// No-op WordPress shims so the domain core can run outside WordPress under PHPUnit.
-//
-// A few shims optionally record their calls into a global array when a test seeds
-// it (e.g. $GLOBALS['consentful_test_actions'] = array();). Tests that don't seed
-// the global keep the plain no-op behavior.
-
 if ( ! defined( 'DAY_IN_SECONDS' ) ) {
 	define( 'DAY_IN_SECONDS', 86400 );
 }
 
-// wpdb result-format constants used by the ConsentLogReader's get_results() calls.
 if ( ! defined( 'ARRAY_A' ) ) {
 	define( 'ARRAY_A', 'ARRAY_A' );
 }
@@ -19,9 +12,6 @@ if ( ! defined( 'OBJECT' ) ) {
 	define( 'OBJECT', 'OBJECT' );
 }
 
-// A throwaway ABSPATH so the schema shell's `require_once ABSPATH . 'wp-admin/…'`
-// resolves under PHPUnit (dbDelta itself is the recorder stub below). The upgrade.php
-// fixture is created on demand; nothing real is loaded.
 if ( ! defined( 'ABSPATH' ) ) {
 	$consentful_test_abspath = sys_get_temp_dir() . '/consentful-abspath/';
 	$consentful_upgrade_dir  = $consentful_test_abspath . 'wp-admin/includes';
@@ -47,8 +37,6 @@ if ( ! function_exists( 'add_action' ) ) {
 	}
 }
 
-// A minimal filter registry so tests can exercise filter-driven code (e.g. the dev hooks
-// consentful_purposes / _adapters / _tags / _sink). Callbacks live in a per-process global.
 if ( ! function_exists( 'add_filter' ) ) {
 	function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) {
 		if ( ! isset( $GLOBALS['consentful_test_filters'] ) || ! is_array( $GLOBALS['consentful_test_filters'] ) ) {
@@ -243,8 +231,6 @@ if ( ! function_exists( '__return_true' ) ) {
 	}
 }
 
-// Option store backed by a per-test global array. Tests seed/inspect
-// $GLOBALS['consentful_test_options']; an unseeded global behaves as an empty store.
 if ( ! function_exists( 'consentful_test_option_store' ) ) {
 	function &consentful_test_option_store() {
 		if ( ! isset( $GLOBALS['consentful_test_options'] ) || ! is_array( $GLOBALS['consentful_test_options'] ) ) {
@@ -297,13 +283,10 @@ if ( ! function_exists( 'set_transient' ) ) {
 
 if ( ! function_exists( 'wp_generate_password' ) ) {
 	function wp_generate_password( $length = 12, $special_chars = true, $extra_special_chars = false ) {
-		// Deterministic-enough filler for tests; never used for real secrets here.
 		return substr( str_repeat( 'aB3-', (int) ceil( $length / 4 ) ), 0, (int) $length );
 	}
 }
 
-// Admin recorders. add_menu_page / add_submenu_page / register_setting record their
-// args into per-test globals when seeded; otherwise they are plain no-ops.
 if ( ! function_exists( 'add_menu_page' ) ) {
 	function add_menu_page( $page_title, $menu_title, $capability, $menu_slug, $callback = '', $icon_url = '', $position = null ) {
 		if ( isset( $GLOBALS['consentful_test_menus'] ) && is_array( $GLOBALS['consentful_test_menus'] ) ) {
@@ -492,8 +475,6 @@ if ( ! function_exists( 'register_deactivation_hook' ) ) {
 	}
 }
 
-// Minimal cron registry so the retention-purge scheduling is exercisable. A test seeds
-// $GLOBALS['consentful_test_cron'] = array() to record scheduled hooks and clears.
 if ( ! function_exists( 'wp_next_scheduled' ) ) {
 	function wp_next_scheduled( $hook, $args = array() ) {
 		$cron = $GLOBALS['consentful_test_cron'] ?? array();
@@ -524,8 +505,6 @@ if ( ! function_exists( 'wp_clear_scheduled_hook' ) ) {
 	}
 }
 
-// Records dbDelta calls when a test seeds $GLOBALS['consentful_test_dbdelta']; the
-// table-creation path is exercised by ActivatorTest with a fake wpdb + this recorder.
 if ( ! function_exists( 'dbDelta' ) ) {
 	function dbDelta( $queries = '', $execute = true ) {
 		if ( isset( $GLOBALS['consentful_test_dbdelta'] ) && is_array( $GLOBALS['consentful_test_dbdelta'] ) ) {
@@ -565,9 +544,6 @@ if ( ! class_exists( 'WP_Error' ) ) {
 	}
 }
 
-// Minimal wpdb base so the typed DatabaseSink / ConsentLogSchema / Activator shells
-// accept an injected fake (a test subclass records inserts/queries). The real wpdb is
-// never loaded under PHPUnit.
 if ( ! class_exists( 'wpdb' ) ) {
 	class wpdb {
 

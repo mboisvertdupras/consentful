@@ -82,7 +82,7 @@ describe( 'lib/jurisdiction resolveJurisdictionSync', () => {
 	it( 'returns null when the mapped id is not a known jurisdiction', () => {
 		const cfg = config();
 		cfg.geo.cookie = 'geo';
-		cfg.geo.map = { GB: 'UK' }; // UK absent from jurisdictions
+		cfg.geo.map = { GB: 'UK' };
 		expect( resolveJurisdictionSync( cfg, env( 'geo=GB' ) ) ).toBeNull();
 	} );
 

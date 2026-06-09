@@ -3,10 +3,6 @@ declare( strict_types = 1 );
 
 namespace Consentful\Consent;
 
-/**
- * An integrator-defined Purpose, beyond the default taxonomy. Lets the source of
- * truth (code/config) add purposes the enum does not ship.
- */
 final class CustomPurpose implements Purpose {
 
 	public function __construct(

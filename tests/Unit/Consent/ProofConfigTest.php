@@ -6,10 +6,6 @@ namespace Consentful\Tests\Unit\Consent;
 use Consentful\Consent\ProofConfig;
 use PHPUnit\Framework\TestCase;
 
-/**
- * ProofConfig is the pure source of the camelCase `proof` block: enabled flag plus the
- * caller-supplied endpoint URL and banner version.
- */
 final class ProofConfigTest extends TestCase {
 
 	public function test_defaults_enable_proof(): void {

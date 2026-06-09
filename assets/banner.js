@@ -1,26 +1,5 @@
-/**
- * Visitor-facing consent banner — rendered by JS at runtime from config, so every
- * visitor still receives identical HTML (cache-safe). It owns no consent state: it reads
- * everything from the gate API (purposes, policy, grants, gpc, hasDecision) and writes
- * every decision back through api.setConsent/acceptAll/rejectAll. It never touches gtag
- * or the cookie directly.
- *
- * One banner area, three Policy-driven shapes (ADR 0002): the blocking opt-in gate
- * (renderOptIn — Loi 25/GDPR), the non-blocking US "Do Not Sell/Share" notice
- * (renderOptOut), and notice_only which renders nothing.
- */
-
 import { coerceBannerConfig, purposeCopy } from './banner-config.js';
 
-/**
- * Initialize the banner against the gate API.
- *
- * @param {object}  api               The window.consentful API.
- * @param {unknown} rawBannerConfig   The raw banner config slice (untrusted — coerced here).
- * @param {object}  env               { win, doc } — only doc is needed.
- * @return {object} A handle { destroy } — destroy() fully tears down the banner so a
- *                  re-init after a jurisdiction change leaves no duplicate nodes/listeners.
- */
 export function initBanner( api, rawBannerConfig, { doc } ) {
 	const cfg = coerceBannerConfig( rawBannerConfig );
 
@@ -29,18 +8,13 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		return noop;
 	}
 	const policy = api.policy();
-	// notice_only: the site's privacy-policy link is the notice — no banner, no pill.
 	if ( ! policy.showsBanner ) {
 		return noop;
 	}
-	// GPC is honored instantly for every variant — a blanket refusal / DNS already
-	// exercised, so neither the opt-in gate nor the opt-out notice is shown (CONTEXT.md).
 	if ( api.gpc() ) {
 		return noop;
 	}
 
-	// Shared builders for both variants. `purposes` and the prefs block are identical;
-	// the variants differ only in their actions/flow and (for opt-in) the modal trap.
 	const purposes = api.purposes();
 
 	const el = ( tag, className, textContent ) => {
@@ -59,15 +33,13 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		return b;
 	};
 
-	// Build the per-purpose preferences block once; returns the prefs node + its inputs so
-	// the variant can prefill, read toggles, and reveal it.
 	function buildPrefs() {
 		const prefs = el( 'div', 'cnf-prefs' );
 		prefs.id = 'cnf-prefs';
 		prefs.hidden = true;
 		prefs.appendChild( el( 'h3', 'cnf-prefs__title', cfg.copy.prefsTitle ) );
 
-		const inputs = {}; // purpose key => checkbox
+		const inputs = {};
 		for ( const purpose of purposes ) {
 			const copy = purposeCopy( cfg, purpose.key );
 			const row = el( 'label', 'cnf-purpose' );
@@ -92,8 +64,6 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		return { prefs, inputs };
 	}
 
-	// Prefill non-essential toggles from the live grants so re-opening (or revealing under
-	// opt-out's all-on default) reflects the current decision.
 	function prefillToggles( inputs ) {
 		const current = api.get();
 		for ( const purpose of purposes ) {
@@ -112,7 +82,6 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		return grants;
 	}
 
-	// Re-open / withdraw pill, lives outside the panel so it survives panel hide.
 	function buildPill() {
 		const pill = button( 'consentful cnf-reopen cnf-banner--theme-' + cfg.theme, cfg.copy.reopen );
 		pill.style.setProperty( '--cnf-primary', cfg.primaryColor );
@@ -121,8 +90,6 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		return pill;
 	}
 
-	// Confirmation toast — a polite live region each variant shows on commit. Built once
-	// per init; torn down in destroy().
 	function buildToast() {
 		const toast = el( 'div', 'consentful cnf-toast cnf-banner--theme-' + cfg.theme );
 		toast.setAttribute( 'role', 'status' );
@@ -130,8 +97,6 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		toast.hidden = true;
 		let hideTimer = null;
 		let clearTimer = null;
-		// Reveal immediately, fade out after a beat. The text outlives the fade-out (cleared
-		// only once it finishes) so it fades WITH the box, not before it. Never steals focus.
 		const show = () => {
 			if ( hideTimer ) {
 				clearTimeout( hideTimer );
@@ -166,21 +131,13 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 	if ( policy.type === 'opt_out' ) {
 		return renderOptOut();
 	}
-	// opt_in (and any unknown type defaults to the strict variant — fail-closed).
 	return renderOptIn();
 
-	/**
-	 * Opt-in (Loi 25/GDPR): deny-by-default, blocking, equal-prominence Reject/Accept,
-	 * modal focus trap + background-inert. UNCHANGED behavior — only relocated into a
-	 * function and wired to the shared builders above.
-	 *
-	 * @return {object} { destroy }.
-	 */
 	function renderOptIn() {
 		const isModal = cfg.position === 'modal';
 
-		let lastFocus = null; // element that opened the manager, to restore on close
-		let wasOpened = false; // true only after a real show (not the passive initial render)
+		let lastFocus = null;
+		let wasOpened = false;
 
 		const root = doc.createElement( 'div' );
 		root.className =
@@ -218,10 +175,8 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			inner.appendChild( link );
 		}
 
-		// Preferences — per-purpose rows, revealed by the Customize link or shown on re-open.
 		const { prefs, inputs } = buildPrefs();
 
-		// Customize is a text link, not a row button — keeps the action row an equal pair.
 		const customizeBtn = button( 'cnf-customize', cfg.copy.customize );
 		customizeBtn.setAttribute( 'aria-expanded', 'false' );
 		customizeBtn.setAttribute( 'aria-controls', prefs.id );
@@ -229,7 +184,6 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 
 		inner.appendChild( prefs );
 
-		// Actions — equal-prominence Reject/Accept enforced in CSS.
 		const actions = el( 'div', 'cnf-actions' );
 		const rejectBtn = button( 'cnf-btn cnf-btn--reject', cfg.copy.rejectAll );
 		const saveBtn = button( 'cnf-btn cnf-btn--save', cfg.copy.save );
@@ -248,8 +202,6 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		body.appendChild( pill );
 		body.appendChild( toast.toast );
 
-		// Only currently-visible, focusable controls — a static querySelectorAll would
-		// include the [hidden] preference inputs and break the modal trap boundary.
 		function focusables() {
 			const sel = 'button, a[href], input, select, textarea, [tabindex]';
 			return Array.prototype.filter.call( root.querySelectorAll( sel ), ( node ) => {
@@ -258,8 +210,6 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		}
 
 		function trap( e ) {
-			// Esc closes only once a decision exists; the first-visit gate is not Esc-
-			// dismissable (no implied consent).
 			if ( e.key === 'Escape' && api.hasDecision() ) {
 				e.preventDefault();
 				hidePanel();
@@ -283,11 +233,8 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			}
 		}
 
-		// Make the rest of the page inert so AT/keyboard cannot reach it behind the modal.
-		// Only touch attributes we add ourselves: if the site already hid/inerted an element
-		// we leave it alone on open and on close, so we never re-expose content it hid.
-		let inerted = []; // elements we set `inert` on
-		let ariaHidden = []; // elements we set `aria-hidden` on
+		let inerted = [];
+		let ariaHidden = [];
 		function backgroundInert( on ) {
 			if ( ! isModal || ! doc.body ) {
 				return;
@@ -324,8 +271,6 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 				backgroundInert( true );
 				doc.addEventListener( 'keydown', trap );
 			}
-			// Steal focus only when explicitly opened or modal — never on a passive
-			// bar/corner first render.
 			if ( moveFocus || isModal ) {
 				focusFirst();
 			}
@@ -336,9 +281,7 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			if ( target ) {
 				try {
 					target.focus();
-				} catch {
-					// jsdom or detached node — focus is best-effort.
-				}
+				} catch {}
 			}
 		}
 
@@ -349,8 +292,6 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 				backgroundInert( false );
 			}
 			pill.hidden = false;
-			// Restore focus to the opener (APG) — but never on the initial already-decided
-			// hide at load (wasOpened false), which would yank focus onto the pill.
 			if ( wasOpened ) {
 				const restore =
 					lastFocus && doc.contains( lastFocus ) && lastFocus.offsetParent !== null
@@ -358,9 +299,7 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 						: pill;
 				try {
 					restore.focus();
-				} catch {
-					// Focus is best-effort.
-				}
+				} catch {}
 			}
 			wasOpened = false;
 			lastFocus = null;
@@ -369,7 +308,6 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		function revealPrefs() {
 			prefs.hidden = false;
 			saveBtn.hidden = false;
-			// Save is the sole commit here; hide Accept so it can't discard the new toggles.
 			acceptBtn.hidden = true;
 			customizeBtn.setAttribute( 'aria-expanded', 'true' );
 			prefillToggles( inputs );
@@ -377,9 +315,7 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			if ( firstToggle ) {
 				try {
 					inputs[ firstToggle.key ].focus();
-				} catch {
-					// Focus is best-effort.
-				}
+				} catch {}
 			}
 		}
 
@@ -410,15 +346,12 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		customizeBtn.addEventListener( 'click', revealPrefs );
 		pill.addEventListener( 'click', openManager );
 
-		// Initial state: gate the panel on a prior decision; otherwise reveal the pill.
 		if ( api.hasDecision() ) {
 			hidePanel();
 		} else {
 			showPanel( isModal );
 		}
 
-		// Full teardown: drop the keydown trap, restore any inert/aria-hidden we added, and
-		// remove our own nodes. Idempotent.
 		function destroy() {
 			doc.removeEventListener( 'keydown', trap );
 			backgroundInert( false );
@@ -433,15 +366,6 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		return { destroy };
 	}
 
-	/**
-	 * Opt-out (US state laws): allow-by-default, an informational notice that surfaces the
-	 * "Do Not Sell or Share" right + manage-prefs. Genuinely non-blocking — role="region"
-	 * (never dialog), no aria-modal, no focus trap, no background-inert, even at
-	 * position 'modal'. Dismissible (no prior-consent requirement). That non-blocking
-	 * property is the compliance point of the variant.
-	 *
-	 * @return {object} { destroy }.
-	 */
 	function renderOptOut() {
 		const root = doc.createElement( 'div' );
 		root.className =
@@ -468,10 +392,8 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			inner.appendChild( link );
 		}
 
-		// Preferences (all non-essential on by default under opt-out).
 		const { prefs, inputs } = buildPrefs();
 
-		// Customize is a text link, not a row button — keeps the action row an equal pair.
 		const customizeBtn = button( 'cnf-customize', cfg.copy.customize );
 		customizeBtn.setAttribute( 'aria-expanded', 'false' );
 		customizeBtn.setAttribute( 'aria-controls', prefs.id );
@@ -479,7 +401,6 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 
 		inner.appendChild( prefs );
 
-		// Actions: the conspicuous DNS control + Close; revealing prefs swaps Close for Save.
 		const actions = el( 'div', 'cnf-actions' );
 		const dnsBtn = button( 'cnf-btn cnf-btn--optout', cfg.copy.doNotSell );
 		const saveBtn = button( 'cnf-btn cnf-btn--save', cfg.copy.save );
@@ -512,15 +433,10 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			if ( target ) {
 				try {
 					target.focus();
-				} catch {
-					// jsdom or detached node — focus is best-effort.
-				}
+				} catch {}
 			}
 		}
 
-		// Collapse prefs so a later pill re-open starts fresh (notice + actions); restore
-		// focus to the pill on an explicit dismissal, but never on the passive load-time
-		// hide for a returning visitor (which would yank focus onto the pill).
 		function hidePanel( restoreFocus ) {
 			root.hidden = true;
 			doc.removeEventListener( 'keydown', onKeydown );
@@ -532,16 +448,13 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			if ( restoreFocus ) {
 				try {
 					pill.focus();
-				} catch {
-					// Focus is best-effort (jsdom / detached node).
-				}
+				} catch {}
 			}
 		}
 
 		function revealPrefs() {
 			prefs.hidden = false;
 			saveBtn.hidden = false;
-			// Save is the commit while prefs are open — hide Close (keeps the row two buttons).
 			closeBtn.hidden = true;
 			customizeBtn.setAttribute( 'aria-expanded', 'true' );
 			prefillToggles( inputs );
@@ -549,14 +462,10 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			if ( firstToggle ) {
 				try {
 					inputs[ firstToggle.key ].focus();
-				} catch {
-					// Focus is best-effort.
-				}
+				} catch {}
 			}
 		}
 
-		// Esc acknowledges the notice and hides it — dismissible, since opt-out has no
-		// prior-consent requirement (no focus trap; this is the only key we watch).
 		function onKeydown( e ) {
 			if ( e.key === 'Escape' ) {
 				e.preventDefault();
@@ -564,8 +473,6 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			}
 		}
 
-		// Persist the current allow-by-default grants so the notice doesn't re-nag. Opt-out
-		// regimes permit default-on; this is acknowledgement, not prohibited implied consent.
 		function acknowledge() {
 			api.setConsent( api.get() );
 			toast.show();
@@ -584,7 +491,6 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			hidePanel( true );
 		} );
 		closeBtn.addEventListener( 'click', acknowledge );
-		// The pill is how a visitor exercises DNS after dismissing — re-open, move focus.
 		pill.addEventListener( 'click', ( e ) => {
 			if ( e && e.preventDefault ) {
 				e.preventDefault();
@@ -592,16 +498,12 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			showPanel( true );
 		} );
 
-		// Initial state: returning visitor sees the pill only; otherwise show the notice
-		// passively (no focus steal — it's a non-blocking notice).
 		if ( api.hasDecision() ) {
 			hidePanel( false );
 		} else {
 			showPanel( false );
 		}
 
-		// Teardown: drop the keydown listener and remove our own nodes. No trap/inert to
-		// undo (the opt-out notice never installs them). Idempotent.
 		function destroy() {
 			doc.removeEventListener( 'keydown', onKeydown );
 			toast.destroy();

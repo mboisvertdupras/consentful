@@ -3,27 +3,17 @@ declare( strict_types = 1 );
 
 namespace Consentful\Frontend;
 
-/**
- * The resolved consent-banner presentation block. A pure value object: copy &
- * appearance only, no consent logic. ClientConfig serializes it verbatim into the
- * camelCase `banner` key the JS banner coercer consumes; the same value feeds the
- * cache-safe, identical-for-every-visitor head output.
- *
- * `defaults()` is the only place gettext is called — copy comes from code defaults;
- * the Administrator tunes appearance and purpose copy from the admin UI, applied here
- * by the hydrator via `with_overrides()` / `with_purpose_overrides()`.
- */
 final class BannerConfig {
 
-	/** @var list<string> Allowed banner positions; anything else falls back to the base. */
+	/** @var list<string> */
 	private const POSITIONS = array( 'bar', 'corner', 'modal' );
 
-	/** @var list<string> Allowed banner themes; anything else falls back to the base. */
+	/** @var list<string> */
 	private const THEMES = array( 'light', 'dark', 'auto' );
 
 	/**
-	 * @param array<string, string>                        $copy     UI copy keyed by control (camelCase keys per §2).
-	 * @param array<string, array{label: string, description: string}> $purposes Presentation copy keyed by Purpose key.
+	 * @param array<string, string>                                     $copy
+	 * @param array<string, array{label: string, description: string}> $purposes
 	 */
 	public function __construct(
 		public readonly bool $enabled,
@@ -37,9 +27,7 @@ final class BannerConfig {
 		public readonly array $purposes,
 	) {}
 
-	/**
-	 * @return array<string, mixed> The frozen §2 banner shape (camelCase keys).
-	 */
+	/** @return array<string, mixed> */
 	public function to_array(): array {
 		return array(
 			'enabled'      => $this->enabled,
@@ -55,13 +43,7 @@ final class BannerConfig {
 	}
 
 	/**
-	 * Return a NEW BannerConfig with the Administrator's appearance overrides layered over
-	 * this base. A field is overlaid only when it is present in `$overrides`. Values may
-	 * arrive as strings (from the option), so each is coerced defensively; invalid
-	 * `position`/`theme` fall back to the base. `copy` is not editable here — it is
-	 * gettext-translated, never overridden. Pure: no WordPress calls.
-	 *
-	 * @param array<string, mixed> $overrides The Administrator's stored banner values.
+	 * @param array<string, mixed> $overrides
 	 */
 	public function with_overrides( array $overrides ): self {
 		$has = static fn ( string $field ): bool => array_key_exists( $field, $overrides );
@@ -79,13 +61,6 @@ final class BannerConfig {
 		);
 	}
 
-	/**
-	 * Resolve an empty privacy URL to `$fallback` (e.g. the site's configured WordPress
-	 * privacy page) so the banner can always link to a privacy policy. An explicit URL —
-	 * the integrator's base or the Site owner's override — is left untouched, and an empty
-	 * fallback is a no-op. Pure: the caller supplies the resolved fallback (no WordPress
-	 * call here), keeping this value object framework-free.
-	 */
 	public function with_privacy_fallback( string $fallback ): self {
 		if ( '' !== $this->privacy_url || '' === $fallback ) {
 			return $this;
@@ -105,12 +80,7 @@ final class BannerConfig {
 	}
 
 	/**
-	 * Return a NEW BannerConfig with the Administrator's per-Purpose copy overrides layered
-	 * over this base. A purpose's `label`/`description` is overridden only when the override
-	 * is a non-blank string — a blank or absent value keeps the gettext default. Pure: no
-	 * WordPress calls. Overrides for purposes not in the base map are ignored.
-	 *
-	 * @param array<string, array<string, mixed>> $overrides Purpose key → { label?, description? }.
+	 * @param array<string, array<string, mixed>> $overrides
 	 */
 	public function with_purpose_overrides( array $overrides ): self {
 		$purposes = $this->purposes;
@@ -139,28 +109,20 @@ final class BannerConfig {
 	}
 
 	/**
-	 * Return `$value` when it is in the allowlist, otherwise the `$fallback`.
-	 *
 	 * @param list<string> $allowed
 	 */
 	private static function in_list( string $value, array $allowed, string $fallback ): string {
 		return in_array( $value, $allowed, true ) ? $value : $fallback;
 	}
 
-	/** Defensively coerce a scalar override value to string (non-scalars become ''). */
 	private static function to_string( mixed $value ): string {
 		return is_scalar( $value ) ? (string) $value : '';
 	}
 
-	/** Defensively coerce a scalar override value to int (non-numerics become 0). */
 	private static function to_int( mixed $value ): int {
 		return is_numeric( $value ) ? (int) $value : 0;
 	}
 
-	/**
-	 * Sensible code defaults: opt-in banner shown, auto theme, blue primary. Copy is the
-	 * English source for gettext; French ships via the bundled `.mo` files.
-	 */
 	public static function defaults(): self {
 		return new self(
 			true,
