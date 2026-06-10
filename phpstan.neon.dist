@@ -15,8 +15,8 @@ parameters:
 		- tests/Unit
 	excludePaths:
 		- vendor/
-		- node_modules/
-		- build/
+		- node_modules (?)
+		- build (?)
 		- assets/
 		- languages/
 		- tests/bootstrap.php

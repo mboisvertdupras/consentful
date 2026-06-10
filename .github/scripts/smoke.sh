@@ -39,10 +39,12 @@ count=$(cli wp db query "SELECT COUNT(*) FROM ${TABLE} WHERE consent_id = '${CID
 [ "$count" = '1' ] || fail "expected 1 consent row for cid ${CID}, found ${count}"
 
 # 4. The front page carries the config blob and the inlined decider.
+# Substring tests, not `printf | grep -q`: grep -q exits at the first match and,
+# with pipefail, printf's broken-pipe failure on the large page fails the check.
 front=$(curl -sS "${BASE_URL}/") || fail "could not fetch the front page"
-printf '%s' "$front" | grep -Fq 'window.consentfulConfig' \
+[[ "$front" == *'window.consentfulConfig'* ]] \
 	|| fail "front page is missing window.consentfulConfig"
-printf '%s' "$front" | grep -Fq 'wait_for_update' \
+[[ "$front" == *'wait_for_update'* ]] \
 	|| fail "front page is missing the inlined decider (wait_for_update marker)"
 
 # 5. The geo endpoint is uncacheable.
