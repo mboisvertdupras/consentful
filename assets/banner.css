@@ -54,7 +54,7 @@
 	--cnf-font: -apple-system, "BlinkMacSystemFont", "Segoe UI", "Roboto", "Oxygen-Sans", "Ubuntu", "Cantarell", "Helvetica Neue", sans-serif;
 	z-index: 2147483600;
 	font-family: var(--cnf-font);
-	font-size: 15px;
+	font-size: 14px;
 	line-height: 1.5;
 	box-sizing: border-box;
 }
@@ -70,10 +70,11 @@
 }
 
 .cnf-banner .cnf-banner__title {
-	margin: 0 0 6px;
+	margin: 0 0 4px;
 	font-family: inherit;
-	font-size: 18px;
-	font-weight: 700;
+	font-size: 16px;
+	font-weight: 600;
+	line-height: 1.3;
 	color: var(--cnf-fg);
 }
 
@@ -84,13 +85,13 @@
 
 .cnf-banner--modal .cnf-banner__title,
 .cnf-banner--corner .cnf-banner__title {
-	font-size: 21px;
+	font-size: 18px;
 	letter-spacing: -0.01em;
 }
 
 .cnf-banner__desc {
-	margin: 0 0 14px;
-	max-width: 80ch;
+	margin: 0 0 12px;
+	max-width: 70ch;
 	color: var(--cnf-muted);
 }
 
@@ -120,53 +121,11 @@
 	text-decoration-thickness: 2px;
 }
 
-.cnf-customize {
-	appearance: none;
-	display: block;
-	width: fit-content;
-	margin: -2px -6px 12px;
-	padding: 2px 6px;
-	border: 0;
-	border-radius: 6px;
-	background: none;
-	font: inherit;
-	color: var(--cnf-link, #2563eb);
-	text-align: left;
-	text-decoration: underline;
-	cursor: pointer;
-	transition: background-color 150ms ease;
-}
-
-.cnf-customize:focus {
-	background: none;
-	color: var(--cnf-link, #2563eb);
-}
-
-.cnf-customize:hover {
-	background: var(--cnf-surface);
-	color: var(--cnf-link, #2563eb);
-	text-decoration-line: underline;
-	text-decoration-thickness: 2px;
-}
-
-.cnf-customize:active {
-	background-color: var(--cnf-surface);
-	color: var(--cnf-fg);
-	background-image: linear-gradient(var(--cnf-surface), var(--cnf-surface));
-	text-decoration-line: underline;
-	text-decoration-thickness: 2px;
-}
-
-.cnf-customize:focus-visible {
-	outline: 3px solid var(--cnf-fg, #1d1d1f);
-	outline-offset: 2px;
-}
-
 .cnf-prefs {
-	margin: 0 0 16px;
+	margin: 0 0 14px;
 	display: grid;
 	gap: 10px;
-	padding: 14px 16px;
+	padding: 12px 14px;
 	background: var(--cnf-surface);
 	border-radius: 10px;
 	max-height: min(50vh, 360px);
@@ -180,8 +139,8 @@
 .cnf-banner .cnf-prefs__title {
 	margin: 0;
 	font-family: inherit;
-	font-size: 15px;
-	font-weight: 700;
+	font-size: 14px;
+	font-weight: 600;
 	color: var(--cnf-fg);
 }
 
@@ -194,7 +153,7 @@
 }
 
 .cnf-purpose__input {
-	margin-top: 3px;
+	margin-top: 2px;
 	width: 18px;
 	height: 18px;
 	flex: 0 0 auto;
@@ -225,7 +184,7 @@
 .cnf-actions {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 10px;
+	gap: 8px;
 	align-items: center;
 }
 
@@ -233,9 +192,9 @@
 	appearance: none;
 	border: 0;
 	border-radius: var(--cnf-radius, 8px);
-	padding: 11px 18px;
+	padding: 8px 16px;
 	font-family: inherit;
-	font-size: 15px;
+	font-size: 14px;
 	font-weight: 600;
 	cursor: pointer;
 	min-height: 44px;
@@ -342,7 +301,7 @@
 .cnf-banner--bar .cnf-banner__inner {
 	max-width: 1100px;
 	margin: 0 auto;
-	padding: 20px clamp(16px, 4vw, 28px);
+	padding: 16px clamp(16px, 4vw, 28px);
 	max-height: calc(100vh - 24px);
 	max-height: calc(100dvh - 24px);
 	overflow: auto;
@@ -362,15 +321,14 @@
 
 	.cnf-banner--bar .cnf-banner__title,
 	.cnf-banner--bar .cnf-banner__desc,
-	.cnf-banner--bar .cnf-banner__link,
-	.cnf-banner--bar .cnf-customize {
+	.cnf-banner--bar .cnf-banner__link {
 		grid-column: 1;
 		margin-bottom: 0;
 	}
 
 	.cnf-banner--bar .cnf-banner__title,
 	.cnf-banner--bar .cnf-banner__desc {
-		margin-bottom: 6px;
+		margin-bottom: 4px;
 	}
 
 	.cnf-banner--bar .cnf-actions {
@@ -382,7 +340,7 @@
 
 	.cnf-banner--bar .cnf-prefs {
 		grid-column: 1 / -1;
-		margin-top: 16px;
+		margin-top: 12px;
 		margin-bottom: 0;
 	}
 }
@@ -392,7 +350,7 @@
 	right: 20px;
 	bottom: 20px;
 	left: auto;
-	max-width: min(420px, calc(100vw - 40px));
+	max-width: min(400px, calc(100vw - 40px));
 	color: var(--cnf-fg);
 }
 
@@ -401,7 +359,7 @@
 	border: 1px solid var(--cnf-border);
 	border-radius: 14px;
 	box-shadow: 0 8px 30px var(--cnf-shadow);
-	padding: 20px;
+	padding: 18px;
 	max-height: calc(100vh - 40px);
 	max-height: calc(100dvh - 40px);
 	overflow: auto;
@@ -409,6 +367,15 @@
 
 .cnf-banner--corner .cnf-prefs {
 	max-height: none;
+}
+
+.cnf-banner--corner .cnf-actions {
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.cnf-banner--corner .cnf-btn {
+	width: 100%;
 }
 
 .cnf-banner--modal {
@@ -426,9 +393,9 @@
 	background: var(--cnf-bg);
 	border-radius: 16px;
 	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-	padding: 24px clamp(20px, 4vw, 32px);
+	padding: 20px clamp(20px, 4vw, 28px);
 	width: 100%;
-	max-width: 540px;
+	max-width: 520px;
 	max-height: calc(100vh - 40px);
 	overflow: auto;
 }
@@ -440,7 +407,7 @@
 .cnf-banner--modal .cnf-actions {
 	position: sticky;
 	bottom: 0;
-	padding-top: 14px;
+	padding-top: 12px;
 	background: var(--cnf-bg);
 	border-top: 1px solid var(--cnf-border);
 }
@@ -454,9 +421,9 @@
 	color: var(--cnf-fg);
 	border: 1px solid var(--cnf-control-border);
 	border-radius: 999px;
-	padding: 10px 18px;
+	padding: 8px 14px;
 	font-family: var(--cnf-font);
-	font-size: 14px;
+	font-size: 13px;
 	font-weight: 600;
 	cursor: pointer;
 	box-shadow: 0 2px 10px var(--cnf-shadow);
@@ -506,6 +473,18 @@
 	opacity: 0;
 	transform: translateY(8px);
 	pointer-events: none;
+}
+
+@media (pointer: fine) {
+
+	.cnf-btn,
+	.cnf-reopen {
+		min-height: 36px;
+	}
+
+	.cnf-toast {
+		bottom: 58px;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {

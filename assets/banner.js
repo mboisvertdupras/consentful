@@ -189,19 +189,17 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		}
 
 		const { prefs, inputs } = buildPrefs();
-
-		const customizeBtn = button( 'cnf-customize', cfg.copy.customize );
-		customizeBtn.setAttribute( 'aria-expanded', 'false' );
-		customizeBtn.setAttribute( 'aria-controls', prefs.id );
-		inner.appendChild( customizeBtn );
-
 		inner.appendChild( prefs );
 
 		const actions = el( 'div', 'cnf-actions' );
+		const customizeBtn = button( 'cnf-btn cnf-btn--ghost cnf-customize', cfg.copy.customize );
+		customizeBtn.setAttribute( 'aria-expanded', 'false' );
+		customizeBtn.setAttribute( 'aria-controls', prefs.id );
 		const rejectBtn = button( 'cnf-btn cnf-btn--reject', cfg.copy.rejectAll );
 		const saveBtn = button( 'cnf-btn cnf-btn--save', cfg.copy.save );
 		saveBtn.hidden = true;
 		const acceptBtn = button( 'cnf-btn cnf-btn--primary', cfg.copy.acceptAll );
+		actions.appendChild( customizeBtn );
 		actions.appendChild( rejectBtn );
 		actions.appendChild( saveBtn );
 		actions.appendChild( acceptBtn );
@@ -290,7 +288,7 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		}
 
 		function focusFirst() {
-			const target = root.querySelector( '.cnf-btn' );
+			const target = root.querySelector( '.cnf-btn:not(.cnf-customize)' );
 			if ( target ) {
 				try {
 					target.focus();
@@ -322,6 +320,7 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			prefs.hidden = false;
 			saveBtn.hidden = false;
 			acceptBtn.hidden = true;
+			customizeBtn.hidden = true;
 			customizeBtn.setAttribute( 'aria-expanded', 'true' );
 			prefillToggles( inputs );
 			const firstToggle = purposes.find( ( p ) => ! p.alwaysOn );
@@ -411,19 +410,17 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		}
 
 		const { prefs, inputs } = buildPrefs();
-
-		const customizeBtn = button( 'cnf-customize', cfg.copy.customize );
-		customizeBtn.setAttribute( 'aria-expanded', 'false' );
-		customizeBtn.setAttribute( 'aria-controls', prefs.id );
-		inner.appendChild( customizeBtn );
-
 		inner.appendChild( prefs );
 
 		const actions = el( 'div', 'cnf-actions' );
+		const customizeBtn = button( 'cnf-btn cnf-btn--ghost cnf-customize', cfg.copy.customize );
+		customizeBtn.setAttribute( 'aria-expanded', 'false' );
+		customizeBtn.setAttribute( 'aria-controls', prefs.id );
 		const dnsBtn = button( 'cnf-btn cnf-btn--optout', cfg.copy.doNotSell );
 		const saveBtn = button( 'cnf-btn cnf-btn--save', cfg.copy.save );
 		saveBtn.hidden = true;
 		const closeBtn = button( 'cnf-btn cnf-btn--ghost', cfg.copy.close );
+		actions.appendChild( customizeBtn );
 		actions.appendChild( dnsBtn );
 		actions.appendChild( saveBtn );
 		actions.appendChild( closeBtn );
@@ -447,7 +444,7 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 		}
 
 		function focusFirst() {
-			const target = root.querySelector( '.cnf-btn' );
+			const target = root.querySelector( '.cnf-btn:not(.cnf-customize)' );
 			if ( target ) {
 				try {
 					target.focus();
@@ -461,6 +458,7 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			prefs.hidden = true;
 			saveBtn.hidden = true;
 			closeBtn.hidden = false;
+			customizeBtn.hidden = false;
 			customizeBtn.setAttribute( 'aria-expanded', 'false' );
 			pill.hidden = false;
 			if ( restoreFocus ) {
@@ -474,6 +472,7 @@ export function initBanner( api, rawBannerConfig, { doc } ) {
 			prefs.hidden = false;
 			saveBtn.hidden = false;
 			closeBtn.hidden = true;
+			customizeBtn.hidden = true;
 			customizeBtn.setAttribute( 'aria-expanded', 'true' );
 			prefillToggles( inputs );
 			const firstToggle = purposes.find( ( p ) => ! p.alwaysOn );
