@@ -8,13 +8,13 @@ opt-out laws. **Anyone can install it and be compliant from the admin UI — no 
 prior consent-management knowledge.** Neutral, fully themeable branding (prefix
 `consentful_`). Google Consent Mode is the first integration, not the boundary.
 
-> **Status.** Built per ADR 0001/0002/0004: the PSR-4 OOP domain core (Purpose model,
+> **Status.** Built: the PSR-4 OOP domain core (Purpose model,
 > Signal, Consent, Tag, Adapter, Catalog, Jurisdiction/Policy registries), the cache-safe
 > client gate + Google Consent Mode v2 adapter (GA4, Google Ads and GTM containers loaded
 > behind consent), the geo-adaptive jurisdiction resolver (edge signal → non-cached
 > endpoint, fail-closed), the opt-in / opt-out (Do Not Sell/Share) / notice banner
 > variants, durable proof of consent (record + log table + Sink + REST), and the
-> **self-serve admin UI** — the canonical configuration surface (ADR 0004). Code is an
+> **self-serve admin UI** — the canonical configuration surface. Code is an
 > *optional developer layer* (the *Extending in code* hooks below), never required and
 > never overriding the UI.
 
