@@ -1,14 +1,18 @@
 # Consentful
 
-A white-label WordPress plugin that acts as a universal consent layer: it gates
-**all** non-essential third-party tags on a site behind visitor consent, adapts to
-the visitor's Jurisdiction, and keeps demonstrable proof of consent — so the *site*
-(not merely one vendor's tag) meets Québec Loi 25 / GDPR. Google Consent Mode is
+A general-purpose, open-source WordPress plugin (built for the WordPress.org
+directory) that acts as a universal consent layer: it gates **all** non-essential
+third-party tags on a site behind visitor consent, adapts to the visitor's
+Jurisdiction, and keeps demonstrable proof of consent — so the *site* (not merely one
+vendor's tag) meets Québec Loi 25 / GDPR. Anyone can install and configure it from the
+admin UI, with no code or prior consent-management knowledge. Google Consent Mode is
 the first first-class integration, not the boundary of the product.
 
 > Name: **Consentful** — "full of consent". Chosen during the universal-layer pivot
 > to replace "Consent Mode v2" (a Google term that no longer describes the scope).
-> The old name survives only in pre-rewrite code.
+> The pre-rewrite code is gone; the old name survives only in the repo identity
+> (the `consent-mode-v2` directory/remote name) until the rename to
+> `mboisvertdupras/consentful`.
 
 ## Language
 
@@ -17,8 +21,13 @@ the first first-class integration, not the boundary of the product.
 **Purpose**:
 A category of data use a visitor consents to (Analytics, Marketing, …). The legal
 unit of consent — under Loi 25/GDPR consent is specific to each purpose. Visitors
-toggle purposes; everything else is downstream of a purpose grant.
-_Avoid_: Category (the current code term, being migrated), Service.
+toggle purposes; everything else is downstream of a purpose grant. The default set is
+**fixed** (compliance guardrails): default labels/descriptions ship as translated
+gettext, the Administrator may optionally **override** them in the UI and toggle
+optional Personalization, but does not add or remove categories — a Developer may add
+purposes via an optional hook.
+_Avoid_: Category (the code says Purpose everywhere; only visitor-facing English
+prose uses the word "category"), Service.
 
 **Necessary**:
 The always-on purpose for strictly essential operation; cannot be toggled off and
@@ -47,8 +56,10 @@ _Avoid_: Flag, permission.
 
 **Consent push**:
 Emitting consent state to the `dataLayer` (Consent Mode signals + consent events) so
-a Delegated tag manager (GTM) honors the visitor's choice — the gating mechanism for
-Delegated tags, as opposed to injecting a Direct tag.
+a Delegated tag manager honors the visitor's choice — the gating mechanism for
+Delegated tags, as opposed to injecting a Direct tag. (The built-in GTM integration is
+Direct: Consentful loads the container behind consent. Consent push stays available for
+developer-registered Delegated tags.)
 _Avoid_: Sync, broadcast, event (too generic).
 
 ### Jurisdiction & legal posture
@@ -88,7 +99,11 @@ _Avoid_: Reject, withdraw (those are the Opt-in Policy's actions).
 **Consent**:
 A visitor's decision across all purposes, with schema + policy version and a
 timestamp. The **cookie** is the runtime source of truth (cache-safe, fast);
-expires after a re-consent window, after which the visitor is re-prompted.
+expires after a re-consent window, after which the visitor is re-prompted. A
+**client-runtime** concept: the JS lib is its sole owner — `assets/lib/cookie.js`
+reads/writes the cookie, `grants.js` decides gating. PHP carries no Consent
+runtime (it emits the config the client gates on, and records proof via the
+separate **Consent record**); don't re-add a PHP Consent twin for symmetry.
 _Avoid_: Preferences (use for the in-banner UI state only), choice.
 
 **Consent record**:
@@ -103,25 +118,29 @@ auditor.
 _Avoid_: Audit trail, history.
 
 **Sink**:
-The destination a Consent record is written to: the built-in store by default, or
-an Integrator-supplied implementation (their DB, a warehouse, an external CMP).
+The destination a Consent record is written to: the built-in store by default (needs
+no code), or a **Developer**-supplied implementation (their DB, a warehouse, an
+external CMP) registered via the optional sink hook.
 _Avoid_: Store, backend, driver.
 
 ### People
 
-**Integrator**:
-The developer/agency who installs the plugin and declares adapters, tags,
-purpose mappings and compliance policy in code/config — the source of truth. Can
-lock any setting against client changes.
-_Avoid_: Developer (too generic), admin (ambiguous with WP admin role).
+**Administrator**:
+The WordPress admin who installs Consentful (typically from WordPress.org) and
+configures it entirely through the admin UI — tags, purpose copy, jurisdiction policy,
+banner appearance. The primary and only required operator; not expected to write code
+or know consent law. Install + activate gives a compliant baseline; the **UI is the
+source of truth**.
+_Avoid_: Integrator (the rejected code-is-canonical actor — see ADR 0004), Site owner
+(implied a separate constrained tier — there isn't one), user (means the WP user/role).
 
-**Site owner**:
-The end client who operates a site the Integrator set up. Gets a deliberately
-constrained admin UI (color, copy, toggling pre-approved tags) and cannot alter
-anything the Integrator locked. Not expected to write code.
-_Avoid_: Client (overloaded), user (means the WordPress user/role), customer.
+**Developer** (optional):
+Anyone extending Consentful in code — registering a custom Adapter, adding a Purpose,
+or redirecting Consent records to their own Sink — via documented hooks. A power-user
+convenience: never required, and never overrides the Administrator's UI settings.
+_Avoid_: Integrator (implies code is the source of truth — it isn't), agency.
 
 **Visitor**:
 The person browsing the site whose consent is being collected. Distinct from the
-Site owner and the Integrator — the three are never the same actor in our model.
+Administrator (and any Developer) — never the same actor whose consent is gated.
 _Avoid_: User, end user.

@@ -55,12 +55,12 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           case "$VERSION" in *-*) echo "prerelease=true" ;; *) echo "prerelease=false" ;; esac >> "$GITHUB_OUTPUT"
-          header=$(sed -nE 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*([^[:space:]]+).*/\1/p' consent-mode-v2.php)
-          const=$(sed -nE "s/.*define\([[:space:]]*'CMV2_VER'[[:space:]]*,[[:space:]]*'([^']+)'.*/\1/p" consent-mode-v2.php)
+          header=$(sed -nE 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*([^[:space:]]+).*/\1/p' consentful.php)
+          const=$(sed -nE "s/.*define\([[:space:]]*'CONSENTFUL_VERSION'[[:space:]]*,[[:space:]]*'([^']+)'.*/\1/p" consentful.php)
           stable=$(sed -nE 's/^Stable tag:[[:space:]]*([^[:space:]]+).*/\1/p' readme.txt)
           pkg=$(sed -nE 's/.*"version":[[:space:]]*"([^"]+)".*/\1/p' package.json | head -1)
           fail=0
-          for pair in "plugin header:$header" "CMV2_VER:$const" "Stable tag:$stable" "package.json:$pkg"; do
+          for pair in "plugin header:$header" "CONSENTFUL_VERSION:$const" "Stable tag:$stable" "package.json:$pkg"; do
             name=${pair%%:*}; val=${pair#*:}
             if [ "$val" != "$VERSION" ]; then echo "::error::$name ($val) does not match tag ($VERSION)"; fail=1; fi
           done
@@ -79,16 +79,22 @@ jobs:
           ' readme.txt > RELEASE_BODY.md
           [ -s RELEASE_BODY.md ] || { echo "::error::no '= $VERSION =' changelog section in readme.txt"; exit 1; }
 
-      # Generate runtime artifacts (build/ and languages/*.mo are gitignored).
+      # Generate runtime artifacts (build/, languages/*.mo, and the regenerated
+      # languages/consentful.pot are gitignored; .po files are the tracked source).
       - run: npm ci
       - run: npm run build
+
+      # Production Composer autoloader only (no dev tools). The plugin has no
+      # runtime deps, so vendor/ is just the PSR-4 loader the shipped plugin needs.
+      - name: Install production autoloader
+        run: composer install --no-dev --optimize-autoloader --no-interaction
 
       # Package with the canonical WordPress tool, excluding dev files via .distignore.
       - name: Build distributable zip
         run: |
           set -euo pipefail
           wp package install wp-cli/dist-archive-command:^3
-          wp dist-archive . ./consent-mode-v2.zip --plugin-dirname=consent-mode-v2 --force
+          wp dist-archive . ./consentful.zip --plugin-dirname=consentful --force
 
       # Guard against a broken build (missing runtime) or a packaging regression
       # (dev files leaking in).
@@ -98,20 +104,28 @@ jobs:
           # List names to a file and grep the file. Piping a streaming `unzip`
           # into `grep -q` SIGPIPEs (141) under pipefail once grep exits early,
           # which would silently bypass the leak guard.
-          unzip -Z1 consent-mode-v2.zip > zip-list.txt
-          grep -qFx 'consent-mode-v2/build/.vite/manifest.json' zip-list.txt
-          grep -qE '^consent-mode-v2/languages/.+\.mo$' zip-list.txt
-          if grep -qE '^consent-mode-v2/(node_modules|vendor|src)/' zip-list.txt \
-            || grep -qxE 'consent-mode-v2/(composer\.(json|lock)|package(-lock)?\.json|vite\.config\.js|eslint\.config\.js|\.stylelintrc\.json|\.phpcs\.xml(\.dist)?|phpstan\.neon(\.dist)?|phpstan-baseline\.neon|\.phpactor\.json|README\.md|\.distignore)' zip-list.txt; then
+          unzip -Z1 consentful.zip > zip-list.txt
+          grep -qFx 'consentful/build/.vite/manifest.json' zip-list.txt
+          grep -qFx 'consentful/build/decider.js' zip-list.txt
+          grep -qE '^consentful/build/assets/' zip-list.txt # hashed gate bundle + CSS
+          grep -qE '^consentful/languages/.+\.mo$' zip-list.txt
+          grep -qE '^consentful/src/' zip-list.txt                # PHP runtime ships
+          grep -qFx 'consentful/vendor/autoload.php' zip-list.txt # Composer autoloader ships
+          # vendor/ ships, but only the --no-dev autoloader: no vendor/bin (dev
+          # tools install bin wrappers; the plugin has no production bin deps).
+          if grep -qE '^consentful/(node_modules|assets|tests)/' zip-list.txt \
+            || grep -qE '^consentful/(docs|dist)/' zip-list.txt \
+            || grep -qE '^consentful/vendor/bin/' zip-list.txt \
+            || grep -qxE 'consentful/(composer\.(json|lock)|package(-lock)?\.json|vite\.config\.js|vite\.config\.decider\.js|vitest\.config\.js|eslint\.config\.js|\.stylelintrc\.json|\.phpcs\.xml(\.dist)?|phpstan\.neon(\.dist)?|phpstan-baseline\.neon|\.phpactor\.json|phpunit\.xml\.dist|README\.md|CLAUDE\.md|CONTEXT\.md|PRODUCT\.md|RELEASE_BODY\.md|\.wp-env\.json|\.distignore)' zip-list.txt; then
             echo "::error::dev files leaked into the zip"; exit 1
           fi
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
-          name: Consent Mode v2 ${{ steps.ver.outputs.version }}
+          name: Consentful ${{ steps.ver.outputs.version }}
           body_path: RELEASE_BODY.md
           generate_release_notes: true
           prerelease: ${{ steps.ver.outputs.prerelease }}
           fail_on_unmatched_files: true
-          files: consent-mode-v2.zip
+          files: consentful.zip

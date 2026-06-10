@@ -1,25 +1,25 @@
 # PHPStan configuration — WordPress plugin.
 # The szepeviktor/phpstan-wordpress extension loads the WordPress core stubs
 # and teaches PHPStan about dynamic hooks, so analysis works without a full
-# WordPress checkout. Level max (9) with a baseline for the existing code.
+# WordPress checkout. Level max with a baseline (aim: empty).
 includes:
 	- vendor/szepeviktor/phpstan-wordpress/extension.neon
 	- phpstan-baseline.neon
 
 parameters:
 	level: max
-	# Shared shape for the plugin's settings array, referenced from docblocks
-	# (@return Cmv2Settings, etc.) so it is defined in exactly one place.
-	typeAliases:
-		Cmv2Settings: 'array{ga4_id: string, privacy_url: string, ads: int, days: int, primary: string, theme: string, position: string, radius: int, show_reopen: int, title: string, body: string, lang: string}'
 	paths:
-		- consent-mode-v2.php
+		- consentful.php
 		- uninstall.php
+		- src
+		- tests/Unit
 	excludePaths:
 		- vendor/
-		- node_modules/
-		- build/
-		- src/
+		- node_modules (?)
+		- build (?)
+		- assets/
 		- languages/
+		- tests/bootstrap.php
+		- tests/stubs.php
 	# Treat the WordPress `Requires PHP` floor as the analysis target.
-	phpVersion: 70400
+	phpVersion: 80100

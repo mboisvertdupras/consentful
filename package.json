@@ -1,7 +1,7 @@
 {
-  "name": "consent-mode-v2",
-  "version": "2.0.0",
-  "description": "Google Consent Mode v2 (block-before-consent) + a gated GA4 tag, with a consent banner that meets Québec Loi 25 / GDPR.",
+  "name": "consentful",
+  "version": "1.0.0",
+  "description": "Consentful — an open-source WordPress universal consent layer that gates all non-essential third-party tags behind visitor consent, adapts to the visitor's jurisdiction (Québec Loi 25 / GDPR / US opt-out), and keeps demonstrable proof of consent.",
   "private": true,
   "license": "GPL-2.0-or-later",
   "author": "Tamarak (https://tamarak.dev)",
@@ -10,27 +10,33 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "dev": "vite build --watch",
-    "build:assets": "vite build",
+    "dev": "vite build --config vite.config.decider.js && vite build --watch",
+    "build:assets": "vite build && vite build --config vite.config.decider.js",
     "build": "npm run build:assets && npm run i18n",
     "i18n": "npm run i18n:pot && npm run i18n:po && npm run i18n:mo",
-    "i18n:pot": "wp i18n make-pot . languages/consent-mode-v2.pot",
-    "i18n:po": "wp i18n update-po languages/consent-mode-v2.pot languages",
+    "i18n:pot": "wp i18n make-pot . languages/consentful.pot --headers='{\"Report-Msgid-Bugs-To\":\"https://wordpress.org/support/plugin/consentful\"}'",
+    "i18n:po": "wp i18n update-po languages/consentful.pot languages",
     "i18n:mo": "wp i18n make-mo languages languages",
     "lint": "npm run lint:js && npm run lint:css && npm run lint:php",
-    "lint:js": "eslint src",
-    "lint:js:fix": "eslint src --fix",
-    "lint:css": "stylelint \"src/**/*.css\"",
-    "lint:css:fix": "stylelint \"src/**/*.css\" --fix",
+    "lint:js": "eslint assets tests/js",
+    "lint:js:fix": "eslint assets tests/js --fix",
+    "lint:css": "stylelint \"assets/**/*.css\" --allow-empty-input",
+    "lint:css:fix": "stylelint \"assets/**/*.css\" --allow-empty-input --fix",
     "lint:php": "composer run lint:php",
     "analyze": "composer run analyze",
-    "package": "npm run build && wp package install wp-cli/dist-archive-command:^3 && wp dist-archive . ./consent-mode-v2.zip --plugin-dirname=consent-mode-v2 --force"
+    "test:js": "vitest run",
+    "test:php": "composer test",
+    "test": "npm run test:js && npm run test:php",
+    "package": "npm run build && composer install --no-dev --optimize-autoloader && wp package install wp-cli/dist-archive-command:^3 && wp dist-archive . ./consentful.zip --plugin-dirname=consentful --force && composer install"
   },
   "devDependencies": {
+    "@wordpress/env": "^11.8.0",
     "@wordpress/eslint-plugin": "^22.0.0",
     "@wordpress/stylelint-config": "^23.0.0",
     "eslint": "^9.0.0",
+    "jsdom": "^29.1.1",
     "stylelint": "^16.0.0",
-    "vite": "^8.0.0"
+    "vite": "^8.0.0",
+    "vitest": "^4.1.8"
   }
 }

@@ -1,39 +1,157 @@
-# Consent Mode v2 — Loi 25 & RGPD
+# Consentful — universal consent layer
 
-A white-label WordPress plugin that owns the site's Google tag and only loads it
-**after** the visitor consents — what makes "prior consent" true under Québec
-Loi 25 and the GDPR. Reusable across client sites: no brand-specific code,
-prefix `cmv2_`, fully themeable.
+An open-source, **general-purpose** WordPress **universal consent layer** for the
+WordPress.org plugin directory. It gates **all** non-essential third-party tags behind
+visitor consent, adapts to the visitor's jurisdiction, and keeps demonstrable proof of
+consent — so the **site** (not merely one vendor's tag) meets Québec Loi 25 / GDPR / US
+opt-out laws. **Anyone can install it and be compliant from the admin UI — no code, no
+prior consent-management knowledge.** Neutral, fully themeable branding (prefix
+`consentful_`). Google Consent Mode is the first integration, not the boundary.
+
+> **Status.** Built per ADR 0001/0002/0004: the PSR-4 OOP domain core (Purpose model,
+> Signal, Consent, Tag, Adapter, Catalog, Jurisdiction/Policy registries), the cache-safe
+> client gate + Google Consent Mode v2 adapter (GA4, Google Ads and GTM containers loaded
+> behind consent), the geo-adaptive jurisdiction resolver (edge signal → non-cached
+> endpoint, fail-closed), the opt-in / opt-out (Do Not Sell/Share) / notice banner
+> variants, durable proof of consent (record + log table + Sink + REST), and the
+> **self-serve admin UI** — the canonical configuration surface (ADR 0004). Code is an
+> *optional developer layer* (the *Extending in code* hooks below), never required and
+> never overriding the UI.
 
 ## What it does
 
-- **Block before consent (basic Consent Mode v2).** No `gtag.js`, no `config`,
-  no cookieless ping until the visitor chooses. A returning visitor with valid,
-  unexpired consent gets the tag on the first hit.
-- **All four CMv2 signals** (`ad_storage`, `ad_user_data`, `ad_personalization`,
-  `analytics_storage`) plus `functionality_/personalization_/security_storage`.
-- **Loi 25 friendly banner.** Reject all is as easy as Accept all — same screen,
-  one click, identical size — granular per-category, easy withdrawal, no
-  pre-ticked boxes, re-consent window.
-- **Fully customizable.** Primary color, light/dark/auto theme, position
-  (bottom bar / floating corner / centered modal), button radius, custom copy,
-  optional floating re-open button.
-- **Translation-ready.** English source + bundled French (fr_CA / fr_FR);
-  `.pot` template included.
-- **Accessible.** Keyboard-operable, focus management, modal focus-trap +
-  background `inert`, 44px touch targets.
+- **Gate every non-essential tag.** Each tag is assigned to one or more **purposes**
+  and fires only when all are granted — either **Direct** (a Consentful adapter
+  injects it) or **Delegated** (an external tag manager fires it, gated via a consent
+  push to the dataLayer).
+- **Geo-adaptive, multi-jurisdiction.** A **Policy** is Opt-in (deny by default,
+  banner, block-before-consent — Loi 25/GDPR), Opt-out (allow by default, notice +
+  Do Not Sell/Share + honor GPC — US), or Notice/None. Until the region is known, the
+  strictest policy applies (fail-closed); GPC is honored instantly.
+- **Cache-safe by design.** Every visitor receives identical HTML; an inline `<head>`
+  decider plus per-adapter JS reads the consent cookie at runtime and injects only
+  granted tags — correct behind full-page caches / CDNs.
+- **Google Consent Mode v2.** Google is just a rich **adapter** that additionally
+  emits Consent Mode v2 signals (default-deny, `wait_for_update`, cookieless pings,
+  `ads_data_redaction`, `url_passthrough`) to preserve conversion modeling.
+- **Proof of consent.** Each decision is recorded (consent id, timestamp, purposes,
+  jurisdiction, policy/schema/banner version) to a built-in consent log, exportable
+  for an auditor; a Sink interface lets developers redirect records to their store.
+  Records are pseudonymous (server-side salted IP/UA hashes) and retention-limited — a
+  daily cron purges entries past the configured window.
+- **Translation-ready.** English source + bundled French (fr_CA / fr_FR); `.pot`
+  template included. Language (locale) is a separate axis from jurisdiction (geo).
 
-Configure under **Settings → Consent Mode v2** after entering a GA4 measurement
-ID. See `readme.txt` for the full WordPress.org-format plugin readme.
+The audience is **every WordPress site owner**: tags, purpose copy, jurisdiction policy
+and banner appearance are configured in the **admin UI** — the source of truth — with no
+code required. **Developers** are an optional second audience served by extension hooks
+(below). See `readme.txt` for the WordPress.org-format user readme.
+
+## Configuration (admin UI)
+
+Install, activate, and open **Settings → Consentful**. A compliant baseline is active
+from activation (geo-adaptive defaults, strictest-until-known, banner shown); the UI
+*refines* it. Add tags from the built-in catalog (GA4, Google Ads, GTM, Meta Pixel) or
+paste a custom HTML/script snippet (one or more tags, injected at the head, body, or
+footer), assign each to purposes, edit the purpose copy, choose the banner appearance,
+and toggle the jurisdiction posture. No code, no prior consent-management knowledge.
+
+## Extending in code (optional, for developers)
+
+Developers can register a custom adapter, add a purpose, or redirect consent records to
+their own store via documented hooks — never required, and never overriding the admin
+UI. These are **append-only filters**: they add to what the admin configured, they do
+not replace it. Register from your theme or a companion plugin:
+
+```php
+// Register a custom adapter and a tag that uses it. The adapter's client-config carries
+// the JS `handler` (`script` injects the snippet; `google` is Consent Mode v2); a Tag
+// points at the adapter id and gates it on one or more purposes.
+add_filter( 'consentful_adapters', function ( array $adapters ): array {
+	$adapters[] = new \Consentful\Adapter\ConfiguredAdapter(
+		'my-widget',
+		array(
+			'handler'   => 'script',
+			'fragments' => array(
+				array(
+					'code'     => '<script src="https://example.com/w.js"></script>',
+					'location' => 'footer', // head | body | footer
+				),
+			),
+		)
+	);
+	return $adapters;
+} );
+
+add_filter( 'consentful_tags', function ( array $tags ): array {
+	$tags[] = new \Consentful\Tag\Tag(
+		'my-widget',
+		'My Widget',
+		array( \Consentful\Consent\DefaultPurpose::Functional ),
+		\Consentful\Tag\Delivery::Direct,
+		'my-widget'
+	);
+	return $tags;
+} );
+
+// Add a purpose beyond the fixed default taxonomy.
+add_filter( 'consentful_purposes', function ( array $purposes ): array {
+	$purposes[] = new \Consentful\Consent\CustomPurpose( 'ab_testing' );
+	return $purposes;
+} );
+
+// Redirect proof-of-consent records to your own store (must implement Consent\Sink).
+add_filter( 'consentful_sink', fn ( $default ) => new \My\CustomSink() );
+```
+
+For a first-class Google integration in code, append a `GoogleAdapter` (it carries the
+Consent Mode v2 signal map) instead of a generic adapter:
+
+```php
+add_filter( 'consentful_adapters', function ( array $adapters ): array {
+	// Products are keyed by Tag id — register a Tag with that id (as above) whose
+	// adapter id is 'google'.
+	$adapters[] = new \Consentful\Adapter\GoogleAdapter(
+		array(
+			'my-ga4' => array(
+				'measurementIds' => array( 'G-XXXXXXXX' ),
+				'containerIds'   => array(),
+			),
+		)
+	);
+	return $adapters;
+} );
+```
+
+### JavaScript adapter handlers
+
+An adapter whose client-config `handler` names no built-in (`script`, `google`, `meta`)
+needs a matching JS handler:
+
+```js
+window.consentful.registerAdapter( 'my-handler', {
+	apply( { tag, adapterConfig, grants, granted, win, doc } ) {
+		if ( ! granted ) {
+			return;
+		}
+		// Inject the vendor tag (once — see below).
+	},
+} );
+```
+
+`apply( ctx )` receives `{ tag, adapterConfig, grants, granted, win, doc }` and is
+re-applied on every consent change, so handlers must be idempotent. Registration works
+before the gate loads (the inline decider stub queues it) or after (the handler is
+applied immediately).
 
 ## Local development (symlink into a WP install)
 
-The canonical copy lives in this repo. Symlink it into any local WordPress so
-edits stay in sync — WordPress resolves symlinked plugins via
-`wp_register_plugin_realpath()`, so asset URLs and `plugin_basename()` work:
+The canonical copy lives in this repo. Symlink it into any local WordPress so edits
+stay in sync — WordPress resolves symlinked plugins via `wp_register_plugin_realpath()`,
+so asset URLs and `plugin_basename()` work:
 
 ```sh
-ln -s "$(pwd)" /path/to/wp-content/plugins/consent-mode-v2
+ln -s "$(pwd)" /path/to/wp-content/plugins/consentful
 ```
 
 Then activate it from the Plugins screen as usual.
@@ -51,7 +169,7 @@ npm run build
 That runs three steps, which you can also run individually:
 
 ```sh
-npm run i18n:pot   # regenerate languages/consent-mode-v2.pot from PHP source
+npm run i18n:pot   # regenerate languages/consentful.pot from PHP source
 npm run i18n:po    # sync the fr_CA / fr_FR .po files against the new .pot
 npm run i18n:mo    # compile the .po files to .mo
 ```
@@ -62,11 +180,11 @@ After `i18n:po`, fill in any new/changed `msgstr` entries directly in the French
 
 ## Building a distributable zip
 
-`npm run package` builds the assets + translations and produces
-`consent-mode-v2.zip` — the installable plugin with every dev file excluded (the
-exclusion list lives in `.distignore`). Pushing a `vX.Y.Z` tag runs the
-[release workflow](.github/workflows/release.yml), which does the same and
-attaches the zip to a GitHub Release.
+`npm run package` builds the assets + translations and produces `consentful.zip` —
+the installable plugin with every dev file excluded (the exclusion list lives in
+`.distignore`). Pushing a `vX.Y.Z` tag runs the
+[release workflow](.github/workflows/release.yml), which does the same and attaches
+the zip to a GitHub Release.
 
 Packaging uses [`wp dist-archive`](https://github.com/wp-cli/dist-archive-command)
 v3, which needs WP-CLI ≥ 2.13. Until that ships as stable, point local WP-CLI at

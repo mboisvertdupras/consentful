@@ -1,0 +1,280 @@
+import './banner.css';
+import { initBanner } from './banner.js';
+import { parseConfig } from './lib/config.js';
+import {
+	readCookie,
+	writeCookie,
+	parseConsent,
+	validateConsent,
+	serializeConsent,
+} from './lib/cookie.js';
+import { computeGrants, isTagGranted } from './lib/grants.js';
+import { newConsentId, sendConsentRecord } from './lib/proof.js';
+import {
+	resolveJurisdictionSync,
+	activeJurisdiction,
+	mapRegionToJurisdiction,
+} from './lib/jurisdiction.js';
+import { google } from './adapters/google.js';
+import { meta } from './adapters/meta.js';
+import { script } from './adapters/script.js';
+
+/**
+ * Initialize the gate against a window/document.
+ *
+ * @param {unknown} rawConfig window.consentfulConfig.
+ * @param {object}  env       { win, doc }.
+ * @return {object} The public API.
+ */
+export function init( rawConfig, { win, doc } ) {
+	const config = parseConfig( rawConfig );
+
+	const handlers = { google, meta, script };
+	const listeners = new Set();
+
+	const existing = win.consentful;
+	const queue = existing && Array.isArray( existing._adapterQueue ) ? existing._adapterQueue : [];
+
+	let initialized = false;
+	const registerAdapter = ( name, impl ) => {
+		if ( name && impl && typeof impl.apply === 'function' ) {
+			handlers[ name ] = impl;
+			if ( initialized ) {
+				applyAll();
+			}
+		}
+	};
+
+	const purposeKeys = config.purposes.map( ( p ) => p.key );
+	const alwaysOn = {};
+	for ( const p of config.purposes ) {
+		alwaysOn[ p.key ] = p.alwaysOn;
+	}
+
+	let stored = readStored();
+	let gpc = win.navigator && win.navigator.globalPrivacyControl === true;
+
+	let resolvedId = resolveJurisdictionSync( config, { win, doc } );
+	let resolved = activeJurisdiction( config, resolvedId );
+	let policy = resolved.policy;
+
+	let grants = recompute();
+
+	for ( const [ name, impl ] of queue ) {
+		registerAdapter( name, impl );
+	}
+
+	function readStored() {
+		return validateConsent(
+			parseConsent( readCookie( config.cookie, doc ) ),
+			{
+				schemaVersion: config.schemaVersion,
+				policyVersion: config.policyVersion,
+				maxAgeMs: config.maxAgeMs,
+			}
+		);
+	}
+
+	function recompute() {
+		return computeGrants( {
+			purposes: config.purposes,
+			policy,
+			stored,
+			gpc,
+		} );
+	}
+
+	function applyAll() {
+		for ( const tag of config.tags ) {
+			const adapterConfig = config.adapters[ tag.adapter ] || {};
+			const handler = handlers[ adapterConfig.handler || tag.adapter ];
+			if ( ! handler || typeof handler.apply !== 'function' ) {
+				continue;
+			}
+			handler.apply( {
+				tag,
+				adapterConfig,
+				grants,
+				granted: isTagGranted( tag, grants ),
+				win,
+				doc,
+			} );
+		}
+	}
+
+	function dispatchChange() {
+		const detail = { ...grants };
+		if ( typeof win.CustomEvent === 'function' ) {
+			doc.dispatchEvent( new win.CustomEvent( 'consentful:change', { detail } ) );
+		}
+		for ( const cb of listeners ) {
+			try {
+				cb( detail );
+			} catch {}
+		}
+	}
+
+	function normalize( input ) {
+		const obj = input && typeof input === 'object' ? input : {};
+		const next = {};
+		for ( const key of purposeKeys ) {
+			if ( alwaysOn[ key ] ) {
+				next[ key ] = true;
+			} else if ( gpc ) {
+				next[ key ] = false;
+			} else {
+				next[ key ] = Boolean( obj[ key ] );
+			}
+		}
+		return next;
+	}
+
+	function persist( decision ) {
+		const timestamp = Date.now();
+		writeCookie(
+			config.cookie,
+			serializeConsent( {
+				schemaVersion: config.schemaVersion,
+				policyVersion: config.policyVersion,
+				jurisdiction: resolved.id,
+				grants: decision,
+				timestamp,
+			} ),
+			{ maxAgeMs: config.maxAgeMs },
+			doc
+		);
+		stored = { grants: decision, jurisdiction: resolved.id, timestamp };
+		grants = recompute();
+	}
+
+	function setConsent( grantsInput ) {
+		const decision = normalize( grantsInput );
+		persist( decision );
+		applyAll();
+		dispatchChange();
+		sendProof( decision );
+		return { ...grants };
+	}
+
+	function sendProof( decision ) {
+		if ( ! config.proof.enabled || ! config.proof.endpoint ) {
+			return;
+		}
+		try {
+			sendConsentRecord(
+				config.proof.endpoint,
+				{
+					cid: newConsentId( win ),
+					grants: decision,
+					jurisdiction: resolved.id,
+					policyVersion: config.policyVersion,
+					schemaVersion: config.schemaVersion,
+					bannerVersion: config.proof.bannerVersion,
+				},
+				win
+			);
+		} catch {}
+	}
+
+	function acceptAll() {
+		const all = {};
+		for ( const key of purposeKeys ) {
+			all[ key ] = true;
+		}
+		return setConsent( all );
+	}
+
+	function rejectAll() {
+		return setConsent( {} );
+	}
+
+	const api = {
+		get() {
+			return { ...grants };
+		},
+		hasDecision() {
+			return stored !== null;
+		},
+		gpc() {
+			return gpc;
+		},
+		purposes() {
+			return config.purposes.map( ( p ) => ( { ...p } ) );
+		},
+		jurisdiction() {
+			return resolved.id;
+		},
+		policy() {
+			return { ...policy };
+		},
+		setConsent,
+		acceptAll,
+		rejectAll,
+		onChange( cb ) {
+			if ( typeof cb !== 'function' ) {
+				return () => {};
+			}
+			listeners.add( cb );
+			return () => listeners.delete( cb );
+		},
+		registerAdapter,
+	};
+
+	win.consentful = existing ? Object.assign( existing, api ) : api;
+
+	initialized = true;
+	applyAll();
+
+	let bannerHandle = { destroy() {} };
+	try {
+		bannerHandle = initBanner( win.consentful, rawConfig && rawConfig.banner, { win, doc } );
+	} catch {}
+
+	if ( resolvedId === null && stored === null && config.geo.endpoint ) {
+		try {
+			fetchGeoRegion( config.geo.endpoint, win ).then( ( region ) => {
+				const nextId = mapRegionToJurisdiction( region, config.geo.map );
+				if ( ! nextId || nextId === resolved.id || ! config.jurisdictions[ nextId ] ) {
+					return;
+				}
+				resolvedId = nextId;
+				resolved = activeJurisdiction( config, nextId );
+				policy = resolved.policy;
+				grants = recompute();
+				applyAll();
+				dispatchChange();
+				try {
+					bannerHandle.destroy();
+					bannerHandle = initBanner( win.consentful, rawConfig && rawConfig.banner, {
+						win,
+						doc,
+					} );
+				} catch {}
+			} );
+		} catch {}
+	}
+
+	return win.consentful;
+}
+
+/**
+ * Fetch a region code from the non-cached geo endpoint.
+ *
+ * @param {string} endpoint Absolute endpoint URL.
+ * @param {Window} win
+ * @return {Promise<?string>} The region code, or null.
+ */
+function fetchGeoRegion( endpoint, win ) {
+	if ( ! win.fetch ) {
+		return Promise.resolve( null );
+	}
+	return win
+		.fetch( endpoint, { credentials: 'omit', cache: 'no-store' } )
+		.then( ( r ) => ( r.ok ? r.json() : null ) )
+		.then( ( d ) => ( d && typeof d.region === 'string' ? d.region : null ) )
+		.catch( () => null );
+}
+
+if ( typeof window !== 'undefined' ) {
+	init( window.consentfulConfig, { win: window, doc: document } );
+}
