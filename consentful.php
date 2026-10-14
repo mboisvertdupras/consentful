@@ -3,7 +3,7 @@
  * Plugin Name:       Consentful
  * Plugin URI:        https://github.com/mboisvertdupras/consentful
  * Description:        An open-source, universal consent layer that gates all non-essential third-party tags behind visitor consent, adapts to the visitor's jurisdiction, and keeps demonstrable proof of consent.
- * Version:           1.0.0
+ * Version:           1.0.1
  * Requires at least: 6.5
  * Requires PHP:      8.1
  * Author:            Tamarak
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CONSENTFUL_VERSION', '1.0.0' );
+define( 'CONSENTFUL_VERSION', '1.0.1' );
 define( 'CONSENTFUL_FILE', __FILE__ );
 define( 'CONSENTFUL_SCHEMA_VERSION', 1 );
 define( 'CONSENTFUL_POLICY_VERSION', 1 );
