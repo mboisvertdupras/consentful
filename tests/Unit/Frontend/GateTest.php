@@ -42,6 +42,7 @@ final class GateTest extends TestCase {
 			$GLOBALS['consentful_test_actions'],
 			$GLOBALS['consentful_test_enqueues'],
 			$GLOBALS['consentful_test_styles'],
+			$GLOBALS['consentful_test_style_data'],
 			$GLOBALS['consentful_test_privacy_url'],
 			$GLOBALS['consentful_test_options']
 		);
@@ -219,7 +220,8 @@ final class GateTest extends TestCase {
 	}
 
 	public function test_enqueue_registers_the_aggregated_banner_stylesheet(): void {
-		$GLOBALS['consentful_test_styles'] = array();
+		$GLOBALS['consentful_test_styles']     = array();
+		$GLOBALS['consentful_test_style_data'] = array();
 		$dir = $this->build_dir();
 		$manifest_path = $this->write_manifest(
 			$dir,
@@ -243,6 +245,10 @@ final class GateTest extends TestCase {
 		$this->assertSame(
 			'http://example.test/wp-content/plugins/consentful/build/assets/style.def456.css',
 			$style[1]
+		);
+		$this->assertSame(
+			array( array( 'consentful-banner', 'path', $dir . '/assets/style.def456.css' ) ),
+			$GLOBALS['consentful_test_style_data']
 		);
 	}
 

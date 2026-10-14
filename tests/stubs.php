@@ -146,6 +146,15 @@ if ( ! function_exists( 'wp_enqueue_style' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_style_add_data' ) ) {
+	function wp_style_add_data( ...$args ) {
+		if ( isset( $GLOBALS['consentful_test_style_data'] ) && is_array( $GLOBALS['consentful_test_style_data'] ) ) {
+			$GLOBALS['consentful_test_style_data'][] = $args;
+		}
+		return true;
+	}
+}
+
 if ( ! function_exists( 'wp_register_script' ) ) {
 	function wp_register_script( ...$args ) {
 		return true;

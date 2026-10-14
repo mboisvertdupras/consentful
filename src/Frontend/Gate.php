@@ -66,6 +66,7 @@ final class Gate {
 				array(),
 				CONSENTFUL_VERSION
 			);
+			wp_style_add_data( self::STYLE_HANDLE, 'path', rtrim( $this->build_dir, '/' ) . '/' . ltrim( $css, '/' ) );
 		}
 	}
 
