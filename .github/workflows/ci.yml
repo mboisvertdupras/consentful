@@ -60,7 +60,7 @@ jobs:
       # PHPUnit 11 needs PHP >= 8.2, so run on 8.3. phpcs (PHPCompatibilityWP
       # testVersion 8.1-) and phpstan (phpVersion 80100) still target the 8.1 floor
       # via their own config, so this one run is authoritative.
-      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2.37.1
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: '8.3'
           tools: composer:v2
@@ -86,7 +86,7 @@ jobs:
           cache: npm
 
       # Hosts WP-CLI (a PHP phar) and provides composer for `wp package install`.
-      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2.37.1
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: '8.3'
           tools: composer:v2
