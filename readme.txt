@@ -4,7 +4,7 @@ Tags: consent, gdpr, loi 25, cookie banner, consent mode
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -44,6 +44,9 @@ Yes. Every visitor receives identical HTML; the client-side decider reads the co
 Anyone running a WordPress site. Tags, purposes, jurisdiction policy, and the banner are configured from the admin UI — no code or consent-management expertise required. Developers can optionally extend it (custom integrations, a custom record store) via hooks.
 
 == Changelog ==
+
+= 1.0.2 =
+* Fixes a PHP 8.6 deprecation notice by renaming the REST namespace class constant.
 
 = 1.0.1 =
 * The banner stylesheet is printed inline instead of loaded as a render-blocking file, so pages render sooner.
