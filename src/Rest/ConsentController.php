@@ -8,8 +8,8 @@ use Consentful\Consent\Sink;
 
 final class ConsentController {
 
-	public const NAMESPACE = 'consentful/v1';
-	public const ROUTE     = '/consent';
+	public const REST_NAMESPACE = 'consentful/v1';
+	public const ROUTE          = '/consent';
 
 	private const MAX_GRANTS = 50;
 
@@ -27,7 +27,7 @@ final class ConsentController {
 
 	public function register_route(): void {
 		register_rest_route(
-			self::NAMESPACE,
+			self::REST_NAMESPACE,
 			self::ROUTE,
 			array(
 				'methods'             => 'POST',

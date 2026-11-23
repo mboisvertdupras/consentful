@@ -5,8 +5,8 @@ namespace Consentful\Rest;
 
 final class GeoController {
 
-	public const NAMESPACE = 'consentful/v1';
-	public const ROUTE     = '/geo';
+	public const REST_NAMESPACE = 'consentful/v1';
+	public const ROUTE          = '/geo';
 
 	public function register(): void {
 		add_action( 'rest_api_init', array( $this, 'register_route' ) );
@@ -14,7 +14,7 @@ final class GeoController {
 
 	public function register_route(): void {
 		register_rest_route(
-			self::NAMESPACE,
+			self::REST_NAMESPACE,
 			self::ROUTE,
 			array(
 				'methods'             => 'GET',
